@@ -1,0 +1,16 @@
+cmake_minimum_required(VERSION 3.26)
+project(TagFI C)
+
+set(CMAKE_C_STANDARD 17)
+
+add_executable(TagFI test_tagfiles.c /usr/local/include/sodium.h
+        tagfi.h
+        tagfi.c
+        chkmk_didmap.c
+        chkmk_didmap.h
+        jlm_random.c
+        jlm_random.h
+        fiforms.h
+)
+include_directories(/usr/local/include/sodium)
+target_link_libraries(TagFI sodium)
