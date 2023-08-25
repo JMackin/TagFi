@@ -5,6 +5,7 @@
 #include "jlm_random.h"
 #include "fiforms.h"
 #include "fidi_masks.h"
+#include "miscutils.h"
 #include <sodium.h>
 #include <stdio.h>
 #include <dirent.h>
@@ -172,7 +173,7 @@ void add_dnode(unsigned long long did, unsigned char* dname, unsigned short nlen
     Dir_Node *dnode = (Dir_Node *) (malloc(sizeof(Dir_Node)));
     Dir_Node *base = (mord) ? dirchains->dir_head->right : dirchains->dir_head->left;
     dnode->diname = (unsigned char *) malloc(nlen * sizeof(unsigned char));
-    dnode->diname = memcpy(dnode->diname, dname, nlen);
+    dnode->diname = memcpy(dnode->diname, dname, nlen * sizeof(unsigned char));
     unsigned long cnt = ((base->did) & DGCNTMASK) >> DGCNTSHFT;
 
     dnode->did = did | ((nlen & FNLENMSK) << DNAMESHFT) | ((mord) ? MEDABASEM : DOCSBASEM) | ++cnt;
@@ -218,9 +219,10 @@ FiMap* mk_fimap(unsigned int nlen, unsigned char* finame, unsigned long long fii
     FiMap* fimap = (FiMap*) malloc(sizeof(FiMap));
 
     fimap->finame = (unsigned char*) calloc(nlen+1, sizeof(unsigned char));
-    memcpy(fimap->finame,finame,nlen);
+    memcpy(fimap->finame,finame,(nlen*sizeof(unsigned char)));
 
-    fiid = msk_finmlen(fiid,);
+    fiid = msk_finmlen(fiid,nlen);
+//    fiid = msk_format();
     fimap->fiid = fiid;
 
     fimap->fhshno = fhshno;
