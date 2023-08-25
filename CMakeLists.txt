@@ -11,6 +11,8 @@ add_executable(TagFI test_tagfiles.c /usr/local/include/sodium.h
         jlm_random.c
         jlm_random.h
         fiforms.h
+        fidi_masks.h
+        fidi_masks.c
 )
 include_directories(/usr/local/include/sodium)
 target_link_libraries(TagFI sodium)

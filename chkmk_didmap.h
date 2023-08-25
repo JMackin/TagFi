@@ -27,7 +27,6 @@ void void_mkmap(const char* dir_path);
 
 typedef struct FiMap{
     unsigned long long fiid;
-    unsigned long did;
     unsigned long fhshno;
     unsigned char* finame;
 } FiMap;
