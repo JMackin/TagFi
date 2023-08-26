@@ -35,7 +35,8 @@ unsigned int expo_format(unsigned long long fiid) {
 }
 
 unsigned long long msk_redir(unsigned long long fiid, unsigned int dirid) {
-    return (fiid | (dirid << FRDIRSHFT));
+    return fiid ^ ((dirid & FBSGPCLIP) << FRDIRSHFT);
+    //& DBASEMASK) >> DBASESHFT);
 }
 
 unsigned int expo_redir(unsigned long long fiid) {

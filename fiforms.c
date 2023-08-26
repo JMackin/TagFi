@@ -100,7 +100,7 @@ unsigned int grab_ffid(unsigned char* fname, unsigned int nlen) {
             }
             if (score == extlen) {
 
-                res = i+1;
+                res = i;
                 free(buf);
                 free(ext_buf);
 
@@ -111,10 +111,18 @@ unsigned int grab_ffid(unsigned char* fname, unsigned int nlen) {
             if (ext_buf[n] != form_exts[i][n]) {
                 res = NONE;
             }
-    }
+        }
 
 //        if (memcmp((unsigned char*) ext_buf, (unsigned char*)form_exts[i], (nlen-dotpos)*sizeof(unsigned char)) != 0){
 //            res = i;
+//
 //        }
+
     }
+
+    free(buf);
+    free(ext_buf);
+
+    return res;
+
 }

@@ -86,24 +86,26 @@
 #define FFRMTSHFT 9 // Num of trailing bits after FFRMTMSK
 
 
-#define FRDIRMSK 63                     /* File resident directory &mask
- * Gives dir chain ID of the files resident ID
+#define FRDIRMSK 252                    /* File resident directory &mask
+ * Gives dir chain ID of the files resident dir ID
  *
- *  0b10000000000000000000000000000000000000000000000000111111000
- *   C||         fhshno               ||   add.attr.   || *  || |
+ *  0b10000000000000000000000000000000000000000000000000111111100
+ *   C||         fhshno               ||   add.attr.   || *   || |
  *
- *  * FRDIRMSK - 6 bits */
+ *  * FRDIRMSK - 7 bits */
 
-#define FRDIRSHFT 7  // Num of trailing bits after FRDIRMSK
+#define FBSGPCLIP 127 // &mask to clip down a did for masking with a FiMap object
+
+#define FRDIRSHFT 2  // Num of trailing bits after FRDIRMSK
 
 
-#define FDCHNGMSK 7                      /* Fancy ETC. &mask
- * Give the ID for the dir chain group, 01=media, 10=docs
+#define FDCHNGMSK 2                      /* Base group &mask
+ * Give the ID for the dir chain group, 1=media, 0=docs, defaults to zero.
  *
- *  0b10000000000000000000000000000000000000000000000000000000110
- *   C||         fhshno               ||     add.attr.        ||*
+ *  0b10000000000000000000000000000000000000000000000000000000010
+ *   C||         fhshno               ||     add.attr.         |*|
  *
- *  * FDCHNGMSK - 2 bits */
+ *  * FDCHNGMSK - 1 bit */
 
 #define FDCHNGSHFT 1 // Num of trailing bits after FDCHNGMSK
 

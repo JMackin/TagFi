@@ -159,6 +159,16 @@ void search_dchains(Dir_Node* dnode, unsigned long long did, unsigned int lor){
     }
 }
 
+//lor: 0=left/docs, 1=right/media,
+void search_dchns_byino(Dir_Node* dnode, unsigned long long did, unsigned int lor){
+    while ((dnode->did) != did){
+
+        *dnode = (lor) ? *dnode->left : *dnode->right;
+    }
+}
+
+
+
 void traverse_dchains(Dir_Node* dnode) {
 
     while(dnode->did != (DROOTDID)){
@@ -226,6 +236,7 @@ FiMap* mk_fimap(unsigned int nlen, unsigned char* finame,
 
     fiid = msk_finmlen(fiid,nlen);
     fiid = msk_format(fiid, grab_ffid(fimap->finame,nlen));
+    fiid = msk_redir(fiid, did);
 
     fimap->fiid = fiid;
 
@@ -236,7 +247,7 @@ FiMap* mk_fimap(unsigned int nlen, unsigned char* finame,
 
 unsigned int getidx(FiMap* fimap)
 {
-    return fimap->fhshno & HTMASK;
+    return expo_fino(fimap->fhshno, fimap->fiid) & HTMASK;
 }
 
 //unsigned long getfino(FiMap* fimap)
@@ -372,26 +383,28 @@ void void_mkmap(const char* dir_path){
 
     mk_hashes(haidarr, fhshno_arr, dhaidarr, dhshno_arr, idarr, n, dir_cnt, entype);
 
-
-    Fi_Tbl* fitbl = init_fitbl((int)HTSIZE);
     Dir_Chains* dirchains = init_dchains();
+    Fi_Tbl* fitbl = init_fitbl((int)HTSIZE);
 
 
     for (i=0;i<n;i++) {
+        if (entype[i] == TYPDIR){
 
-        if (entype[i] != TYPDIR){
-            add_entry(mk_fimap(nlens[i],farr[i],haidarr[j],rootno,*fhshno_arr[j]),fitbl);
-            sodium_free(fhshno_arr[j]);
-            j++;
-        }
-        else {
 
             printf("DIR: %s :", farr[i]);
             printf("\n%llu\n",dhaidarr[k]);
             printf("%llu\n\n",((((*dhshno_arr[k])>>DMASKSHFT))^((dhaidarr[k])>>DMASKSHFT)));
+
             add_dnode(dhaidarr[k],farr[i],nlens[i],1,dirchains);
             sodium_free(dhshno_arr[k]);
             k++;
+
+        }
+        else {
+
+            add_entry(mk_fimap(nlens[i],farr[i],haidarr[j],rootno,*fhshno_arr[j]),fitbl);
+            sodium_free(fhshno_arr[j]);
+            j++;
 
         }
 
@@ -406,6 +419,7 @@ void void_mkmap(const char* dir_path){
             printf("fhshno: %lu\n",fitbl->entries[i]->fhshno);
             printf("nmlen: %u\n", expo_finmlen(fitbl->entries[i]->fiid));
             printf("format: %u\n",expo_format(fitbl->entries[i]->fiid));
+            printf("Resident dir: %u\n", expo_redir(fitbl->entries[i]->fiid));
             printf("%lu\n\n");
 
             printf("%lu\n",fitbl->entries[i]->fhshno);
