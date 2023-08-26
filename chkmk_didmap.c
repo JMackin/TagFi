@@ -5,7 +5,6 @@
 #include "jlm_random.h"
 #include "fiforms.h"
 #include "fidi_masks.h"
-#include "miscutils.h"
 #include <sodium.h>
 #include <stdio.h>
 #include <dirent.h>
@@ -17,6 +16,8 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <sys/time.h>
+
+
 
 
 void mk_hashes(unsigned long long* haidarr,
@@ -214,7 +215,9 @@ Fi_Tbl* init_fitbl(unsigned int size){
     return fitbl;
 }
 
-FiMap* mk_fimap(unsigned int nlen, unsigned char* finame, unsigned long long fiid, unsigned  long long did, unsigned long fhshno){
+FiMap* mk_fimap(unsigned int nlen, unsigned char* finame,
+                unsigned long long fiid, unsigned  long long did,
+                unsigned long fhshno){
 
     FiMap* fimap = (FiMap*) malloc(sizeof(FiMap));
 
@@ -222,7 +225,8 @@ FiMap* mk_fimap(unsigned int nlen, unsigned char* finame, unsigned long long fii
     memcpy(fimap->finame,finame,(nlen*sizeof(unsigned char)));
 
     fiid = msk_finmlen(fiid,nlen);
-//    fiid = msk_format();
+    fiid = msk_format(fiid, grab_ffid(fimap->finame,nlen));
+
     fimap->fiid = fiid;
 
     fimap->fhshno = fhshno;
@@ -398,9 +402,14 @@ void void_mkmap(const char* dir_path){
         if (fitbl->entries[i] != NULL){
                         printf("\n%lu: ", expo_fino(fitbl->entries[i]->fhshno,fitbl->entries[i]->fiid));
             printf("%s\n",fitbl->entries[i]->finame);
-            printf("%llu\n",fitbl->entries[i]->fiid);
+            printf("fiid: %llu\n",fitbl->entries[i]->fiid);
+            printf("fhshno: %lu\n",fitbl->entries[i]->fhshno);
+            printf("nmlen: %u\n", expo_finmlen(fitbl->entries[i]->fiid));
+            printf("format: %u\n",expo_format(fitbl->entries[i]->fiid));
+            printf("%lu\n\n");
+
             printf("%lu\n",fitbl->entries[i]->fhshno);
-            printf("\n");
+
 
         }
     }

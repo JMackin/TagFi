@@ -2,73 +2,119 @@
 // Created by ujlm on 8/25/23.
 //
 
+//
+// Created by ujlm on 8/25/23.
+//
+
 #include <malloc.h>
 #include <string.h>
 #include "fiforms.h"
 #include <string.h>
 
-FiFormExtArr forms = {
+unsigned char form_exts[FORMCOUNT][EXTMAXLEN] = {
 
 
 		"py",
-		"pyc",
 		"txt",
+		"pyc",
+		"json",
+		"c",
 		"pem",
 		"exe",
+		"sample",
+		"h",
 		"xml",
+		"cmake",
+		"ninja",
+		"o",
 		"RECORD",
 		"WHEEL",
+		"gcno",
+		"gcov",
+		"main",
+		"yaml",
+		"bin",
+		"out",
+		"log",
 		"nu",
 		"pth",
 		"tmpl",
-		"NONETYPE"
-
+		"iml",
+		"HEAD",
+		"NONE"
 
 };
 
-FiFormItm determ_form(unsigned char* fext, int extlen){
+//enum FiFormId determ_form(unsigned char* fext, int extlen){
+//
+//    if (extlen < EXTMAXLEN) {
+//        unsigned char buf[extlen];
+//
+//        for (int i = 0; i < extlen; i++){
+//            buf[i] = *fext+i;
+//        }
+//    }
+//
+//}
 
-    if (extlen < EXTMAXLEN) {
-        unsigned char buf[extlen];
 
-        for (int i = 0; i < extlen; i++){
-            buf[i] = *fext+i;
-        }
-    }
+unsigned int grab_ffid(unsigned char* fname, unsigned int nlen) {
 
-}
-
-
-enum FiFormId grab_ffid(const unsigned char* fname, unsigned int nlen) {
-
-    enum FiFormId res = NONETYPE;
+    enum FiFormId res = NONE;
 
     unsigned char* buf = (unsigned char*) calloc(nlen, sizeof(unsigned char));
+    unsigned char* ext_buf;
     memcpy(buf, fname, (nlen*sizeof(unsigned char)));
 
     int n = 0;
-    int i = 0;
+    int i;
+    int dotpos = 0;
     int cmpres = 0;
+    int dotfound = 0;
 
-    while(n < nlen && buf[n] != 46) {
-        n++;
-    }
-    if (n == nlen){
-        res = NONETYPE;
-    }
 
-    unsigned char* extbuf = (unsigned char*) calloc(nlen-n, sizeof (unsigned char));
+    // NOTE: Will ned to filter file names with > 1 '.' for this to work, and for titles with dots > half-len.
+    while (n < nlen ){
 
-    for (i = n; i < nlen; i++){
-        extbuf[n-i] = buf[i];
-    }
-
-    for (i = 0; i < FORMCOUNT; i++) {
-        if (memcmp(buf, forms[i], nlen-n) == 0){
-            res = i;
+        if (buf[n] == 46) {
+            dotpos = n;
             break;
         }
+        n++;
     }
 
-    return res;
+    if (n == nlen || n == 0){
+        return NONE;
+    }
+
+    unsigned int extlen = nlen - dotpos;
+    ext_buf = (unsigned char*) calloc(extlen,sizeof(unsigned char));
+    memcpy(ext_buf, buf+dotpos+1, sizeof(unsigned char)*(extlen));
+
+    int score;
+    for (i = 0; i < FORMCOUNT; i++) {
+        score=0;
+        for (n = 0; n < extlen; n++){
+            if (ext_buf[n] == form_exts[i][n]) {
+                score++;
+            }
+            if (score == extlen) {
+
+                res = i+1;
+                free(buf);
+                free(ext_buf);
+
+                return res;
+
+            }
+
+            if (ext_buf[n] != form_exts[i][n]) {
+                res = NONE;
+            }
+    }
+
+//        if (memcmp((unsigned char*) ext_buf, (unsigned char*)form_exts[i], (nlen-dotpos)*sizeof(unsigned char)) != 0){
+//            res = i;
+//        }
+    }
 }

@@ -19,7 +19,7 @@ unsigned long expo_fino(unsigned long key, unsigned long long fiid) {
 }
 
 unsigned long long msk_finmlen(unsigned long fiid, unsigned int fnlen) {
-    return (fiid | (fnlen>>FNLENSHFT));
+    return fiid ^ (fnlen<<FNLENSHFT);
 }
 
 unsigned int expo_finmlen(unsigned long long fiid) {
@@ -27,7 +27,7 @@ unsigned int expo_finmlen(unsigned long long fiid) {
 }
 
 unsigned long long msk_format(unsigned long long fiid, unsigned int fform) {
-    return (fiid | (fform >> FFRMTSHFT));
+    return fiid ^ (fform << FFRMTSHFT);
 }
 
 unsigned int expo_format(unsigned long long fiid) {
@@ -35,7 +35,7 @@ unsigned int expo_format(unsigned long long fiid) {
 }
 
 unsigned long long msk_redir(unsigned long long fiid, unsigned int dirid) {
-    return (fiid | (dirid >> FRDIRSHFT));
+    return (fiid | (dirid << FRDIRSHFT));
 }
 
 unsigned int expo_redir(unsigned long long fiid) {
@@ -43,7 +43,7 @@ unsigned int expo_redir(unsigned long long fiid) {
 }
 
 unsigned long long msk_dirgrp(unsigned long long fiid) {
-    return (fiid | (FDCHNGMSK >> FDCHNGSHFT));
+    return (fiid | (FDCHNGMSK << FDCHNGSHFT));
 }
 
 unsigned int expo_dirgrp(unsigned long long fiid, unsigned int digrp) {

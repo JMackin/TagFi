@@ -1,42 +1,58 @@
 
+
 #ifndef TAGFI_FIFORMS_H
 #define TAGFI_FIFORMS_H
 
-#define FORMCOUNT  12
+#define FORMCOUNT  28
 
 #define EXTMAXLEN  7
 
 
-typedef char* FiFormExtArr[FORMCOUNT];
-
 typedef enum FiFormId {
 
 
+
 		py = 1,
-		pyc = 2,
-		txt = 3,
-		pem = 4,
-		exe = 5,
-		xml = 6,
-		RECORD = 7,
-		WHEEL = 8,
-		nu = 9,
-		pth = 10,
-		tmpl = 11,
-		NONETYPE = 0
+		txt = 2,
+		pyc = 3,
+		json = 4,
+		c = 5,
+		pem = 6,
+		exe = 7,
+		sample = 8,
+		h = 9,
+		xml = 10,
+		cmake = 11,
+		ninja = 12,
+		o = 13,
+		RECORD = 14,
+		WHEEL = 15,
+		gcno = 16,
+		gcov = 17,
+		main = 18,
+		yaml = 19,
+		bin = 20,
+		out = 21,
+		log = 22,
+		nu = 23,
+		pth = 24,
+		tmpl = 25,
+		iml = 26,
+		HEAD = 27,
+		NONE = 0
 
 } fiFormId;
 
-typedef FiFormExtArr* fiFormExt;
 
 typedef struct FiForms {
     fiFormId id;
     int cnt;
-    fiFormExt ext;
     int fextlen;
 } FiForms;
 
-FiForms get_formid(unsigned char*, int extlen);
+unsigned int grab_ffid(unsigned char*, unsigned int extlen);
 FiForms get_formext(int);
+
+
 
 #endif //TAGFI_FIFORMS_H

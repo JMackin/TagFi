@@ -15,10 +15,15 @@ Optional parameters:
 - excl_digitonlytext:False      // exclude results that contain only digits
 
 """
+import datetime
 import os
+import shutil
 import sys
 import re
 from collections import namedtuple
+import time
+
+ts = time.time().hex().replace('.','-').replace('+','-')
 
 
 def main(path: str = '.', maxlength: int = 7, dump: bool = False, topres: int = 0, excl_forms: set = None, *args):
@@ -54,10 +59,14 @@ def main(path: str = '.', maxlength: int = 7, dump: bool = False, topres: int = 
 
     vars_tobe = (formcount, maxlength)
 
+    shutil.copyfile(f'../fiforms.h',f'../BKUP/fiforms{ts}.h')
+    shutil.copyfile(f'../fiforms.c',f'../BKUP/fiforms{ts}.c')
+
     with open('../fiforms.h', 'w') as f:
         with open('FIFORMSDOTHTEMP', 'r') as ff:
             with open('FIFORMSDOTCTEMPL', 'r') as fff:
                 with open('../fiforms.c','w') as ffff:
+
                     for j in [ff.readlines(), fff.readlines()]:
                         for l in j:
                             if re.match('^(###!)$', l):
@@ -74,17 +83,18 @@ def main(path: str = '.', maxlength: int = 7, dump: bool = False, topres: int = 
                                 elif int(elem[0]) == 1:
                                     if int(elem[1]) == 0:
                                         (f if flip else ffff).writelines(f"\t\t{r[0]} = {r[1]},\n" for r in res)
-                                        (f if flip else ffff).write(f"\t\tNONETYPE = 0\n")
+                                        (f if flip else ffff).write(f"\t\tNONE = 0\n")
                                     elif int(elem[1]) == 1:
-                                        ffff.writelines(f"\t\t\"{r[0]}\""+(",\n" if r[0] != last[0] else f",\n\t\t\"NONETYPE\"\n\n") for r in res)
+                                        ffff.writelines(f"\t\t\"{r[0]}\""+(",\n" if r[0] != last[0] else f",\n\t\t\"NONE\"\n\n") for r in res)
                                 cnt = 0
                             else:
                                 (f if flip else ffff).write(l)
+
                         flip = False
 
     print(f"wrote {len(res)} values\n")
 
-    return
+
 
 
 if sys.argv[0]:
