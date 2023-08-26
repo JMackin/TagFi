@@ -49,34 +49,38 @@ def main(path: str = '.', maxlength: int = 7, dump: bool = False, topres: int = 
     last= res[-1]
     formcount = len(res)+1
     cnt = 0
+    flip = True
     topr = True if topres > 0 else False
 
     vars_tobe = (formcount, maxlength)
 
     with open('../fiforms.h', 'w') as f:
-        with open('fiforms_template', 'r') as ff:
+        with open('FIFORMSDOTHTEMP', 'r') as ff:
+            with open('FIFORMSDOTCTEMPL', 'r') as fff:
+                with open('../fiforms.c','w') as ffff:
+                    for j in [ff.readlines(), fff.readlines()]:
+                        for l in j:
+                            if re.match('^(###!)$', l):
+                                cnt = 1
+                                (f if flip else ffff).write('\n')
+                                continue
+                            elif cnt == 1:
+                                newline = re.split('###%', l)
+                                elem = newline[1].split('^')
 
-            for l in ff.readlines():
-                if re.match('^(###!)$', l):
-                    cnt = 1
-                    f.write('\n')
-                    continue
-                elif cnt == 1:
-                    newline = re.split('###%', l)
-                    elem = newline[1].split('^')
+                                if int(elem[0]) == 0:
+                                    (f if flip else ffff).write(f"{newline[0]} {vars_tobe[int(elem[1])]}\n")
 
-                    if int(elem[0]) == 0:
-                        f.write(f"{newline[0]} {vars_tobe[int(elem[1])]}\n")
-
-                    elif int(elem[0]) == 1:
-                        if int(elem[1]) == 0:
-                            f.writelines(f"\t\t{r[0]} = {r[1]},\n" for r in res)
-                            f.write(f"\t\tNONETYPE = 0\n")
-                        elif int(elem[1]) == 1:
-                            f.writelines(f"\t\t\"{r[0]}\""+(",\n" if r[0] != last[0] else f",\n\t\t\"NONETYPE\"\n\n") for r in res)
-                    cnt = 0
-                else:
-                    f.write(l)
+                                elif int(elem[0]) == 1:
+                                    if int(elem[1]) == 0:
+                                        (f if flip else ffff).writelines(f"\t\t{r[0]} = {r[1]},\n" for r in res)
+                                        (f if flip else ffff).write(f"\t\tNONETYPE = 0\n")
+                                    elif int(elem[1]) == 1:
+                                        ffff.writelines(f"\t\t\"{r[0]}\""+(",\n" if r[0] != last[0] else f",\n\t\t\"NONETYPE\"\n\n") for r in res)
+                                cnt = 0
+                            else:
+                                (f if flip else ffff).write(l)
+                        flip = False
 
     print(f"wrote {len(res)} values\n")
 

@@ -121,11 +121,7 @@ unsigned long long msk_redir(unsigned long long fiid, unsigned int dirid);
 unsigned int expo_redir(unsigned long long fiid);
 unsigned long long msk_dirgrp(unsigned long long fiid);
 unsigned int expo_dirgrp(unsigned long long fiid, unsigned int digrp);
-;
-;
-;
-;
-;
+
 
 
 #endif //TAGFI_FIDI_MASKS_H

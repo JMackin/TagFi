@@ -1,48 +1,31 @@
-/*
- *
- */
 
 #ifndef TAGFI_FIFORMS_H
 #define TAGFI_FIFORMS_H
 
-#define FORMCOUNT  11
+#define FORMCOUNT  12
 
 #define EXTMAXLEN  7
+
 
 typedef char* FiFormExtArr[FORMCOUNT];
 
 typedef enum FiFormId {
+
 
 		py = 1,
 		pyc = 2,
 		txt = 3,
 		pem = 4,
 		exe = 5,
-		RECORD = 6,
-		WHEEL = 7,
-		nu = 8,
-		pth = 9,
-		tmpl = 10,
+		xml = 6,
+		RECORD = 7,
+		WHEEL = 8,
+		nu = 9,
+		pth = 10,
+		tmpl = 11,
 		NONETYPE = 0
 
-
 } fiFormId;
-
-FiFormExtArr fiFormExtArr = {
-
-		"py",
-		"pyc",
-		"txt",
-		"pem",
-		"exe",
-		"RECORD",
-		"WHEEL",
-		"nu",
-		"pth",
-		"tmpl",
-		"NONETYPE"
-
-};
 
 typedef FiFormExtArr* fiFormExt;
 
