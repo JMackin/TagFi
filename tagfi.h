@@ -5,6 +5,7 @@
 int scanfiinodes(const char* dir_path);
 int fd_getstat(const char* dir_path, int op);
 int scanfi(const char* dir_path);
+unsigned long cwd_ino(const char* dir_path);
 
 
 __attribute__((unused)) char chk_fmt(const char** dir_path, int op);

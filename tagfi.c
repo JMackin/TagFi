@@ -74,6 +74,7 @@ int fd_getstat(const char* dir_path, int op) {
     }
 
 
+
     switch (statbuf->st_mode & S_IFMT) {                                 // x >> 13
         case S_IFBLK:  printf("block device\n");            break;//0060000 3
         case S_IFCHR:  printf("character device\n");        break;//0020000 1
@@ -85,17 +86,26 @@ int fd_getstat(const char* dir_path, int op) {
         default:       printf("unknown?\n");                break;
     }
 
-
-
     free(statbuf);
     close(dir_fd);
 
     return 0;
-
 }
 
 
-int makemap(const char* dir_path) {
+unsigned long cwd_ino(const char* dir_path) {
 
+    int dir_fd = openat(AT_FDCWD, dir_path, O_DIRECTORY | O_RDONLY | O_NONBLOCK );
 
+    struct stat *statbuf = (struct stat*) malloc(sizeof(struct stat));
+    if(fstat(dir_fd, statbuf) == -1){
+        fprintf(stderr, "errno = %d", errno);
+        free(statbuf);
+        close(dir_fd);
+        return -1;
+    }
+    unsigned long ino = statbuf->st_ino;
+    free(statbuf);
+    close(dir_fd);
+    return ino;
 }

@@ -7,7 +7,7 @@
 #- excl_digitonlytext:False      // exclude results that contain only digits
 
 if [[ -z "$1" ]]; then
-  EXPATH="."
+  EXPATH="/home/ujlm/Tech/"
 else
   EXPATH=$1
 fi

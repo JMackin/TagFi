@@ -89,83 +89,66 @@ void real_hash_keyfully(unsigned char** in, unsigned char** out, size_t inlen, c
     //crypto_generichash_BYTES = 32u
 }
 
-void two_32_to_64(unsigned char* kout, unsigned long* ttula, unsigned long* ttulb) {
-
-    *kout = (*ttula << 32 )^(*ttulb);
-}
-
-void mk_o64o32_short_hashkey(unsigned long long* kout, unsigned long long* ttula, unsigned long* ttulb){
-    kout = (unsigned long long*) sodium_malloc(4);
-    sodium_mlock(kout,4);
-    *kout = (*ttula &576460752169205760) | *ttulb;
-            // 32-bit mask -- 0b1111111111111111111111111111111;
-
-}
+//void two_32_to_64(unsigned char* kout, unsigned long* ttula, unsigned long* ttulb) {
+//
+//    *kout = (*ttula << 32 )^(*ttulb);
+//}
+//
+//void mk_o64o32_short_hashkey(unsigned long long* kout, unsigned long long* ttula, unsigned long* ttulb){
+//    kout = (unsigned long long*) sodium_malloc(4);
+//    sodium_mlock(kout,4);
+//    *kout = (*ttula &576460752169205760) | *ttulb;
+//            // 32-bit mask -- 0b1111111111111111111111111111111;
+//
+//}
 
 void mk_little_hash_key(unsigned char* kout) {
-    kout = (unsigned char*) sodium_malloc(crypto_shorthash_KEYBYTES);
     crypto_shorthash_keygen(kout);
 }
 
-int dump_little_hash_key(unsigned char* kout) {
+int dump_little_hash_key(unsigned char* kout, unsigned char* name, unsigned int nlen) {
 
     int badflg = 0;
+    char* kname = malloc((nlen+6)*sizeof(char));
+
+    memcpy(kname,name,nlen);
+    memcpy(kname,name,nlen);
+    memcpy(kname+nlen,".lhsk",6);
 
     int hkeyout = openat(AT_FDCWD,"/home/ujlm/CLionProjects/TagFI/keys",O_DIRECTORY);
-    int hkfi = 0;
-    hkfi = openat(hkeyout,"littlehashkey.lhsk", O_RDWR | O_TRUNC | O_CREAT);
+
+    int hkfi = openat(hkeyout,kname, O_RDWR | O_CREAT);
     FILE* hkfi_out = fdopen(hkfi,"w+");
 
     write(hkfi,kout,crypto_shorthash_KEYBYTES);
     fsync(hkfi);
 
+    if (hkeyout < 0 || hkfi < 0)
+    {
+        badflg = 1;
+    }
 
     fclose(hkfi_out);
     close(hkfi);
     close(hkeyout);
-
+    free(kname);
 
     return badflg;
 }
 
-int little_idx_hkey_3264(unsigned char* tobehshed, unsigned char* outp, unsigned long long* numa, unsigned long* numb, unsigned int wlen) {
+unsigned long long little_hsh_llidx(unsigned char* hkey, unsigned char* tobehshed, unsigned int wlen, unsigned long long xno) {
 
-    unsigned char* hshky = (unsigned char*) sodium_malloc(crypto_shorthash_KEYBYTES);
-    crypto_shorthash_keygen(hshky);
-    dump_little_hash_key(hshky);
+    unsigned char* outp = (unsigned char*) sodium_malloc(sizeof (unsigned long));
 
-    int res = crypto_shorthash(outp, tobehshed, wlen, (unsigned char *) hshky);
-    sodium_free(hshky);
-    return res;
-}
-
-
-int little_hash_idx(unsigned char* in, unsigned long* out, unsigned long inlen, const unsigned char *k, int mkkey){
-//Key must = 16 bytes
-
-
-    unsigned char* buf = sodium_allocarray(8, sizeof(unsigned char));
-
-
-    if (crypto_shorthash(buf, in, inlen, k) != 0) {
+    if (crypto_shorthash(outp, tobehshed, wlen, (unsigned char *) hkey) != 0){
+        fprintf(stderr, "Somethnig went wrong hashing for an index.\n");
+        sodium_free(outp);
         return 1;
     }
-    else{
-        unsigned long long tonum = eightchartollong(buf,8);
-        memcpy(out, &tonum, 8);
-        sodium_free(buf);
-    }
-}
 
-void process_idx(unsigned char* in, unsigned wlen, unsigned long* out, unsigned char* lhk) {
-    if (lhk == NULL) {
-        mk_little_hash_key(lhk);
-        if (lhk != NULL){
-            dump_little_hash_key(&lhk);
-        }
-    }
-    little_hash_idx(in, out, wlen, lhk, 0);
-
+    unsigned long outidx = eightchartollong(outp,crypto_shorthash_KEYBYTES) ^ xno;
+    sodium_free(outp);
+    return outidx;
 }
 
 

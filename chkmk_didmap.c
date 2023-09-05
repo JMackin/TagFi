@@ -5,6 +5,7 @@
 #include "jlm_random.h"
 #include "fiforms.h"
 #include "fidi_masks.h"
+#include "tagfi.h"
 #include <sodium.h>
 #include <stdio.h>
 #include <dirent.h>
@@ -17,8 +18,10 @@
 #include <unistd.h>
 #include <sys/time.h>
 
-
-
+void mk_one_dir_hashes(unsigned long long* iid, unsigned long long* hshno, const unsigned long ino){
+    genrandsalt(hshno);
+    *iid = ((((*hshno)>>DMASKSHFT)<<DMASKSHFT) ^ (ino<<DMASKSHFT));
+}
 
 void mk_hashes(unsigned long long* haidarr,
                unsigned long** fhshno_arr,
@@ -34,8 +37,6 @@ void mk_hashes(unsigned long long* haidarr,
     int i;
     int j = 0;
     int k = 0;
-
-
 
     for (i = 0; i < n; i++) {
         if (entype[i] == TYPFIL){
@@ -243,7 +244,6 @@ FiMap* mk_fimap(unsigned int nlen, unsigned char* finame,
     fiid = msk_redir(fiid, did);
 
     fimap->fiid = fiid;
-
     fimap->fhshno = fhshno;
 
     return fimap;
@@ -306,58 +306,48 @@ HashLattice * init_hashlattice() {
     return hashlattice;
 }
 
-void make_bridge(FiMap* fimap, Dir_Node* dnode,HashLattice* hashlattice){
+void make_bridge(FiMap* fimap, Dir_Node* dnode,HashLattice* hashlattice, unsigned char* hkey){
 
     if (hashlattice->count > hashlattice->max-3){
         fprintf(stderr, "Hash lattice full\n");
     }
 
-    HashBridge* hshbrg = (HashBridge*) malloc(sizeof(HashBridge));
-    unsigned char* idx = (unsigned char*) sodium_malloc(expo_finmlen(fimap->fiid)*sizeof(unsigned char));
+    HashBridge* hshbrg = (HashBridge*) sodium_malloc(sizeof(HashBridge));
 
-    if (little_idx_hkey_3264(
-            fimap->finame,
-             idx,
-             &dnode->did,
-             &fimap->fhshno,
-             expo_finmlen(fimap->fiid)) != 0){
-        fprintf(stderr,"Hashing failed in makeBridge\n");
-    }
-    else {
-//        printf(">>>>>%s\n",idx);
-// *idx = *idx & 0b1111111111111111111111111111111;
-        int i = 0;
-        while ((hashlattice->bridges[*idx]) != 0 || (hashlattice->bridges[*idx]) != NULL) {
-            printf("Collision!inc: %d", i);
-            i++;
-            idx += i;
-        }
+    unsigned long idx = little_hsh_llidx(hkey, fimap->finame, expo_finmlen(fimap->fiid), dnode->did) & LTTCMX;
 
+    //        printf(">>>>>%s\n",idx);
+
+    int i = 0;
+    while ((hashlattice->bridges[idx]) != 0 || (hashlattice->bridges[idx]) != NULL) {
+        printf("Collision!inc: %d", i);
+        i++;
+        idx += i;
     }
+
+
 
         hshbrg->dirnode = dnode;
         hshbrg->finode = fimap;
         hshbrg->unid = sodium_malloc(sizeof(unsigned long long));
-        hashlattice->bridges[*idx] = hshbrg;
+        hashlattice->bridges[idx] = hshbrg;
         hashlattice->count++;
-        sodium_free(idx);
 }
 
 void destoryhashbridge(HashBridge* hashbridge){
     sodium_free(hashbridge->unid);
 
-    free(hashbridge);
+    sodium_free(hashbridge);
 }
 
 void destryohashlattice(HashLattice* hashlattice) {
-    for (int i = 1; i < hashlattice->max; i++){
+    for (int i = 0; i < hashlattice->max-1; i++){
         if ((hashlattice->bridges[i]) != NULL) {
            destoryhashbridge((hashlattice->bridges[i]));
         }
     }
     free(hashlattice->bridges);
     free(hashlattice);
-
 
 }
 //void add_bridge(FiMap* fimap, HashBridge* hashbridge) {
@@ -435,10 +425,10 @@ void destroy_chains(Dir_Chains* dirChains) {
 
 
 int filter_dirscan(const struct dirent *entry) {
-    return (entry->d_name[0] != 46) && (strnlen(entry->d_name, 4) > 3);
+    return ((entry->d_name[0] == 46)) || (strnlen(entry->d_name, 4) > 3);
 }
 
-void void_mkmap(const char* dir_path){
+void void_mkmap(const char* dir_path, unsigned char* rootdirname, unsigned int dnlen){
 
     int i;
     int j=0;
@@ -452,18 +442,15 @@ void void_mkmap(const char* dir_path){
     int n;
     int dir_cnt = 0;
 
-    n = scandir(dir_path, dentrys, NULL, NULL);
+    n = scandir(dir_path, dentrys, NULL, alphasort);
 
     unsigned char** farr = (unsigned char **) calloc(n, 256*sizeof(unsigned char));
     unsigned long* idarr = (unsigned long*) calloc(n, sizeof(unsigned long));
     unsigned char* entype = (unsigned char*) calloc(n, sizeof (unsigned char));
     unsigned long* nlens= (unsigned long*) calloc(n, sizeof(unsigned long));
 
-    unsigned long int rootno = (*dentrys)[0]->d_ino;
-
 
     for (i=0;i<n;i++){
-
         nlens[i] = strnlen((*dentrys)[i]->d_name, FINMMAXL);
         farr[i] = (unsigned char*) calloc((nlens[i]+1),sizeof (unsigned char));
         memcpy(farr[i], (const unsigned char*)(*dentrys)[i]->d_name,nlens[i]+1);
@@ -480,6 +467,12 @@ void void_mkmap(const char* dir_path){
     unsigned long long** dhshno_arr = (unsigned long long**) calloc(dir_cnt, sizeof(unsigned long long*));
     unsigned long long* dhaidarr = (unsigned long long*) calloc(dir_cnt, sizeof(unsigned long long));
 
+    // const char* dirname, unsigned int dnlen
+    unsigned long long rootiid;
+    unsigned long long roothshno;
+    unsigned long rootino = cwd_ino(".");
+
+    mk_one_dir_hashes(&rootiid,&roothshno,rootino);
 
     mk_hashes(haidarr, fhshno_arr, dhaidarr, dhshno_arr, idarr, n, dir_cnt, entype);
 
@@ -488,35 +481,31 @@ void void_mkmap(const char* dir_path){
     HashLattice* hashlattice = init_hashlattice();
 
     FiMap* fimap_ptr;
-    Dir_Node* dirNode_ptr = (Dir_Node*) malloc(sizeof(Dir_Node));
+    Dir_Node* dirNode_ptr;
+    unsigned char* hkey = (unsigned char*) malloc(sizeof(unsigned char)*crypto_shorthash_KEYBYTES);
 
+    dirNode_ptr = add_dnode(rootiid,rootdirname,dnlen,1,dirchains);
+
+    mk_little_hash_key(hkey);
+    dump_little_hash_key(hkey,rootdirname,dnlen);
 
     for (i=0;i<n;i++) {
         if (entype[i] == TYPDIR){
-
 
             printf("DIR: %s :", farr[i]);
             printf("\n%llu\n",dhaidarr[k]);
             printf("%llu\n\n",((((*dhshno_arr[k])>>DMASKSHFT))^((dhaidarr[k])>>DMASKSHFT)));
 
-            if(k == 0){
-                dirNode_ptr = add_dnode(dhaidarr[k],farr[i],nlens[i],1,dirchains);
-            }
-
-            else{
-                add_dnode(dhaidarr[k],farr[i],nlens[i],1,dirchains);
-            }
-
+            add_dnode(dhaidarr[k],farr[i],nlens[i],1,dirchains);
 
             sodium_free(dhshno_arr[k]);
 
             k++;
-
         }
         else {
-            fimap_ptr = mk_fimap(nlens[i],farr[i],haidarr[j],rootno,*fhshno_arr[j]);
+            fimap_ptr = mk_fimap(nlens[i],farr[i],haidarr[j],rootino,*fhshno_arr[j]);
             add_entry(fimap_ptr,fitbl);
-            make_bridge(fimap_ptr,dirNode_ptr,hashlattice);
+            make_bridge(fimap_ptr,dirNode_ptr,hashlattice, hkey);
             sodium_free(fhshno_arr[j]);
             j++;
 
@@ -562,7 +551,6 @@ void void_mkmap(const char* dir_path){
     free(dirchains);
     sodium_free(dentrys);
 
-    free(fimap_ptr);
     free(farr);
     free(idarr);
     free(entype);

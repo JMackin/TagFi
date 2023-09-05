@@ -14,17 +14,65 @@
 unsigned char form_exts[FORMCOUNT][EXTMAXLEN] = {
 
 
-		"py",
-		"pyc",
+		"png",
+		"md",
+		"jpg",
+		"svg",
+		"sh",
+		"html",
+		"js",
+		"ts",
 		"txt",
+		"css",
+		"py",
+		"sample",
+		"gz",
+		"json",
+		"pub",
+		"gpg",
+		"yml",
+		"ino",
+		"yaml",
+		"toml",
+		"txt~",
+		"pdf",
+		"conf",
+		"asc",
+		"sls",
+		"webp",
+		"tar",
+		"HEAD",
+		"gif",
+		"csv",
+		"go",
+		"master",
+		"rb",
+		"setup",
+		"jpeg",
+		"h",
+		"ini",
+		"db",
+		"zip",
+		"save",
 		"pem",
-		"exe",
-		"xml",
-		"RECORD",
-		"WHEEL",
-		"nu",
-		"pth",
-		"tmpl",
+		"index",
+		"config",
+		"pack",
+		"idx",
+		"mod",
+		"sum",
+		"pp",
+		"README",
+		"bak",
+		"eot",
+		"woff2",
+		"woff",
+		"ttf",
+		"log",
+		"fzpz",
+		"cpp",
+		"sig",
+		"list",
 		"NONE"
 
 };
@@ -64,12 +112,12 @@ unsigned int grab_ffid(unsigned char* fname, unsigned int nlen) {
 
         if (buf[n] == 46) {
             dotpos = n;
-            break;
         }
         n++;
     }
 
-    if (n == nlen || n == 0){
+    if (dotpos == 0){
+        free(buf);
         return NONE;
     }
 
@@ -90,7 +138,7 @@ unsigned int grab_ffid(unsigned char* fname, unsigned int nlen) {
                 free(buf);
                 free(ext_buf);
 
-                return res;
+                return res+1;
 
             }
 
@@ -109,6 +157,6 @@ unsigned int grab_ffid(unsigned char* fname, unsigned int nlen) {
     free(buf);
     free(ext_buf);
 
-    return res;
+    return res+1;
 
 }

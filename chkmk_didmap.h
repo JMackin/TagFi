@@ -21,7 +21,7 @@ typedef struct stat* stptr;
 fitypes chk_fd(stptr statbuf, char* dir_path, int opt);
 //void stat_fd(char* dir_path, stptr statptr);
 
-void void_mkmap(const char* dir_path);
+void void_mkmap(const char* dir_path, unsigned char* dirname, unsigned int dnlen);
 
 typedef struct FiMap{
     unsigned long long fiid;
