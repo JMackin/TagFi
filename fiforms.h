@@ -3,7 +3,7 @@
 #ifndef TAGFI_FIFORMS_H
 #define TAGFI_FIFORMS_H
 
-#define FORMCOUNT  28
+#define FORMCOUNT  12
 
 #define EXTMAXLEN  7
 
@@ -13,32 +13,16 @@ typedef enum FiFormId {
 
 
 		py = 1,
-		txt = 2,
-		pyc = 3,
-		json = 4,
-		c = 5,
-		h = 6,
-		pem = 7,
-		exe = 8,
-		sample = 9,
-		xml = 10,
-		cmake = 11,
-		ninja = 12,
-		o = 13,
-		RECORD = 14,
-		WHEEL = 15,
-		gcno = 16,
-		gcov = 17,
-		main = 18,
-		yaml = 19,
-		bin = 20,
-		out = 21,
-		log = 22,
-		nu = 23,
-		pth = 24,
-		tmpl = 25,
-		iml = 26,
-		HEAD = 27,
+		pyc = 2,
+		txt = 3,
+		pem = 4,
+		exe = 5,
+		xml = 6,
+		RECORD = 7,
+		WHEEL = 8,
+		nu = 9,
+		pth = 10,
+		tmpl = 11,
 		NONE = 0
 
 } fiFormId;

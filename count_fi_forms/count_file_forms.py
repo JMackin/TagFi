@@ -22,12 +22,51 @@ import sys
 import re
 from collections import namedtuple
 import time
+import asyncio
 
-ts = time.time().hex().replace('.','-').replace('+','-')
+ts = time.time().hex().replace('.', '-').replace('+', '-')
+
+
+async def examine_remove(pathr: str):
+    cnt = 0
+    try:
+        if re.match('^(fiforms0x1-)(.{12,})[ch]$', pathr):
+            print(pathr)
+            os.remove(os.path.join('..', 'BKUP', pathr))
+            cnt = 1
+    except TimeoutError as t:
+        print(t.with_traceback(t.__traceback__), file=sys.stderr)
+        cnt = -1
+    except Exception as ee:
+        print(ee.with_traceback(ee.__traceback__), file=sys.stderr)
+        cnt = -1
+    finally:
+        return pathr, cnt
+
+
+async def trim_backups():
+    delcount = 0
+    if os.path.exists(os.path.join('..', 'BKUP')):
+        try:
+            async with asyncio.TaskGroup() as tg:
+                for f in os.listdir(os.path.join('..', 'BKUP')):
+                    pth, cnt = await tg.create_task(examine_remove(f))
+                    if cnt > 0:
+                        delcount += 1
+                        print(f"!! {pth}\n")
+            print(f"{delcount} files deleted\n")
+
+        except Exception as ee:
+            print(ee)
+            exit(1)
+
+try:
+    asyncio.run(trim_backups())
+except Exception as e:
+    print(e.with_traceback(e.__traceback__), file=sys.stderr)
 
 
 def main(path: str = '.', maxlength: int = 7, dump: bool = False, topres: int = 0, excl_forms: set = None, *args):
-
     maxlength = int(maxlength)
     topres = int(topres)
     excludedforms = True if excl_forms is not None and type(excl_forms) == set else False
@@ -39,7 +78,6 @@ def main(path: str = '.', maxlength: int = 7, dump: bool = False, topres: int = 
             frm = ff.split('.')[-1]
             formats[frm] = 1 if frm not in formats.keys() else formats[frm] + 1
 
-
     res = [itm(i, j) for i, j in zip(formats.keys(), formats.values())
            if j > 1 and len(i) < maxlength
            and not re.match('^[0-9]{1,}$', i)]
@@ -48,24 +86,26 @@ def main(path: str = '.', maxlength: int = 7, dump: bool = False, topres: int = 
         res = [r for r in res if r[0] not in excl_forms]
 
     res = sorted(res, key=lambda x: getattr(x, 'cnt'), reverse=True)
+    res = res[:255]
 
-    res = [(r[0], i) for r, i in zip(res, range(1, len(res)+1))]
+    res = [(r[0], i) for r, i in zip(res, range(1, len(res) + 1))]
 
-    last= res[-1]
-    formcount = len(res)+1
+    last = res[-1]
+    formcount = len(res) + 1
     cnt = 0
     flip = True
     topr = True if topres > 0 else False
 
     vars_tobe = (formcount, maxlength)
 
-    shutil.copyfile(f'../fiforms.h',f'../BKUP/fiforms{ts}.h')
-    shutil.copyfile(f'../fiforms.c',f'../BKUP/fiforms{ts}.c')
+    shutil.copyfile(f'../fiforms.h', f'../BKUP/fiforms{ts}.h')
+    shutil.copyfile(f'../fiforms.c', f'../BKUP/fiforms{ts}.c')
+
 
     with open('../fiforms.h', 'w') as f:
         with open('FIFORMSDOTHTEMP', 'r') as ff:
             with open('FIFORMSDOTCTEMPL', 'r') as fff:
-                with open('../fiforms.c','w') as ffff:
+                with open('../fiforms.c', 'w') as ffff:
 
                     for j in [ff.readlines(), fff.readlines()]:
                         for l in j:
@@ -85,7 +125,9 @@ def main(path: str = '.', maxlength: int = 7, dump: bool = False, topres: int = 
                                         (f if flip else ffff).writelines(f"\t\t{r[0]} = {r[1]},\n" for r in res)
                                         (f if flip else ffff).write(f"\t\tNONE = 0\n")
                                     elif int(elem[1]) == 1:
-                                        ffff.writelines(f"\t\t\"{r[0]}\""+(",\n" if r[0] != last[0] else f",\n\t\t\"NONE\"\n\n") for r in res)
+                                        ffff.writelines(
+                                            f"\t\t\"{r[0]}\"" + (",\n" if r[0] != last[0] else f",\n\t\t\"NONE\"\n\n")
+                                            for r in res)
                                 cnt = 0
                             else:
                                 (f if flip else ffff).write(l)
@@ -93,8 +135,6 @@ def main(path: str = '.', maxlength: int = 7, dump: bool = False, topres: int = 
                         flip = False
 
     print(f"wrote {len(res)} values\n")
-
-
 
 
 if sys.argv[0]:

@@ -15,35 +15,21 @@ unsigned char form_exts[FORMCOUNT][EXTMAXLEN] = {
 
 
 		"py",
-		"txt",
 		"pyc",
-		"json",
-		"c",
+		"txt",
 		"pem",
 		"exe",
-		"sample",
-		"h",
 		"xml",
-		"cmake",
-		"ninja",
-		"o",
 		"RECORD",
 		"WHEEL",
-		"gcno",
-		"gcov",
-		"main",
-		"yaml",
-		"bin",
-		"out",
-		"log",
 		"nu",
 		"pth",
 		"tmpl",
-		"iml",
-		"HEAD",
 		"NONE"
 
 };
+
+
 
 //enum FiFormId determ_form(unsigned char* fext, int extlen){
 //

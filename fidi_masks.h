@@ -26,6 +26,8 @@
 
 #define HTMASK 8191                // Hash table mask -> 13 bits
 #define HTSIZE 8192                // Max item count
+#define DITMMX 63                  // Max directory count
+#define LTTCMX 524287              // Max item count for lattice: Max dir count (64) * Max File item count (8192) - 1
 #define DCHNSSHIFT 6               // Number of bits in Dir ID no.
 #define DCHNSMASK 63               // 0b00000000000000111111 - ID under group-base - abs:63
 #define DBASEMASK 192              // 0b00000000000011000000 - Base ID: 01=media, 10=docs - abs:2
@@ -38,9 +40,11 @@
 #define DBASESHFT 6                // Trailing bits after group-base flag: baseID = (DBASEMASK & did) >> DBASESHFT
 #define DGCNTMASK 4032             // 0b111111000000 - Total num. of dirs under group-base. For use on MEDA/DOCS nodes.
 #define DGCNTSHFT 6                // Number of bits in base ID no.
+#define DENTRYCNT
 #define DROOTDID 576460752303423489 // Root node did, empty save for 1 set leading bit and 1 trailing - 60 bits
 #define DGRPTMPL 576460752303423488 // 1 leading bit and 59 empty bits, template for base-group did
 
+#define FINMMAXL 256                // Max number of chars allocated for a path title.
 
 /* FileMap Id masks and attributes */
 

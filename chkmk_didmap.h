@@ -18,12 +18,10 @@ typedef enum FITYPES {
 
 typedef struct stat* stptr;
 
-
 fitypes chk_fd(stptr statbuf, char* dir_path, int opt);
 //void stat_fd(char* dir_path, stptr statptr);
 
 void void_mkmap(const char* dir_path);
-
 
 typedef struct FiMap{
     unsigned long long fiid;
@@ -31,38 +29,91 @@ typedef struct FiMap{
     unsigned char* finame;
 } FiMap;
 
+/*
+ * BridgeNode head = hashed fname
+ * BridgeNode tail = fMap->fhshno
+*/
+
+//typedef unsigned char* BridgeNode;
 
 typedef struct Fi_Tbl{
+    unsigned long ftblid; // hash ino of resident dir
     FiMap** entries;
     unsigned long totsize;
     int count;
 } Fi_Tbl;
 
-// Inititalized dir ring will consist of three nodes: head(1), media base(2), doc base(4)
-// Dir nodeno begin at 8(0b1000) and are masked to id their parent base (media: 0b100 doc: 0b010)
-// MEDIA dirs will be chained LEFT of the head
-// DOC dirs will be chained RIGHT of the head
-// nodes are doubly-linked
-/*
-          /    (head)    \
-       r |/    / - \     \| l
-           (media) (docs)
-             |      |
-           (dirs) (dirs)
-
-**/
-
 typedef struct Dir_Node{
     struct Dir_Node* left;
     struct Dir_Node* right;
+    Fi_Tbl* filetable;
     unsigned long long did;
     unsigned char* diname;
+
 }Dir_Node;
 
+//TODO -> split vessel to vesselM and vesselD
 typedef struct Dir_Chains{
     Dir_Node* dir_head;
     Dir_Node* vessel;
 }Dir_Chains;
+
+typedef struct HashBridge {
+    unsigned long long* unid;
+    Dir_Node* dirnode;
+    FiMap* finode;
+} HashBridge;
+
+typedef struct HashLattice {
+    HashBridge** bridges;
+    unsigned long count;
+    unsigned long max;
+} HashLattice;
+
+
+
+/**
+ *     Dir nodeno begin at 8(0b1000) and are masked to id their parent base (media: 0b100 doc: 0b010)
+ *    MEDIA dirs will be chained LEFT of the head
+ *    DOC dirs will be chained RIGHT of the head
+ *    nodes are doubly-linked
+ *    each node points to their respective fitbl
+ *    each node also points to a hash bridge structure, from which
+ *    file indexes can be extracted given the directory and file name
+ *    if the index is not already known#@T 9ra
+ *
+ *    In this way a file table can be access from a directory node
+ *    but not vice-versa. However the filemap IDs are masked
+ *    with a number to ID their resident directory.
+ *
+ *    This goes the same for the hashlattices
+ *    which are meant to provide an easy translation
+ *    from a file name to an index, as well as well as natural crossing from
+ *    directory to file node, especially if accessing from several levels
+ *    away or when the files hashno and index are unknown.
+ *
+ *    Dir nodes are accessed with "vessel" a dir node pointer
+ *    that walks up and down the chains. The vessel can switch
+ *    between the two chains by crossing over the head node.
+ *    The tails nodes do not link anywhere and are pointed to
+ *    by the most recently added directory on a given chain
+ *    and serve to provide an unambiguous end point.
+ **/
+
+/**
+
+                         (vessel)
+                       R/   *    \L
+                      /  (head)   \
+                          /  \
+           {ftbl}   (media)  (docs)  {ftbl}
+            ^    \     /   |      \   /  ^
+            |     (dir)  -(*)-  (dir)    |
+            |     /   \         /   \    |
+          <hshltc>   (...)  (...)    <hshltc>
+                      |        |
+                   (tail)   (tail)
+**/
 
 
 
