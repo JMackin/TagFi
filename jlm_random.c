@@ -69,8 +69,7 @@ void genrandsalt(unsigned long long* expanded_salt) {
 //    sodium_free(salt_ptr);
 //    sodium_free(salt_ptrb);
 //}
-
-int real_hash_keylessly(unsigned char* in, unsigned char* out, size_t inlen) {
+__attribute__((unused)) int real_hash_keylessly(unsigned char* in, unsigned char* out, size_t inlen) {
 
     if(crypto_generichash(out, crypto_generichash_BYTES, in, inlen, NULL, 0)  != 0){
         fprintf(stderr, "Bridge hash failed\n");
@@ -82,7 +81,7 @@ int real_hash_keylessly(unsigned char* in, unsigned char* out, size_t inlen) {
 
     //crypto_generichash_BYTES = 32u
 }
-void real_hash_keyfully(unsigned char** in, unsigned char** out, size_t inlen, const unsigned char* key, size_t klen) {
+__attribute__((unused)) void real_hash_keyfully(unsigned char** in, unsigned char** out, size_t inlen, const unsigned char* key, size_t klen) {
 
     crypto_generichash(*out, crypto_shorthash_KEYBYTES, *in, inlen, key, klen);
 
@@ -121,6 +120,7 @@ int dump_little_hash_key(unsigned char* kout, unsigned char* name, unsigned int 
     FILE* hkfi_out = fdopen(hkfi,"w+");
 
     write(hkfi,kout,crypto_shorthash_KEYBYTES);
+    fflush(hkfi_out);
     fsync(hkfi);
 
     if (hkeyout < 0 || hkfi < 0)
@@ -136,12 +136,30 @@ int dump_little_hash_key(unsigned char* kout, unsigned char* name, unsigned int 
     return badflg;
 }
 
+void recv_little_hash_key(char* pathin, unsigned int nlen, unsigned char* bytesout) {
+
+    int kfi = openat(AT_FDCWD, pathin, O_RDONLY);
+    if (kfi < '.')
+;    if (kfi < 0)
+    {
+        fprintf(stderr,"Something happened reading in a key. Failure.\n");
+        return;
+    }
+    FILE* lhkstrm = fdopen(kfi,"r");
+
+    for (int i =0; i < crypto_shorthash_KEYBYTES;i++){
+        *(bytesout+i) = fgetc(lhkstrm);
+    }
+
+}
+
+
 unsigned long long little_hsh_llidx(unsigned char* hkey, unsigned char* tobehshed, unsigned int wlen, unsigned long long xno) {
 
     unsigned char* outp = (unsigned char*) sodium_malloc(sizeof (unsigned long));
 
-    if (crypto_shorthash(outp, tobehshed, wlen, (unsigned char *) hkey) != 0){
-        fprintf(stderr, "Somethnig went wrong hashing for an index.\n");
+    if (crypto_shorthash(outp, tobehshed, wlen, hkey) != 0){
+        fprintf(stderr, "Something went wrong hashing for an index.\n");
         sodium_free(outp);
         return 1;
     }

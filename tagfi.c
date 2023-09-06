@@ -37,7 +37,7 @@ int scanfiinodes(const char* dir_path) {
     return 0;
 }
 
-int scanfi(const char* dir_path){
+__attribute__((unused)) int scanfi(const char* dir_path){
     struct dirent **elist;
     int n;
 
@@ -57,12 +57,11 @@ int scanfi(const char* dir_path){
 
 }
 
-//TODO: implement
 __attribute__((unused)) char chk_fmt(const char** dir_path, int op) {
     return 0;
 }
 
-int fd_getstat(const char* dir_path, int op) {
+__attribute__((unused)) int fd_getstat(const char* dir_path, int op) {
 
 
     int dir_fd = open(dir_path, O_DIRECTORY | O_RDONLY | O_NONBLOCK );
@@ -72,8 +71,6 @@ int fd_getstat(const char* dir_path, int op) {
         fprintf(stderr, "errno = %d", errno);
         return -1;
     }
-
-
 
     switch (statbuf->st_mode & S_IFMT) {                                 // x >> 13
         case S_IFBLK:  printf("block device\n");            break;//0060000 3

@@ -325,13 +325,20 @@ void make_bridge(FiMap* fimap, Dir_Node* dnode,HashLattice* hashlattice, unsigne
         idx += i;
     }
 
-
-
         hshbrg->dirnode = dnode;
         hshbrg->finode = fimap;
         hshbrg->unid = sodium_malloc(sizeof(unsigned long long));
         hashlattice->bridges[idx] = hshbrg;
         hashlattice->count++;
+}
+
+HashBridge* yield_bridge(HashLattice* hashLattice, unsigned char* filename, unsigned int n_len, Dir_Node* root_dnode) {
+    unsigned char *kbuf = (unsigned char*) sodium_malloc(crypto_shorthash_KEYBYTES);;
+    recv_little_hash_key("/home/ujlm/CLionProjects/TagFI/keys/Tech.lhsk",7, kbuf);
+
+    unsigned long idx = little_hsh_llidx(kbuf, filename, n_len, root_dnode->did) & LTTCMX;
+
+    return hashLattice->bridges[idx];
 }
 
 void destoryhashbridge(HashBridge* hashbridge){
@@ -350,23 +357,6 @@ void destryohashlattice(HashLattice* hashlattice) {
     free(hashlattice);
 
 }
-//void add_bridge(FiMap* fimap, HashBridge* hashbridge) {
-//    BridgeNode bridx = sodium_malloc(crypto_generichash_BYTES);
-//
-//    if ((fimap->finame,bridx,(expo_finmlen(fimap->fiid)*sizeof(unsigned char))) != 0){
-//        fprintf(stderr, "Bridge hash failed\n");
-//    }
-//    else {
-//        hashbridge->&bridx) =
-//    }
-//
-//
-//
-//}
-//
-//unsigned long bridge_hash(char* finame) {
-//    return 0;
-//}
 
 
 void destroy_ent(FiMap* fimap, Fi_Tbl* fiTbl) {
@@ -422,6 +412,7 @@ void destroy_chains(Dir_Chains* dirChains) {
     free(dirChains->dir_head->diname);
     //free(dirChains->vessel);
 }
+
 
 
 int filter_dirscan(const struct dirent *entry) {
@@ -543,6 +534,9 @@ void void_mkmap(const char* dir_path, unsigned char* rootdirname, unsigned int d
     printf("\n\n");
     printf("%s\n",dirchains->dir_head->diname);
     printf("%llu\n",dirchains->dir_head->did);
+
+    unsigned char* bridgefiid = (yield_bridge(hashlattice, "sandpit.tar.gpg", 15, dirNode_ptr))->finode->finame;
+    printf("BRIDGE >> %s", bridgefiid);
 
 
     destryohashlattice(hashlattice);

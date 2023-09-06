@@ -77,8 +77,6 @@ unsigned char form_exts[FORMCOUNT][EXTMAXLEN] = {
 
 };
 
-
-
 //enum FiFormId determ_form(unsigned char* fext, int extlen){
 //
 //    if (extlen < EXTMAXLEN) {
@@ -160,3 +158,4 @@ unsigned int grab_ffid(unsigned char* fname, unsigned int nlen) {
     return res+1;
 
 }
+

@@ -70,6 +70,7 @@ typedef struct HashLattice {
     unsigned long max;
 } HashLattice;
 
+HashBridge* yield_bridge(HashLattice* hashLattice, unsigned char* filename, unsigned int n_len, Dir_Node* root_dnode);
 
 
 /**
