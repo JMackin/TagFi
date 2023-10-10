@@ -111,16 +111,15 @@ int dump_little_hash_key(unsigned char* kout, unsigned char* name, unsigned int 
     char* kname = malloc((nlen+6)*sizeof(char));
 
     memcpy(kname,name,nlen);
-    memcpy(kname,name,nlen);
     memcpy(kname+nlen,".lhsk",6);
 
     int hkeyout = openat(AT_FDCWD,"/home/ujlm/CLionProjects/TagFI/keys",O_DIRECTORY);
-
     int hkfi = openat(hkeyout,kname, O_RDWR | O_CREAT);
-    FILE* hkfi_out = fdopen(hkfi,"w+");
+
+    //FILE* hkfi_out = fdopen(hkfi,"w+");
 
     write(hkfi,kout,crypto_shorthash_KEYBYTES);
-    fflush(hkfi_out);
+    //fflush(hkfi_out);
     fsync(hkfi);
 
     if (hkeyout < 0 || hkfi < 0)
@@ -128,10 +127,12 @@ int dump_little_hash_key(unsigned char* kout, unsigned char* name, unsigned int 
         badflg = 1;
     }
 
-    fclose(hkfi_out);
+
+
+    //fclose(hkfi_out);
+    free(kname);
     close(hkfi);
     close(hkeyout);
-    free(kname);
 
     return badflg;
 }
@@ -139,8 +140,8 @@ int dump_little_hash_key(unsigned char* kout, unsigned char* name, unsigned int 
 void recv_little_hash_key(char* pathin, unsigned int nlen, unsigned char* bytesout) {
 
     int kfi = openat(AT_FDCWD, pathin, O_RDONLY);
-    if (kfi < '.')
-;    if (kfi < 0)
+    //if (kfi < '.')
+     if (kfi < 0)
     {
         fprintf(stderr,"Something happened reading in a key. Failure.\n");
         return;
@@ -175,7 +176,6 @@ void get_many_big_salts(unsigned long long** bigsaltls, int n){
         bigsaltls[n] = (unsigned long long*) sodium_malloc(sizeof(unsigned long long));
         genrandsalt(bigsaltls[n]);
     } while(n--);
-
 }
 
 void get_many_little_salts(unsigned long** saltls, int n)

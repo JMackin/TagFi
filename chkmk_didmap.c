@@ -23,16 +23,19 @@ void mk_one_dir_hashes(unsigned long long* iid, unsigned long long* hshno, const
     *iid = ((((*hshno)>>DMASKSHFT)<<DMASKSHFT) ^ (ino<<DMASKSHFT));
 }
 
+
+
+
 void mk_hashes(unsigned long long* haidarr,
                unsigned long** fhshno_arr,
-               unsigned long long* dhaidarr,
-               unsigned long long** dhshno_arr,
+               //unsigned long long* dhaidarr,
+               //unsigned long long** dhshno_arr,
                const unsigned long* idarr,
                int n,int nd,
                const unsigned char *entype) {
 
     get_many_little_salts(fhshno_arr, (n-nd-1));
-    get_many_big_salts(dhshno_arr, nd-1);
+    //get_many_big_salts(dhshno_arr, nd-1);
 
     int i;
     int j = 0;
@@ -51,7 +54,7 @@ void mk_hashes(unsigned long long* haidarr,
         }
         if (entype[i] == TYPDIR) {
 
-            dhaidarr[k] = ((((*dhshno_arr[k])>>DMASKSHFT)<<DMASKSHFT) ^ (idarr[i]<<DMASKSHFT));
+            //dhaidarr[k] = ((((*dhshno_arr[k])>>DMASKSHFT)<<DMASKSHFT) ^ (idarr[i]<<DMASKSHFT));
 
             k++;
         }
@@ -92,7 +95,6 @@ Dir_Chains* init_dchains() {
 
     dirchains->dir_head = init_dnodes[0];
     dirchains->vessel = dirchains->dir_head;
-
 
     free(init_dnodes);
     return dirchains;
@@ -154,22 +156,12 @@ void goto_chain_tail(Dir_Chains* dirChains, unsigned int lor){
 }
 
 //lor: 0=left/docs, 1=right/media,
-void search_dchains(Dir_Node* dnode, unsigned long long did, unsigned int lor){
-
-    while ((dnode->did) != did){
-        *dnode = (lor) ? *dnode->left : *dnode->right;
-    }
-}
-
-//lor: 0=left/docs, 1=right/media,
 void search_dchns_byino(Dir_Node* dnode, unsigned long long did, unsigned int lor){
     while ((dnode->did) != did){
 
         *dnode = (lor) ? *dnode->left : *dnode->right;
     }
 }
-
-
 
 void traverse_dchains(Dir_Node* dnode) {
 
@@ -249,7 +241,6 @@ FiMap* mk_fimap(unsigned int nlen, unsigned char* finame,
     return fimap;
 }
 
-
 unsigned int getidx(FiMap* fimap)
 {
     return fimap->fhshno & HTMASK;
@@ -279,7 +270,6 @@ void add_entry(FiMap* fimap, Fi_Tbl* fiTbl) {
         fimap->fhshno = *hshno;
         fimap->fiid = *hshno ^ *fino;
 
-
         sodium_free(hshno);
         sodium_free(fino);
     }
@@ -287,7 +277,6 @@ void add_entry(FiMap* fimap, Fi_Tbl* fiTbl) {
     fiTbl->entries[getidx(fimap)] = fimap;
     fiTbl->count++;
 }
-
 
 HashLattice * init_hashlattice() {
 
@@ -306,7 +295,7 @@ HashLattice * init_hashlattice() {
     return hashlattice;
 }
 
-void make_bridge(FiMap* fimap, Dir_Node* dnode,HashLattice* hashlattice, unsigned char* hkey){
+void make_bridge(Fi_Tbl* fitbl, FiMap* fimap, Dir_Node* dnode,HashLattice* hashlattice, unsigned char* hkey){
 
     if (hashlattice->count > hashlattice->max-3){
         fprintf(stderr, "Hash lattice full\n");
@@ -327,14 +316,16 @@ void make_bridge(FiMap* fimap, Dir_Node* dnode,HashLattice* hashlattice, unsigne
 
         hshbrg->dirnode = dnode;
         hshbrg->finode = fimap;
+        hshbrg->fitable = fitbl;
         hshbrg->unid = sodium_malloc(sizeof(unsigned long long));
         hashlattice->bridges[idx] = hshbrg;
         hashlattice->count++;
 }
 
-HashBridge* yield_bridge(HashLattice* hashLattice, unsigned char* filename, unsigned int n_len, Dir_Node* root_dnode) {
+HashBridge* yield_bridge(HashLattice* hashLattice, unsigned char* filename, unsigned int n_len, Dir_Node* root_dnode, char* key_pth) {
     unsigned char *kbuf = (unsigned char*) sodium_malloc(crypto_shorthash_KEYBYTES);;
-    recv_little_hash_key("/home/ujlm/CLionProjects/TagFI/keys/Tech.lhsk",7, kbuf);
+    recv_little_hash_key(key_pth, 7, kbuf);
+    //recv_little_hash_key("/home/ujlm/CLionProjects/TagFI/keys/Tech.lhsk",7, kbuf);
 
     unsigned long idx = little_hsh_llidx(kbuf, filename, n_len, root_dnode->did) & LTTCMX;
 
@@ -343,21 +334,19 @@ HashBridge* yield_bridge(HashLattice* hashLattice, unsigned char* filename, unsi
 
 void destoryhashbridge(HashBridge* hashbridge){
     sodium_free(hashbridge->unid);
-
     sodium_free(hashbridge);
 }
 
 void destryohashlattice(HashLattice* hashlattice) {
     for (int i = 0; i < hashlattice->max-1; i++){
         if ((hashlattice->bridges[i]) != NULL) {
+            destroy_tbl(hashlattice->bridges[i]->fitable);
            destoryhashbridge((hashlattice->bridges[i]));
         }
     }
     free(hashlattice->bridges);
     free(hashlattice);
-
 }
-
 
 void destroy_ent(FiMap* fimap, Fi_Tbl* fiTbl) {
     unsigned short idx = fimap->fhshno & HTMASK;
@@ -377,7 +366,7 @@ void destroy_tbl(Fi_Tbl* fitbl) {
     if (fitbl->count > 0) {
         fprintf(stderr, "Entry destruction failed. Table count: %d\n", fitbl->count);
     }
-    free(fitbl->entries);
+    //free(fitbl->entries);
     //free(fitbl);
 }
 
@@ -413,39 +402,42 @@ void destroy_chains(Dir_Chains* dirChains) {
     //free(dirChains->vessel);
 }
 
-
-
 int filter_dirscan(const struct dirent *entry) {
     return ((entry->d_name[0] == 46)) || (strnlen(entry->d_name, 4) > 3);
 }
 
-void void_mkmap(const char* dir_path, unsigned char* rootdirname, unsigned int dnlen){
+
+Fi_Tbl* map_dir(const char* dir_path, unsigned char* rootdirname, unsigned int dnlen, Dir_Chains* dirchains, HashLattice* hashlattice){
 
     int i;
     int j=0;
     int k=0;
-    int naclinit = sodium_init();
-    if( naclinit != 0){
-        fprintf(stderr, "Sodium init failed: %d",naclinit);
-    }
 
+    // Open the directory and read in the contents
+    // Open the directory and read in the contents
     struct dirent ***dentrys = (struct dirent***) sodium_malloc(sizeof (struct dirent***));
     int n;
     int dir_cnt = 0;
-
+    // scandir returns number of entrys in the directory
     n = scandir(dir_path, dentrys, NULL, alphasort);
 
+    // Alloc arrays for filenames, file ids, entry type, and length of filename
     unsigned char** farr = (unsigned char **) calloc(n, 256*sizeof(unsigned char));
     unsigned long* idarr = (unsigned long*) calloc(n, sizeof(unsigned long));
     unsigned char* entype = (unsigned char*) calloc(n, sizeof (unsigned char));
     unsigned long* nlens= (unsigned long*) calloc(n, sizeof(unsigned long));
 
 
+    // For each entry in the directory...
     for (i=0;i<n;i++){
+        // Filename length
         nlens[i] = strnlen((*dentrys)[i]->d_name, FINMMAXL);
+        // Filename char arr
         farr[i] = (unsigned char*) calloc((nlens[i]+1),sizeof (unsigned char));
         memcpy(farr[i], (const unsigned char*)(*dentrys)[i]->d_name,nlens[i]+1);
+        // File inode number
         idarr[i] = (*dentrys)[i]->d_ino;
+        // Filetype (i.e. directory or file)
         entype[i] = (*dentrys)[i]->d_type;
         if (entype[i] == TYPDIR){
             dir_cnt++;
@@ -453,57 +445,84 @@ void void_mkmap(const char* dir_path, unsigned char* rootdirname, unsigned int d
         free((*dentrys)[i]);
     }
 
+    // Alloc arrays for file/dir hash value (assigned random num), and id number derived from inode and hash value.
     unsigned long** fhshno_arr = (unsigned long**) calloc((n-dir_cnt),sizeof(unsigned long*));
     unsigned long long* haidarr = (unsigned long long*) calloc((n-dir_cnt),sizeof(unsigned long long));
-    unsigned long long** dhshno_arr = (unsigned long long**) calloc(dir_cnt, sizeof(unsigned long long*));
-    unsigned long long* dhaidarr = (unsigned long long*) calloc(dir_cnt, sizeof(unsigned long long));
+    //unsigned long long** dhshno_arr = (unsigned long long**) calloc(dir_cnt, sizeof(unsigned long long*));
+    //unsigned long long* dhaidarr = (unsigned long long*) calloc(dir_cnt, sizeof(unsigned long long));
 
-    // const char* dirname, unsigned int dnlen
+    // Vars for root, i.e. the directory currently being mapped
     unsigned long long rootiid;
     unsigned long long roothshno;
     unsigned long rootino = cwd_ino(".");
 
+    // Gen numbers for the root first, to be used in the creation of values for its entries
     mk_one_dir_hashes(&rootiid,&roothshno,rootino);
+    // Gen numbers for the entries
+    //mk_hashes(haidarr, fhshno_arr, dhaidarr, dhshno_arr, idarr, n, dir_cnt, entype);
+    mk_hashes(haidarr, fhshno_arr, idarr, n, dir_cnt, entype);
 
-    mk_hashes(haidarr, fhshno_arr, dhaidarr, dhshno_arr, idarr, n, dir_cnt, entype);
-
+    // Initialize file table assigned to the root
     Fi_Tbl* fitbl = init_fitbl(HTSIZE);
-    Dir_Chains* dirchains = init_dchains();
-    HashLattice* hashlattice = init_hashlattice();
+    // Initialize double chain structures for directories
+    //Dir_Chains* dirchains = init_dchains();
+    // Initialize hashlattice to connect file tables to root
+    //HashLattice* hashlattice = init_hashlattice();
 
+    // Each entry (file) is represented by a Filemap containing fiid, fhshno, finame
     FiMap* fimap_ptr;
+    // Each dir node is a link in the dir chains
     Dir_Node* dirNode_ptr;
+
     unsigned char* hkey = (unsigned char*) malloc(sizeof(unsigned char)*crypto_shorthash_KEYBYTES);
 
+    // Root node is created and added to the chain
     dirNode_ptr = add_dnode(rootiid,rootdirname,dnlen,1,dirchains);
 
+    // A unique hashkey is created and stored for the dir node
     mk_little_hash_key(hkey);
     dump_little_hash_key(hkey,rootdirname,dnlen);
 
+
+    // For each entry in the root...
     for (i=0;i<n;i++) {
+
+        // If it's a directory
         if (entype[i] == TYPDIR){
 
-            printf("DIR: %s :", farr[i]);
-            printf("\n%llu\n",dhaidarr[k]);
-            printf("%llu\n\n",((((*dhshno_arr[k])>>DMASKSHFT))^((dhaidarr[k])>>DMASKSHFT)));
+//            printf("DIR: %s :", farr[i]);
+//            printf("\n%llu\n",dhaidarr[k]);
+//            printf("%llu\n\n",((((*dhshno_arr[k])>>DMASKSHFT))^((dhaidarr[k])>>DMASKSHFT)));
 
-            add_dnode(dhaidarr[k],farr[i],nlens[i],1,dirchains);
-
-            sodium_free(dhshno_arr[k]);
+            // Make and add the entry to the chain as a node
+            //add_dnode(dhaidarr[k],farr[i],nlens[i],1,dirchains);
+            //sodium_free(dhshno_arr[k]);
 
             k++;
         }
+        // If it's a file
         else {
+
+            // Make a filemap object for it
             fimap_ptr = mk_fimap(nlens[i],farr[i],haidarr[j],rootino,*fhshno_arr[j]);
+            // Add the entry to the file/hash table
             add_entry(fimap_ptr,fitbl);
-            make_bridge(fimap_ptr,dirNode_ptr,hashlattice, hkey);
+            // Add a lattice bridge to connect filemap object to the dir node
+            make_bridge(fitbl, fimap_ptr,dirNode_ptr,hashlattice, hkey);
             sodium_free(fhshno_arr[j]);
+
             j++;
 
         }
-
         free(farr[i]);
     }
+
+
+/**
+ *
+ *  Begin test section...
+ *  -------------------------------
+ */
 
     for (i = 0; i<fitbl->totsize; i++){
         if (fitbl->entries[i] != NULL){
@@ -516,8 +535,6 @@ void void_mkmap(const char* dir_path, unsigned char* rootdirname, unsigned int d
             printf("Resident dir: %u\n", expo_redir(fitbl->entries[i]->fiid));
 
             printf("%lu\n",fitbl->entries[i]->fhshno);
-
-
         }
     }
 
@@ -531,26 +548,37 @@ void void_mkmap(const char* dir_path, unsigned char* rootdirname, unsigned int d
         printf("%llu\n", (dirchains->vessel->did & DNAMEMASK) >> DNAMESHFT);
 
     }
+
     printf("\n\n");
     printf("%s\n",dirchains->dir_head->diname);
     printf("%llu\n",dirchains->dir_head->did);
 
-    unsigned char* bridgefiid = (yield_bridge(hashlattice, "sandpit.tar.gpg", 15, dirNode_ptr))->finode->finame;
-    printf("BRIDGE >> %s", bridgefiid);
+    //unsigned char* bridgefiid = (yield_bridge(hashlattice, "sandpit.tar.gpg", 15, dirNode_ptr, "/home/ujlm/CLionProjects/TagFI/keys/Tech.lhsk"))->dirnode->diname;
+    //printf("BRIDGE >> %s", bridgefiid);
 
 
-    destryohashlattice(hashlattice);
-    destroy_tbl(fitbl);
-    destroy_chains(dirchains);
-    free(dirchains);
+
+/**
+ * -------------------------------
+ * End of test section
+ *
+ */
+
+    // Cleanup
+//    destryohashlattice(hashlattice);
+//    destroy_tbl(fitbl);
+//    destroy_chains(dirchains);
+//    free(dirchains);
     sodium_free(dentrys);
-
     free(farr);
     free(idarr);
     free(entype);
     free(nlens);
     free(haidarr);
     free(fhshno_arr);
-    free(dhaidarr);
-    free(dhshno_arr);
+//    free(dhaidarr);
+//    free(dhshno_arr);
+
+    return fitbl;
+
 }

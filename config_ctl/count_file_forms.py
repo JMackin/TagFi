@@ -66,17 +66,20 @@ except Exception as e:
     print(e.with_traceback(e.__traceback__), file=sys.stderr)
 
 
-def main(path: str = '.', maxlength: int = 7, dump: bool = False, topres: int = 0, excl_forms: set = None, *args):
+
+def main(path: list, maxlength: int = 7, dump: bool = False, topres: int = 0, excl_forms: set = None, *args):
     maxlength = int(maxlength)
     topres = int(topres)
     excludedforms = True if excl_forms is not None and type(excl_forms) == set else False
     formats = {}
     itm = namedtuple('itm', 'form cnt')
 
-    for r, d, f in os.walk(path):
-        for ff in f:
-            frm = ff.split('.')[-1]
-            formats[frm] = 1 if frm not in formats.keys() else formats[frm] + 1
+    for p in path:
+        for r, d, f in os.walk(p):
+            for ff in f:
+                frm = ff.split('.')[-1]
+                frm = re.sub("\W",'',frm)
+                formats[frm] = 1 if frm not in formats.keys() else formats[frm] + 1
 
     res = [itm(i, j) for i, j in zip(formats.keys(), formats.values())
            if j > 1 and len(i) < maxlength
@@ -137,13 +140,13 @@ def main(path: str = '.', maxlength: int = 7, dump: bool = False, topres: int = 
     print(f"wrote {len(res)} values\n")
 
 
-if sys.argv[0]:
-    args = sys.argv[1:]
-
-    print(args)
-else:
-    args = sys.argv
-
-print(f"> {os.getcwd()}")
-
-main(*args)
+# if sys.argv[0]:
+#     args = sys.argv[1:]
+#
+#     print(args)
+# else:
+#     args = sys.argv
+#
+# print(f"> {os.getcwd()}")
+#
+# main(*args)

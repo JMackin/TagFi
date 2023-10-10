@@ -21,20 +21,12 @@ typedef struct stat* stptr;
 fitypes chk_fd(stptr statbuf, char* dir_path, int opt);
 //void stat_fd(char* dir_path, stptr statptr);
 
-void void_mkmap(const char* dir_path, unsigned char* dirname, unsigned int dnlen);
 
 typedef struct FiMap{
     unsigned long long fiid;
     unsigned long fhshno;
     unsigned char* finame;
 } FiMap;
-
-/*
- * BridgeNode head = hashed fname
- * BridgeNode tail = fMap->fhshno
-*/
-
-//typedef unsigned char* BridgeNode;
 
 typedef struct Fi_Tbl{
     unsigned long ftblid; // hash ino of resident dir
@@ -46,13 +38,11 @@ typedef struct Fi_Tbl{
 typedef struct Dir_Node{
     struct Dir_Node* left;
     struct Dir_Node* right;
-    Fi_Tbl* filetable;
     unsigned long long did;
     unsigned char* diname;
 
 }Dir_Node;
 
-//TODO -> split vessel to vesselM and vesselD
 typedef struct Dir_Chains{
     Dir_Node* dir_head;
     Dir_Node* vessel;
@@ -61,6 +51,7 @@ typedef struct Dir_Chains{
 typedef struct HashBridge {
     unsigned long long* unid;
     Dir_Node* dirnode;
+    Fi_Tbl* fitable;
     FiMap* finode;
 } HashBridge;
 
@@ -70,7 +61,24 @@ typedef struct HashLattice {
     unsigned long max;
 } HashLattice;
 
-HashBridge* yield_bridge(HashLattice* hashLattice, unsigned char* filename, unsigned int n_len, Dir_Node* root_dnode);
+
+Fi_Tbl* map_dir(const char* dir_path, unsigned char* dirname, unsigned int dnlen, Dir_Chains* dirchains, HashLattice* hashlattice);
+Dir_Chains* init_dchains();
+HashLattice * init_hashlattice();
+FiMap* mk_fimap(unsigned int nlen, unsigned char* finame,
+                unsigned long long fiid, unsigned  long long did,
+                unsigned long fhshno);
+unsigned int getidx(FiMap* fimap);
+void add_entry(FiMap* fimap, Fi_Tbl* fiTbl);
+void travel_dchains(Dir_Chains* dirChains, unsigned int lor, unsigned char steps);
+void goto_chain_tail(Dir_Chains* dirChains, unsigned int lor);
+Dir_Node* add_dnode(unsigned long long did, unsigned char* dname, unsigned short nlen, unsigned int mord, Dir_Chains* dirchains);
+HashBridge* yield_bridge(HashLattice* hashLattice, unsigned char* filename, unsigned int n_len, Dir_Node* root_dnode, char* key_pth);
+void destoryhashbridge(HashBridge* hashbridge);
+void destryohashlattice(HashLattice* hashlattice);
+void destroy_ent(FiMap* fimap, Fi_Tbl* fiTbl);
+void destroy_tbl(Fi_Tbl* fitbl);
+void destroy_chains(Dir_Chains* dirChains);
 
 
 /**
