@@ -31,7 +31,6 @@ void cleanup(HashLattice* hashlattice,
              int dn_cnt) {
     // Cleanup
     munmap(dnconf_addr,dn_size);
-
     destryohashlattice(hashlattice);
     if (tbl_list != NULL) {
        for (int i = 0; i < dn_cnt; i++) {
@@ -130,20 +129,38 @@ int extract_name(const unsigned char* path, int length) {
 
 }
 
-int spin_up(char**buffer){
+int spin_up(unsigned char** cbuffer, unsigned long** bigbuffer){
 
     int connection_socket;
     ssize_t ret;
+    const int buf_len = 8;
+    const int cbuf_len = 8;
+    unsigned char cout = 0;
     int res;
+
+    int cin_len;
+    size_t cout_len;
+    char* last_idx;
+    int i = 0;
     int data_socket;
     int down_flag = 0;
-    *buffer = (char*) calloc(15,sizeof(char));
+    int end_flag = 0;
+    int exit_flag = 0;
+    int resp_flag = 0;
+    int char_follow = 0;
+    char cin;
+    int cbuf_readin_len = 0;
+    char buffer[9] = {0};
+    *cbuffer = (unsigned char*) calloc(cbuf_len,sizeof(unsigned char));
+    *bigbuffer = (unsigned long*) calloc(8,sizeof(unsigned long));
+    char respbuffer[9] = {0};
 
     struct sockaddr_un name;
     name.sun_family = AF_UNIX;
     strncpy(name.sun_path, SOCKET_NAME, sizeof(name.sun_path) - 1);
 
     connection_socket = socket(AF_UNIX, SOCK_SEQPACKET, 0);
+
     if (connection_socket == -1) {
         perror("socket");
         return -1;
@@ -151,23 +168,29 @@ int spin_up(char**buffer){
     memset(&name, 0, sizeof(name));
 
     name.sun_family = AF_UNIX;
+
     strncpy(name.sun_path, SOCKET_NAME, sizeof(name.sun_path) - 1);
 
     ret = bind(connection_socket, (const struct sockaddr *) &name,
                sizeof(name));
+
+
     if (ret == -1) {
         perror("bind");
         return -1;
     }
 
 
-    ret = listen(connection_socket, 20);
-    if (ret == -1) {
-        perror("listen");
-        return -1;
-    }
 
-    for (;;) {
+    while(!exit_flag) {
+        i = 0;
+        bzero(buffer,9);
+        printf("<Outer>\n");
+        ret = listen(connection_socket, 20);
+        if (ret == -1) {
+            perror("listen");
+            return -1;
+        }
 
         data_socket = accept(connection_socket, NULL, NULL);
         if (data_socket == -1) {
@@ -175,58 +198,88 @@ int spin_up(char**buffer){
             return -1;
         }
 
-        res = 0;
-        for (;;) {
+        /* Wait for next data packet. */
+        ret = read(data_socket, buffer, buf_len * sizeof(int));
 
-            /* Wait for next data packet. */
 
-            ret = read(data_socket, *buffer, strlen(*buffer));
+        while (!end_flag) {
+            printf("<Inner>\n");
+            if (i > buf_len-1){
+                end_flag = 1;
+                break;
+            }
+
+            printf("%d\n",buffer[i]);
+            printf("i = %d\n",i);
             if (ret == -1) {
                 perror("read");
                 return -1;
             }
 
-            buffer[strlen(*buffer) - 1] = 0;
-
-
-
-            if (!strncmp(*buffer, "DOWN", strlen(*buffer))) {
-                down_flag = 1;
-                break;
+            switch (buffer[i]) {
+                case 38: //&
+                    end_flag = 1;
+                    break;
+                case 57: //9
+                    memccpy(respbuffer,"Bye\0&",'&',8);
+                    cout_len = 8;
+//                    resp_flag = 1;
+                    down_flag = 1;
+                    break;
+                case 11:
+                    char_follow = 1;
+                    i++;
+                    cin_len = buffer[i] + 1;
+                    ret = read(data_socket, *cbuffer, cin_len);
+                    break;
+                case 90: //Z
+                    resp_flag = 1;
+                    memccpy(respbuffer,"foobar\0&",'&',8);
+                    cout_len = 8;
+                    break;
+                default:
+                    break;
             }
 
-            if (!strncmp(*buffer, "END", strlen(*buffer))) {
-                break;
+            if (resp_flag) {
+                ret = write(data_socket, respbuffer, cout_len);
+                if (ret == -1) {
+                    perror("write");
+                    return -1;
+                }
+                resp_flag = 0;
+
+//                respbuffer = memset(*respbuffer,0,cout_len);
             }
 
-            break;
+            if (char_follow) {
+                for (int k = 0; k < cin_len; k++) {
+                    putchar(*(*cbuffer + k));
+                }
+                char_follow = 0;
+            }
+            i++;
+
+            if (down_flag && end_flag){
+                exit_flag = 1;
+            }
 
         }
+        end_flag = 0;
 
-        ret = write(data_socket, "thanks\0", strlen(*buffer));
-
-        if (ret == -1) {
-            perror("write");
-            return -1;
-        }
-
-        /* Close socket. */
-
+        bzero(respbuffer,8);
+//bzero(buffer,8);
         close(data_socket);
 
-        /* Quit on DOWN command. */
 
-        if (down_flag) {
-            break;
+        /* Close socket. */
+        if (exit_flag) {
+
+            close(connection_socket);
+            /* Unlink the socket. */
+            unlink(SOCKET_NAME);
         }
     }
-
-    close(connection_socket);
-
-    /* Unlink the socket. */
-
-    unlink(SOCKET_NAME);
-
     return 0;
 
 }
@@ -246,7 +299,11 @@ void summon_lattice(){
     int* lengths;
     int nm_len;
     unsigned char** paths;
-    char* buffer;
+//char * buffer;
+    unsigned char* cbuffer;
+    char* respbuffer;
+    unsigned long *bigbuffer;
+
 
     size_t dn_size = read_conf(&dn_conf);
     if (dn_size == -1) {
@@ -265,10 +322,21 @@ void summon_lattice(){
 
     //printf("\n\nCOUNT: %d",fitbl->count);
 
-    if (spin_up(&buffer) < 0) {
+    if (spin_up(&cbuffer, &bigbuffer) < 0) {
+
         fprintf(stderr,"Failure");
     }
-    free(buffer);
+//    if(*buffer != '\0'){
+//        free(buffer);
+//    }
+    free(cbuffer);
+//    if(*respbuffer != '\0') {
+//        free(respbuffer);
+//    }
+    if(*bigbuffer != '\0') {
+        free(bigbuffer);
+    }
+
 
     cleanup(hashlattice, dirchains, tbl_list, dn_conf, dn_size, lengths, paths, dn_cnt);
 
