@@ -3,6 +3,7 @@
 //
 #include "sodium.h"
 #include <sys/socket.h>
+#include <sys/un.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/mman.h>
@@ -13,6 +14,7 @@
 #include "chkmk_didmap.h"
 
 #define DNCONFFI "/home/ujlm/CLionProjects/TagFI/config/dirnodes"
+#define SOCKET_NAME "/tmp/9Lq7BNBnBycd6nxy.socket"
 
 
 //void load_dir_targets(){
@@ -25,17 +27,21 @@ void cleanup(HashLattice* hashlattice,
              unsigned char* dnconf_addr,
              size_t dn_size,
              int* lengths,
-             unsigned char** paths) {
+             unsigned char** paths,
+             int dn_cnt) {
     // Cleanup
     munmap(dnconf_addr,dn_size);
 
     destryohashlattice(hashlattice);
-    for (int i = 0; i < 63; i++) {
-        if (tbl_list[i] != 0) {
-            free(tbl_list[i]->entries);
+    if (tbl_list != NULL) {
+       for (int i = 0; i < dn_cnt; i++) {
+            if (tbl_list[i] != 0) {
+                free(tbl_list[i]->entries);
+                free(tbl_list[i]);
+            }
         }
     }
-//    free(tbl_list);
+    free(tbl_list);
     destroy_chains(dirchains);
     free(dirchains);
     if (lengths != NULL && paths != NULL) {
@@ -102,7 +108,7 @@ int nodepaths(unsigned char* dn_conf_addr, int** lengths, unsigned char*** paths
 
     byte_strcnt += 6;
 
-    *paths = calloc(sizeof(unsigned char*), dn_count);
+    *paths = (unsigned char**) calloc(dn_count, sizeof(unsigned char*));
 
     for (i = 0; i < dn_count; i++) {
 
@@ -124,6 +130,107 @@ int extract_name(const unsigned char* path, int length) {
 
 }
 
+int spin_up(char**buffer){
+
+    int connection_socket;
+    ssize_t ret;
+    int res;
+    int data_socket;
+    int down_flag = 0;
+    *buffer = (char*) calloc(15,sizeof(char));
+
+    struct sockaddr_un name;
+    name.sun_family = AF_UNIX;
+    strncpy(name.sun_path, SOCKET_NAME, sizeof(name.sun_path) - 1);
+
+    connection_socket = socket(AF_UNIX, SOCK_SEQPACKET, 0);
+    if (connection_socket == -1) {
+        perror("socket");
+        return -1;
+    }
+    memset(&name, 0, sizeof(name));
+
+    name.sun_family = AF_UNIX;
+    strncpy(name.sun_path, SOCKET_NAME, sizeof(name.sun_path) - 1);
+
+    ret = bind(connection_socket, (const struct sockaddr *) &name,
+               sizeof(name));
+    if (ret == -1) {
+        perror("bind");
+        return -1;
+    }
+
+
+    ret = listen(connection_socket, 20);
+    if (ret == -1) {
+        perror("listen");
+        return -1;
+    }
+
+    for (;;) {
+
+        data_socket = accept(connection_socket, NULL, NULL);
+        if (data_socket == -1) {
+            perror("accept");
+            return -1;
+        }
+
+        res = 0;
+        for (;;) {
+
+            /* Wait for next data packet. */
+
+            ret = read(data_socket, *buffer, strlen(*buffer));
+            if (ret == -1) {
+                perror("read");
+                return -1;
+            }
+
+            buffer[strlen(*buffer) - 1] = 0;
+
+
+
+            if (!strncmp(*buffer, "DOWN", strlen(*buffer))) {
+                down_flag = 1;
+                break;
+            }
+
+            if (!strncmp(*buffer, "END", strlen(*buffer))) {
+                break;
+            }
+
+            break;
+
+        }
+
+        ret = write(data_socket, "thanks\0", strlen(*buffer));
+
+        if (ret == -1) {
+            perror("write");
+            return -1;
+        }
+
+        /* Close socket. */
+
+        close(data_socket);
+
+        /* Quit on DOWN command. */
+
+        if (down_flag) {
+            break;
+        }
+    }
+
+    close(connection_socket);
+
+    /* Unlink the socket. */
+
+    unlink(SOCKET_NAME);
+
+    return 0;
+
+}
+
 void summon_lattice(){
 
     int naclinit = sodium_init();
@@ -133,28 +240,37 @@ void summon_lattice(){
 
     Dir_Chains* dirchains = init_dchains();
     HashLattice* hashlattice = init_hashlattice();
-    Fi_Tbl* tbl_list[63] = {0};
+
     unsigned char* dn_conf;
     int dn_cnt;
     int* lengths;
     int nm_len;
     unsigned char** paths;
+    char* buffer;
 
     size_t dn_size = read_conf(&dn_conf);
     if (dn_size == -1) {
-        cleanup(hashlattice,dirchains,tbl_list,dn_conf,dn_size,NULL, NULL);
+        cleanup(hashlattice,dirchains,NULL,dn_conf,dn_size,NULL, NULL, 0);
         exit(-1);
     }
     dn_cnt = nodepaths(dn_conf, &lengths, &paths);
-
+    Fi_Tbl** tbl_list = (Fi_Tbl**) calloc(dn_cnt,sizeof(Fi_Tbl*));
+    int res = 0;
     for (int i = 0; i < dn_cnt; i++){
         nm_len = extract_name(*(paths+i),*(lengths+i));
-        tbl_list[i] = map_dir(*(paths+i),(*(paths+i)+nm_len),(*(lengths+i)-nm_len),dirchains,hashlattice);
+        res = map_dir((const char*) *(paths+i),(*(paths+i)+nm_len),(*(lengths+i)-nm_len),dirchains,hashlattice,&(tbl_list[i]));
+        printf(">>%d\n",res);
     }
+
 
     //printf("\n\nCOUNT: %d",fitbl->count);
 
-    cleanup(hashlattice, dirchains, tbl_list, dn_conf, dn_size, lengths, paths);
+    if (spin_up(&buffer) < 0) {
+        fprintf(stderr,"Failure");
+    }
+    free(buffer);
+
+    cleanup(hashlattice, dirchains, tbl_list, dn_conf, dn_size, lengths, paths, dn_cnt);
 
 
 }

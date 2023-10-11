@@ -10,8 +10,6 @@
 
 typedef enum FiFormId {
 
-
-
 		py = 1,
 		pyc = 2,
 		png = 3,

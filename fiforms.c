@@ -13,7 +13,6 @@
 
 unsigned char form_exts[FORMCOUNT][EXTMAXLEN] = {
 
-
 		"py",
 		"pyc",
 		"png",
@@ -280,7 +279,7 @@ unsigned int grab_ffid(unsigned char* fname, unsigned int nlen) {
 
     enum FiFormId res = NONE;
 
-    unsigned char* buf = (unsigned char*) calloc(nlen, sizeof(unsigned char));
+    unsigned char* buf = (unsigned char*) calloc((size_t) nlen, sizeof(unsigned char));
     unsigned char* ext_buf;
     memcpy(buf, fname, (nlen*sizeof(unsigned char)));
 
@@ -296,18 +295,20 @@ unsigned int grab_ffid(unsigned char* fname, unsigned int nlen) {
 
         if (buf[n] == 46) {
             dotpos = n;
-            break;
+
         }
         n++;
     }
 
-    if (n == nlen || n == 0){
+    if (dotpos == nlen || dotpos == 0){
+        free(buf);
         return NONE;
     }
+    dotpos++;
 
     unsigned int extlen = nlen - dotpos;
     ext_buf = (unsigned char*) calloc(extlen,sizeof(unsigned char));
-    memcpy(ext_buf, buf+dotpos+1, sizeof(unsigned char)*(extlen));
+    memcpy(ext_buf, buf+dotpos, sizeof(unsigned char)*(extlen));
 
     int score;
     for (i = 0; i < FORMCOUNT; i++) {
@@ -321,8 +322,7 @@ unsigned int grab_ffid(unsigned char* fname, unsigned int nlen) {
                 res = i;
                 free(buf);
                 free(ext_buf);
-
-                return res;
+                return ++res;
 
             }
 

@@ -101,8 +101,8 @@ __attribute__((unused)) void real_hash_keyfully(unsigned char** in, unsigned cha
 //
 //}
 
-void mk_little_hash_key(unsigned char* kout) {
-    crypto_shorthash_keygen(kout);
+void mk_little_hash_key(unsigned char** kout) {
+    crypto_shorthash_keygen(*kout);
 }
 
 int dump_little_hash_key(unsigned char* kout, unsigned char* name, unsigned int nlen) {
@@ -136,8 +136,8 @@ int dump_little_hash_key(unsigned char* kout, unsigned char* name, unsigned int 
 
     return badflg;
 }
-
-void recv_little_hash_key(char* pathin, unsigned int nlen, unsigned char* bytesout) {
+//void recv_little_hash_key(char* pathin, unsigned int nlen, unsigned char* bytesout)
+void recv_little_hash_key(char* pathin, unsigned char* bytesout) {
 
     int kfi = openat(AT_FDCWD, pathin, O_RDONLY);
     //if (kfi < '.')

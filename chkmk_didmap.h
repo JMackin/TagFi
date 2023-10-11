@@ -62,7 +62,7 @@ typedef struct HashLattice {
 } HashLattice;
 
 
-Fi_Tbl* map_dir(const char* dir_path, unsigned char* dirname, unsigned int dnlen, Dir_Chains* dirchains, HashLattice* hashlattice);
+int map_dir(const char* dir_path, unsigned char* dirname, unsigned int dnlen, Dir_Chains* dirchains, HashLattice* hashlattice, Fi_Tbl** fitbl);
 Dir_Chains* init_dchains();
 HashLattice * init_hashlattice();
 FiMap* mk_fimap(unsigned int nlen, unsigned char* finame,
