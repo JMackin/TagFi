@@ -40,7 +40,6 @@ typedef struct Dir_Node{
     struct Dir_Node* right;
     unsigned long long did;
     unsigned char* diname;
-
 }Dir_Node;
 
 typedef struct Dir_Chains{
@@ -62,7 +61,7 @@ typedef struct HashLattice {
 } HashLattice;
 
 
-int map_dir(const char* dir_path, unsigned char* dirname, unsigned int dnlen, Dir_Chains* dirchains, HashLattice* hashlattice, Fi_Tbl** fitbl);
+int map_dir(const char* dir_path, unsigned int path_len,unsigned char* dirname, unsigned int dnlen, Dir_Chains* dirchains, HashLattice* hashlattice, Fi_Tbl** fitbl);
 Dir_Chains* init_dchains();
 HashLattice * init_hashlattice();
 FiMap* mk_fimap(unsigned int nlen, unsigned char* finame,
@@ -73,13 +72,13 @@ void add_entry(FiMap* fimap, Fi_Tbl* fiTbl);
 void travel_dchains(Dir_Chains* dirChains, unsigned int lor, unsigned char steps);
 void goto_chain_tail(Dir_Chains* dirChains, unsigned int lor);
 Dir_Node* add_dnode(unsigned long long did, unsigned char* dname, unsigned short nlen, unsigned int mord, Dir_Chains* dirchains);
-HashBridge* yield_bridge(HashLattice* hashLattice, unsigned char* filename, unsigned int n_len, Dir_Node* root_dnode, char* key_pth);
+HashBridge* yield_bridge(HashLattice* hashLattice, unsigned char* filename, unsigned int n_len, Dir_Node* root_dnode);
 void destoryhashbridge(HashBridge* hashbridge);
 void destryohashlattice(HashLattice* hashlattice);
 void destroy_ent(FiMap* fimap, Fi_Tbl* fiTbl);
 void destroy_tbl(Fi_Tbl* fitbl);
 void destroy_chains(Dir_Chains* dirChains);
-
+int make_bridgeanchor(Dir_Node** dirnode, char** path, unsigned int pathlen);
 
 /**
  *     Dir nodeno begin at 8(0b1000) and are masked to id their parent base (media: 0b100 doc: 0b010)

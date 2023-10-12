@@ -11,6 +11,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <string.h>
+#include <sys/poll.h>
 #include "chkmk_didmap.h"
 
 #define DNCONFFI "/home/ujlm/CLionProjects/TagFI/config/dirnodes"
@@ -184,7 +185,10 @@ int spin_up(unsigned char** cbuffer, unsigned long** bigbuffer){
 
     while(!exit_flag) {
         i = 0;
-        bzero(buffer,9);
+        end_flag = 0;
+        bzero(buffer,8);
+        bzero(respbuffer,8);
+
         printf("<Outer>\n");
         ret = listen(connection_socket, 20);
         if (ret == -1) {
@@ -199,7 +203,7 @@ int spin_up(unsigned char** cbuffer, unsigned long** bigbuffer){
         }
 
         /* Wait for next data packet. */
-        ret = read(data_socket, buffer, buf_len * sizeof(int));
+        ret = read(data_socket, buffer, buf_len);
 
 
         while (!end_flag) {
@@ -223,7 +227,7 @@ int spin_up(unsigned char** cbuffer, unsigned long** bigbuffer){
                 case 57: //9
                     memccpy(respbuffer,"Bye\0&",'&',8);
                     cout_len = 8;
-//                    resp_flag = 1;
+                    resp_flag = 1;
                     down_flag = 1;
                     break;
                 case 11:
@@ -248,9 +252,9 @@ int spin_up(unsigned char** cbuffer, unsigned long** bigbuffer){
                     return -1;
                 }
                 resp_flag = 0;
-
 //                respbuffer = memset(*respbuffer,0,cout_len);
             }
+
 
             if (char_follow) {
                 for (int k = 0; k < cin_len; k++) {
@@ -267,10 +271,9 @@ int spin_up(unsigned char** cbuffer, unsigned long** bigbuffer){
         }
         end_flag = 0;
 
-        bzero(respbuffer,8);
 //bzero(buffer,8);
-        close(data_socket);
 
+        close(data_socket);
 
         /* Close socket. */
         if (exit_flag) {
@@ -281,7 +284,6 @@ int spin_up(unsigned char** cbuffer, unsigned long** bigbuffer){
         }
     }
     return 0;
-
 }
 
 void summon_lattice(){
@@ -315,7 +317,7 @@ void summon_lattice(){
     int res = 0;
     for (int i = 0; i < dn_cnt; i++){
         nm_len = extract_name(*(paths+i),*(lengths+i));
-        res = map_dir((const char*) *(paths+i),(*(paths+i)+nm_len),(*(lengths+i)-nm_len),dirchains,hashlattice,&(tbl_list[i]));
+        res = map_dir((const char*) *(paths+i),nm_len,(*(paths+i)+nm_len),(*(lengths+i)-nm_len),dirchains,hashlattice,&(tbl_list[i]));
         printf(">>%d\n",res);
     }
 
@@ -337,8 +339,7 @@ void summon_lattice(){
         free(bigbuffer);
     }
 
-
     cleanup(hashlattice, dirchains, tbl_list, dn_conf, dn_size, lengths, paths, dn_cnt);
 
-
 }
+

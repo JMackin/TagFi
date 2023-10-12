@@ -4,6 +4,7 @@
 #include <sys/ioctl.h>
 #include <unistd.h>
 #include <string.h>
+#define DNKEYPATH "/home/ujlm/CLionProjects/TagFI/keys"
 
 unsigned long long eightchartollong(const unsigned char* in, int wlen) {
     int i;
@@ -81,11 +82,17 @@ __attribute__((unused)) int real_hash_keylessly(unsigned char* in, unsigned char
 
     //crypto_generichash_BYTES = 32u
 }
-__attribute__((unused)) void real_hash_keyfully(unsigned char** in, unsigned char** out, size_t inlen, const unsigned char* key, size_t klen) {
+void real_hash_keyfully(unsigned char** in, unsigned char** out, size_t inlen, const unsigned char** key, size_t klen) {
 
-    crypto_generichash(*out, crypto_shorthash_KEYBYTES, *in, inlen, key, klen);
+    crypto_generichash(*out, crypto_generichash_BYTES, *in, inlen, *key, klen);
 
     //crypto_generichash_BYTES = 32u
+}
+
+void dn_hdid_str(unsigned char** dn_hash, char** strout) {
+
+    sodium_bin2hex(*strout, (crypto_generichash_BYTES*2+1), *dn_hash, crypto_generichash_BYTES);
+
 }
 
 //void two_32_to_64(unsigned char* kout, unsigned long* ttula, unsigned long* ttulb) {
@@ -113,12 +120,26 @@ int dump_little_hash_key(unsigned char* kout, unsigned char* name, unsigned int 
     memcpy(kname,name,nlen);
     memcpy(kname+nlen,".lhsk",6);
 
-    int hkeyout = openat(AT_FDCWD,"/home/ujlm/CLionProjects/TagFI/keys",O_DIRECTORY);
-    int hkfi = openat(hkeyout,kname, O_RDWR | O_CREAT);
+    int hkeyout = openat(AT_FDCWD,DNKEYPATH,O_DIRECTORY,O_RDWR);
+
+    if(hkeyout < 0){
+        fprintf(stderr,"<<%s>>\n",name);
+
+        perror("dump_little_hash_key/hkeyout: ");
+    }
+
+    int hkfi = openat(hkeyout,kname, O_CREAT|O_RDWR, S_IRWXU);
+
+    if(hkfi < 0){
+
+        fprintf(stderr,"<<%s>>\n",name);
+        perror("dump_little_hash_key/hkfi: ");
+    }
 
     //FILE* hkfi_out = fdopen(hkfi,"w+");
 
     write(hkfi,kout,crypto_shorthash_KEYBYTES);
+
     //fflush(hkfi_out);
     fsync(hkfi);
 
@@ -126,8 +147,6 @@ int dump_little_hash_key(unsigned char* kout, unsigned char* name, unsigned int 
     {
         badflg = 1;
     }
-
-
 
     //fclose(hkfi_out);
     free(kname);
@@ -137,13 +156,21 @@ int dump_little_hash_key(unsigned char* kout, unsigned char* name, unsigned int 
     return badflg;
 }
 //void recv_little_hash_key(char* pathin, unsigned int nlen, unsigned char* bytesout)
-void recv_little_hash_key(char* pathin, unsigned char* bytesout) {
+void recv_little_hash_key(int dnkeyfd, unsigned char* dirname, unsigned int knmln, unsigned char* bytesout) {
 
-    int kfi = openat(AT_FDCWD, pathin, O_RDONLY);
+
+    char* kname = (char*) calloc(knmln+6, sizeof(char));
+    memcpy(kname,dirname,knmln);
+    memcpy(kname+knmln,".lhsk",6);
+
+
+    int kfi = openat(dnkeyfd, kname, O_RDONLY);
+
     //if (kfi < '.')
      if (kfi < 0)
     {
-        fprintf(stderr,"Something happened reading in a key. Failure.\n");
+        perror("recv_little_hash_key/kfi: ");
+        fprintf(stderr,"<<%s>>\n",dirname);
         return;
     }
     FILE* lhkstrm = fdopen(kfi,"r");
@@ -151,7 +178,8 @@ void recv_little_hash_key(char* pathin, unsigned char* bytesout) {
     for (int i =0; i < crypto_shorthash_KEYBYTES;i++){
         *(bytesout+i) = fgetc(lhkstrm);
     }
-
+    close(kfi);
+    free(kname);
 }
 
 

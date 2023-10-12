@@ -29,7 +29,6 @@ int scanfiinodes(const char* dir_path) {
             fprintf(stderr, "errno = %d", errno);
             return -1;
         }else {
-
             printf("%lu\n", (entry->d_ino));
         }
 

@@ -50,3 +50,19 @@ unsigned long long msk_dirgrp(unsigned long long fiid) {
 unsigned int expo_dirgrp(unsigned long long fiid, unsigned int digrp) {
     return (fiid & FDCHNGMSK) >> FDCHNGSHFT;
 }
+
+/*
+ *  Dirnode ops
+ * */
+
+unsigned int expo_dirnmlen(unsigned long long did) {
+    return (did & DNAMEMASK) >> DNAMESHFT;
+}
+
+unsigned int expo_dirbase(unsigned long long did) {
+    return (did & DBASEMASK) >> DBASESHFT;
+}
+
+unsigned int expo_dirchainid(unsigned long long did) {
+    return did & DCHNSMASK;
+}

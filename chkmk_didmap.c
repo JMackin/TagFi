@@ -17,6 +17,8 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <sys/time.h>
+#define DNKEYPATH "/home/ujlm/Code/Clang/C/TagFI/keys"
+
 
 void mk_one_dir_hashes(unsigned long long* iid, unsigned long long* hshno, const unsigned long ino){
     genrandsalt(hshno);
@@ -181,7 +183,7 @@ Dir_Node* add_dnode(unsigned long long did, unsigned char* dname, unsigned short
     dnode->diname = memcpy(dnode->diname, dname, nlen * sizeof(unsigned char));
     unsigned long cnt = ((base->did) & DGCNTMASK) >> DGCNTSHFT;
 
-    dnode->did = did | ((nlen & FNLENMSK) << DNAMESHFT) | ((mord) ? MEDABASEM : DOCSBASEM) | ++cnt;
+    dnode->did = did | ((nlen) << DNAMESHFT) | ((mord) ? MEDABASEM : DOCSBASEM) | ++cnt;
     base->did += (64);
 
     dirchains->vessel = dirchains->dir_head;
@@ -202,6 +204,58 @@ Dir_Node* add_dnode(unsigned long long did, unsigned char* dname, unsigned short
     }
 
     return dnode;
+
+}
+
+int make_bridgeanchor(Dir_Node** dirnode, char** path, unsigned int pathlen) {
+
+    int dnkeyfd = openat(AT_FDCWD,DNKEYPATH,O_DIRECTORY);
+
+    if (dnkeyfd < 0 )
+    {
+        perror("make_bridgeanchor/dnkeyfd");
+        close(dnkeyfd);
+        return -1;
+    }
+
+    int dnfd = openat(AT_FDCWD,*path,O_DIRECTORY);
+
+
+    if (dnfd < 0 )
+    {
+        perror("make_bridgeanchor/dnfd");
+
+        close(dnfd);
+        close(dnkeyfd);
+        return -1;
+    }
+
+    unsigned char* dn_hash = (unsigned char*) sodium_malloc(crypto_generichash_BYTES);
+    unsigned char* dkey = (unsigned char*) sodium_malloc(crypto_shorthash_KEYBYTES);
+    char* dn_hdid = (char*) sodium_malloc(crypto_generichash_BYTES*2+1);
+
+    recv_little_hash_key(dnkeyfd,((*dirnode)->diname),expo_dirnmlen((*dirnode)->did),dkey);
+    real_hash_keyfully((&(*dirnode)->diname), &dn_hash, expo_dirnmlen((*dirnode)->did), (const unsigned char **) &dkey, crypto_shorthash_KEYBYTES);
+    dn_hdid_str(&dn_hash, &dn_hdid);
+
+    sodium_free(dkey);
+    sodium_free(dn_hash);
+    close(dnkeyfd);
+
+    int diranch = openat(dnfd,(char*) dn_hdid,O_CREAT|O_RDWR, S_IRWXU);
+
+    write(diranch,path,pathlen);
+    fsync(diranch);
+
+    if (diranch < 0 )
+    {
+        close(diranch);
+        close(dnfd);
+        sodium_free(dn_hdid);
+        return -1;
+    }
+
+    return 0;
 
 }
 
@@ -280,6 +334,7 @@ void add_entry(FiMap* fimap, Fi_Tbl* fiTbl) {
 HashLattice * init_hashlattice() {
 
     //maxsize = max dirs * max files
+
     HashLattice* hashlattice = (HashLattice *) malloc(sizeof(HashLattice));
     hashlattice->max = LTTCMX;
     hashlattice->count = 0;
@@ -321,11 +376,15 @@ void make_bridge(Fi_Tbl* fitbl, FiMap* fimap, Dir_Node* dnode,HashLattice* hashl
         hashlattice->count++;
 }
 
-HashBridge* yield_bridge(HashLattice* hashLattice, unsigned char* filename, unsigned int n_len, Dir_Node* root_dnode, char* key_pth) {
-    unsigned char *kbuf = (unsigned char*) sodium_malloc(crypto_shorthash_KEYBYTES);
-    recv_little_hash_key(key_pth, kbuf);
-    //recv_little_hash_key("/home/ujlm/CLionProjects/TagFI/keys/Tech.lhsk",7, kbuf);
+HashBridge* yield_bridge(HashLattice* hashLattice, unsigned char* filename, unsigned int n_len, Dir_Node* root_dnode) {
 
+    unsigned char *kbuf = (unsigned char*) sodium_malloc(crypto_shorthash_KEYBYTES);
+    int dnkeyfd = openat(AT_FDCWD,DNKEYPATH,O_DIRECTORY,O_RDONLY);
+
+    recv_little_hash_key(dnkeyfd, root_dnode->diname, expo_dirnmlen(root_dnode->did), kbuf);
+
+    //recv_little_hash_key("/home/ujlm/CLionProjects/TagFI/keys/Tech.lhsk", 7, kbuf);
+    close(dnkeyfd);
     unsigned long idx = little_hsh_llidx(kbuf, filename, n_len, root_dnode->did) & LTTCMX;
 
     return hashLattice->bridges[idx];
@@ -405,8 +464,13 @@ int filter_dirscan(const struct dirent *entry) {
     return ((entry->d_name[0] == 46)) || (strnlen(entry->d_name, 4) > 3);
 }
 
-
-int map_dir(const char* dir_path, unsigned char* rootdirname, unsigned int dnlen, Dir_Chains* dirchains, HashLattice* hashlattice, Fi_Tbl** fitbl){
+int map_dir(const char* dir_path,
+            unsigned int path_len,
+            unsigned char* rootdirname,
+            unsigned int dnlen,
+            Dir_Chains* dirchains,
+            HashLattice* hashlattice,
+            Fi_Tbl** fitbl) {
 
     int i;
     int j=0;
@@ -414,6 +478,7 @@ int map_dir(const char* dir_path, unsigned char* rootdirname, unsigned int dnlen
 
     // Open the directory and read in the contents
     // Open the directory and read in the contents
+
     struct dirent ***dentrys = (struct dirent***) sodium_malloc(sizeof(struct dirent**));
     int n;
     int dir_cnt = 0;
@@ -482,6 +547,12 @@ int map_dir(const char* dir_path, unsigned char* rootdirname, unsigned int dnlen
     // A unique hashkey is created and stored for the dir node
     mk_little_hash_key(&hkey);
     dump_little_hash_key(hkey,rootdirname,dnlen);
+
+
+    if (make_bridgeanchor(&dirNode_ptr, (char **) &dir_path, path_len) < 0)
+    {
+        perror("Failed making bridge anchor\n");
+    }
 
 
     // For each entry in the root...
@@ -580,5 +651,4 @@ int map_dir(const char* dir_path, unsigned char* rootdirname, unsigned int dnlen
 //    free(dhshno_arr);
 
     return 0;
-
 }

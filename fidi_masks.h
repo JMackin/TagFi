@@ -43,7 +43,8 @@
 #define DENTRYCNT
 #define DROOTDID 576460752303423489 // Root node did, empty save for 1 set leading bit and 1 trailing - 60 bits
 #define DGRPTMPL 576460752303423488 // 1 leading bit and 59 empty bits, template for base-group did
-
+#define DGMEDAID 576460752303423490 // MEDA group id
+#define DGDOCSID 576460752303423492 // DOCS group id
 #define FINMMAXL 256                // Max number of chars allocated for a path title.
 
 /* FileMap Id masks and attributes */
@@ -127,7 +128,10 @@ unsigned long long msk_redir(unsigned long long fiid, unsigned int dirid);
 unsigned int expo_redir(unsigned long long fiid);
 unsigned long long msk_dirgrp(unsigned long long fiid);
 unsigned int expo_dirgrp(unsigned long long fiid, unsigned int digrp);
-
-
+/*
+ *  Dirnode ops
+ * */
+unsigned int expo_dirnmlen(unsigned long long did);
+unsigned int expo_dirbase(unsigned long long did);
 
 #endif //TAGFI_FIDI_MASKS_H
