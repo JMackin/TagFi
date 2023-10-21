@@ -4,7 +4,9 @@
 #include <sys/ioctl.h>
 #include <unistd.h>
 #include <string.h>
+
 #define DNKEYPATH "/home/ujlm/CLionProjects/TagFI/keys"
+
 
 unsigned long long eightchartollong(const unsigned char* in, int wlen) {
     int i;
@@ -41,6 +43,7 @@ void genrandsalt(unsigned long long* expanded_salt) {
 
 
     unsigned long* salt_ptr = (unsigned long*) sodium_malloc(sizeof(unsigned long));
+
     unsigned long* salt_ptrb = (unsigned long*) sodium_malloc(sizeof(unsigned long));
 
 
@@ -92,24 +95,12 @@ void real_hash_keyfully(unsigned char** in, unsigned char** out, size_t inlen, c
 void dn_hdid_str(unsigned char** dn_hash, char** strout) {
 
     sodium_bin2hex(*strout, (crypto_generichash_BYTES*2+1), *dn_hash, crypto_generichash_BYTES);
-
 }
 
-//void two_32_to_64(unsigned char* kout, unsigned long* ttula, unsigned long* ttulb) {
-//
-//    *kout = (*ttula << 32 )^(*ttulb);
-//}
-//
-//void mk_o64o32_short_hashkey(unsigned long long* kout, unsigned long long* ttula, unsigned long* ttulb){
-//    kout = (unsigned long long*) sodium_malloc(4);
-//    sodium_mlock(kout,4);
-//    *kout = (*ttula &576460752169205760) | *ttulb;
-//            // 32-bit mask -- 0b1111111111111111111111111111111;
-//
-//}
 
 void mk_little_hash_key(unsigned char** kout) {
     crypto_shorthash_keygen(*kout);
+    printf(">");
 }
 
 int dump_little_hash_key(unsigned char* kout, unsigned char* name, unsigned int nlen) {
@@ -120,7 +111,7 @@ int dump_little_hash_key(unsigned char* kout, unsigned char* name, unsigned int 
     memcpy(kname,name,nlen);
     memcpy(kname+nlen,".lhsk",6);
 
-    int hkeyout = openat(AT_FDCWD,DNKEYPATH,O_DIRECTORY,O_RDWR);
+    int hkeyout = openat(AT_FDCWD, DNKEYPATH, O_DIRECTORY, O_RDWR);
 
     if(hkeyout < 0){
         fprintf(stderr,"<<%s>>\n",name);
@@ -128,7 +119,7 @@ int dump_little_hash_key(unsigned char* kout, unsigned char* name, unsigned int 
         perror("dump_little_hash_key/hkeyout: ");
     }
 
-    int hkfi = openat(hkeyout,kname, O_CREAT|O_RDWR, S_IRWXU);
+    int hkfi = openat(hkeyout, kname, O_CREAT|O_RDWR, S_IRWXU);
 
     if(hkfi < 0){
 
@@ -183,11 +174,11 @@ void recv_little_hash_key(int dnkeyfd, unsigned char* dirname, unsigned int knml
 }
 
 
-unsigned long long little_hsh_llidx(unsigned char* hkey, unsigned char* tobehshed, unsigned int wlen, unsigned long long xno) {
+unsigned long long little_hsh_llidx(unsigned char* hkey, unsigned char* tobehshed, unsigned int tbh_len, unsigned long long xno) {
 
     unsigned char* outp = (unsigned char*) sodium_malloc(sizeof (unsigned long));
 
-    if (crypto_shorthash(outp, tobehshed, wlen, hkey) != 0){
+    if (crypto_shorthash(outp, tobehshed, tbh_len, hkey) != 0){
         fprintf(stderr, "Something went wrong hashing for an index.\n");
         sodium_free(outp);
         return 1;
@@ -197,6 +188,21 @@ unsigned long long little_hsh_llidx(unsigned char* hkey, unsigned char* tobehshe
     sodium_free(outp);
     return outidx;
 }
+
+//unsigned long long noky_lhsh_lidx(unsigned char* tobehshed, unsigned int wlen, unsigned long xno) {
+//
+//    unsigned char* outp = (unsigned char*) sodium_malloc(sizeof (unsigned long));
+//
+//    if (crypto_shorthash(outp, tobehshed, wlen, NULL) != 0){
+//        fprintf(stderr, "Something went wrong hashing for an index.\n");
+//        sodium_free(outp);
+//        return 1;
+//    }
+//
+//    unsigned long outidx = eightchartollong(outp,crypto_shorthash_KEYBYTES) ^ xno;
+//    sodium_free(outp);
+//    return outidx;
+//}
 
 
 void get_many_big_salts(unsigned long long** bigsaltls, int n){

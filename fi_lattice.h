@@ -5,6 +5,8 @@
 #ifndef TAGFI_FI_LATTICE_H
 #define TAGFI_FI_LATTICE_H
 
+
 void summon_lattice();
+
 
 #endif //TAGFI_FI_LATTICE_H

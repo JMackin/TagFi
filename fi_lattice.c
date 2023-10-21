@@ -11,27 +11,51 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <string.h>
-#include <sys/poll.h>
+#include <sys/epoll.h>
 #include "chkmk_didmap.h"
+#include "lattice_cmds.h"
+#include "latticecomm.h"
+#include "jlm_random.h"
 
-#define DNCONFFI "/home/ujlm/CLionProjects/TagFI/config/dirnodes"
+#define CNFIGPTH "/home/ujlm/CLionProjects/TagFI/config"
+#define DNCONFFI "dirnodes"
 #define SOCKET_NAME "/tmp/9Lq7BNBnBycd6nxy.socket"
 
 
 //void load_dir_targets(){
 //
 //}
+unsigned long UISZ = sizeof(unsigned int);
+unsigned long UCSZ = sizeof(unsigned char);
+
+
+StatFrame* init_stat_frm(StatFrame** status_frm)
+{
+    *status_frm = (StatFrame*) malloc(sizeof(StatFrame));
+    (*status_frm)->status=RESET;
+    (*status_frm)->err_code=IMFINE;
+    (*status_frm)->resp_id=SILNT;
+    (*status_frm)->modr=0;
+
+    return *status_frm;
+}
+
 
 void cleanup(HashLattice* hashlattice,
              Dir_Chains* dirchains,
              Fi_Tbl** tbl_list,
              unsigned char* dnconf_addr,
              size_t dn_size,
+             unsigned char* seqstr_addr,
+             size_t sq_size,
              int* lengths,
              unsigned char** paths,
-             int dn_cnt) {
+             int dn_cnt,
+             const int cnfdir_fd) {
+
     // Cleanup
     munmap(dnconf_addr,dn_size);
+    munmap(seqstr_addr,sq_size);
     destryohashlattice(hashlattice);
     if (tbl_list != NULL) {
        for (int i = 0; i < dn_cnt; i++) {
@@ -48,31 +72,42 @@ void cleanup(HashLattice* hashlattice,
         free(lengths);
         free(paths);
     }
+         if (cnfdir_fd > 0){
+            close(cnfdir_fd);
+        }
 
 }
 
 
-size_t read_conf(unsigned char** dnconf_addr){
+void destroy_metastructures(StatFrame* statFrame,
+                            InfoFrame* infoFrame){
+    free(statFrame);
+
+    if (infoFrame->cmdSeq){
+        free(infoFrame->cmdSeq);
+    }
+    free(infoFrame);
+}
+
+
+size_t read_conf(unsigned char** dnconf_addr, int cnfdir_fd){
     struct stat sb;
     size_t length;
 
-    int dnconf_fd = open(DNCONFFI, O_RDONLY);
-
+    int dnconf_fd = openat(cnfdir_fd, DNCONFFI, O_RDONLY);
     if (dnconf_fd == -1) {
-        fprintf(stderr,"Error opening config file\n");
+        perror("Error opening config file\n");
         return -1;
     }
 
     if (fstat(dnconf_fd, &sb) == -1) {
-
-        fprintf(stderr, "Error stat-ing conf file\n");
+        perror("Error stat-ing conf file\n");
         return -1;
     }
 
     *dnconf_addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, dnconf_fd, 0);
-
     if (*dnconf_addr == MAP_FAILED) {
-        fprintf(stderr, "Error with mmap\n");
+        perror("Error with mmap\n");
         return -1;
     }
 
@@ -83,11 +118,11 @@ size_t read_conf(unsigned char** dnconf_addr){
 //        return -1;
 //    }
 
-
     close(dnconf_fd);
 
     return sb.st_size;
 }
+
 
 int nodepaths(unsigned char* dn_conf_addr, int** lengths, unsigned char*** paths){
 
@@ -130,216 +165,302 @@ int extract_name(const unsigned char* path, int length) {
 
 }
 
-int spin_up(unsigned char** cbuffer, unsigned long** bigbuffer){
+StatFrame* spin_up(unsigned int** iarr,
+            unsigned char** carr,
+            unsigned char** buffer,
+            unsigned char** respbuffer,
+            StatFrame** status_frm,
+            InfoFrame** info_frm,
+            Seq_Tbl** seq_tbl,
+            const int* cnfdir_fd){
 
-    int connection_socket;
-    ssize_t ret;
-    const int buf_len = 8;
-    const int cbuf_len = 8;
-    unsigned char cout = 0;
-    int res;
+    /*
+     * INFO AND STATUS VARS
+     * */
 
-    int cin_len;
-    size_t cout_len;
-    char* last_idx;
-    int i = 0;
-    int data_socket;
-    int down_flag = 0;
-    int end_flag = 0;
+    Cmd_Seq* cmd_seq;           // Request and Response Frame
+    *info_frm = init_info_frm(info_frm); // Request/Response Info Frame
+
+
     int exit_flag = 0;
-    int resp_flag = 0;
-    int char_follow = 0;
-    char cin;
-    int cbuf_readin_len = 0;
-    char buffer[9] = {0};
-    *cbuffer = (unsigned char*) calloc(cbuf_len,sizeof(unsigned char));
-    *bigbuffer = (unsigned long*) calloc(8,sizeof(unsigned long));
-    char respbuffer[9] = {0};
+    int i = 0; int k; ssize_t ret;
+    int resp_len = 0;
+
+
+    /*
+     * BUFFERS INIT
+     * */
+
+    const int buf_len = 256; const int arrbuf_len = 128;
+    *respbuffer = (unsigned char*) calloc((buf_len), sizeof(unsigned char));
+    *buffer = (unsigned char*) calloc(buf_len, sizeof(unsigned char));
+    *iarr = (unsigned int*) calloc(arrbuf_len, sizeof(unsigned int));
+    *carr = (unsigned char*) calloc(arrbuf_len, sizeof(unsigned char));
+
+
+    /*
+     * SOCKET INIT
+     * */
 
     struct sockaddr_un name;
+    int connection_socket; int data_socket;
+
     name.sun_family = AF_UNIX;
     strncpy(name.sun_path, SOCKET_NAME, sizeof(name.sun_path) - 1);
 
     connection_socket = socket(AF_UNIX, SOCK_SEQPACKET, 0);
-
     if (connection_socket == -1) {
         perror("socket");
-        return -1;
+        setErr(status_frm,BADCON,'I');
+        setAct(status_frm,GBYE,0,0);
+        return *status_frm;
     }
     memset(&name, 0, sizeof(name));
-
     name.sun_family = AF_UNIX;
-
     strncpy(name.sun_path, SOCKET_NAME, sizeof(name.sun_path) - 1);
 
-    ret = bind(connection_socket, (const struct sockaddr *) &name,
-               sizeof(name));
-
-
+    ret = bind(connection_socket, (const struct sockaddr *) &name,sizeof(name));
     if (ret == -1) {
         perror("bind");
-        return -1;
+        setErr(status_frm,BADCON,'B');// 76 = B -> bind step
+        setAct(status_frm,GBYE,0,0);
+        return *status_frm;
     }
 
+    int  efd = epoll_create(1);
+    if (efd == -1){
+        perror("epoll");
+        setErr(status_frm,EPOLLE,'C');
+        return *status_frm;
+    }
+
+    struct epoll_event* epevent;
+    epevent = malloc(sizeof(struct epoll_event)*3);
+    epevent->events=EPOLLIN|EPOLLOUT;
 
 
+    /*
+     * LISTEN AND WAIT FOR CMD
+     * */
     while(!exit_flag) {
         i = 0;
-        end_flag = 0;
-        bzero(buffer,8);
-        bzero(respbuffer,8);
 
-        printf("<Outer>\n");
-        ret = listen(connection_socket, 20);
+        ret = listen(connection_socket, 20);    // LISTEN 'L'
         if (ret == -1) {
-            perror("listen");
-            return -1;
+            perror("listen: ");
+            setErr(status_frm,BADCON,'L'); // 76 = L -> listen step
+            setAct(status_frm,GBYE,0,0);
+            return *status_frm;
         }
+        setSts(status_frm,LISTN,0);
 
-        data_socket = accept(connection_socket, NULL, NULL);
+        epoll_ctl(efd,EPOLL_CTL_ADD, data_socket, epevent);
+
+        data_socket = accept(connection_socket, NULL, NULL);    // ACCEPT 'A'
         if (data_socket == -1) {
-            perror("accept");
-            return -1;
+            perror("accept: ");
+            setErr(status_frm,BADCON,'B');// 65 = 'A' -> accept step
+            return *status_frm;
+        }
+        (*status_frm)->status <<= 1;
+
+        k = 0;
+        if (epoll_wait(efd,epevent,2,1000)>0) {
+            do{
+                if ((epevent->events & EPOLLERR) == EPOLLERR){
+                    perror("Epoll at read\n");
+                    fprintf(stderr,"> %d\n",(epevent->events));
+                    setErr(status_frm,EPOLLE,k++);
+                    if ((*status_frm)->err_code == EPOLLE  && k > 2){
+                        setErr(status_frm,EPOLLE,EPOLLERR);
+                        setAct(status_frm,GBYE,0,0);
+                        exit_flag = 1;
+                        break;
+                    }
+                }
+            }while ((epevent->events & EPOLLIN )!= EPOLLIN);
         }
 
-        /* Wait for next data packet. */
-        ret = read(data_socket, buffer, buf_len);
+        ret = read(data_socket, *buffer, buf_len);  // READ 'R'
+        if(ret == -1) {
+            perror("read: ");
+            setErr(status_frm,BADSOK,'R');
+            return *status_frm;
+        }
+        (*status_frm)->status <<= 1;
 
 
-        while (!end_flag) {
-            printf("<Inner>\n");
-            if (i > buf_len-1){
-                end_flag = 1;
-                break;
-            }
+        /*
+         * UPON CMD RECEIPT
+         * */
+        *info_frm = parse_req(*buffer, &cmd_seq, *info_frm, status_frm); // PARSE
+        if ((*status_frm)->err_code) {
+            fprintf(stderr,"Error processing request: %d\n", (*status_frm)->err_code);
+        }
 
-            printf("%d\n",buffer[i]);
-            printf("i = %d\n",i);
+        /* SHUTDOWN */
+        if ((*status_frm)->act_id == GBYE) {
+            setSts(status_frm, SHTDN, 0);
+            exit_flag = 1;
+        }
+
+        /* SAVE COMMAND RECIEVED */
+        if ((*status_frm)->act_id == SVSQ){
+            save_seq(cmd_seq,seq_tbl,*cnfdir_fd);
+        }
+
+        /* RESPONSE TRIGGERED */
+        if ((*status_frm)->resp_id){
+            setSts(status_frm,RESPN,0);
+            ret = write(data_socket, respbuffer, resp_len);
             if (ret == -1) {
-                perror("read");
-                return -1;
+                setErr(status_frm,BADSOK,'W'); // W = write op
+                perror("write");
+                return *status_frm;
             }
-
-            switch (buffer[i]) {
-                case 38: //&
-                    end_flag = 1;
-                    break;
-                case 57: //9
-                    memccpy(respbuffer,"Bye\0&",'&',8);
-                    cout_len = 8;
-                    resp_flag = 1;
-                    down_flag = 1;
-                    break;
-                case 11:
-                    char_follow = 1;
-                    i++;
-                    cin_len = buffer[i] + 1;
-                    ret = read(data_socket, *cbuffer, cin_len);
-                    break;
-                case 90: //Z
-                    resp_flag = 1;
-                    memccpy(respbuffer,"foobar\0&",'&',8);
-                    cout_len = 8;
-                    break;
-                default:
-                    break;
-            }
-
-            if (resp_flag) {
-                ret = write(data_socket, respbuffer, cout_len);
-                if (ret == -1) {
-                    perror("write");
-                    return -1;
-                }
-                resp_flag = 0;
-//                respbuffer = memset(*respbuffer,0,cout_len);
-            }
-
-
-            if (char_follow) {
-                for (int k = 0; k < cin_len; k++) {
-                    putchar(*(*cbuffer + k));
-                }
-                char_follow = 0;
-            }
-            i++;
-
-            if (down_flag && end_flag){
-                exit_flag = 1;
-            }
-
         }
-        end_flag = 0;
+        i++;
 
-//bzero(buffer,8);
 
+        /* CLOSE SOCKET */
+        bzero(*buffer,buf_len);
+        bzero(*respbuffer,buf_len);
+        bzero(*iarr,arrbuf_len);
+        bzero(*carr,arrbuf_len);
         close(data_socket);
 
-        /* Close socket. */
-        if (exit_flag) {
-
-            close(connection_socket);
-            /* Unlink the socket. */
-            unlink(SOCKET_NAME);
+        if ((*status_frm)->err_code && (*status_frm)->act_id==GBYE)
+        {
+            exit_flag = 1;
+            serrOut(status_frm);
         }
-    }
-    return 0;
+    }// END WHILE !EXITFLAG
+
+
+    /* EXIT */
+    close(connection_socket);
+    unlink(SOCKET_NAME);
+    return *status_frm;
 }
 
-void summon_lattice(){
+void summon_lattice() {
+
+    InfoFrame *info_frm;
+    StatFrame *status_frm;
+    status_frm = init_stat_frm(&status_frm);
 
     int naclinit = sodium_init();
-    if( naclinit != 0){
-        fprintf(stderr, "Sodium init failed: %d",naclinit);
+    if (naclinit != 0) {
+        fprintf(stderr, "Sodium init failed: %d", naclinit);
+
     }
 
-    Dir_Chains* dirchains = init_dchains();
-    HashLattice* hashlattice = init_hashlattice();
+    int res = 0; int i =0;
+    unsigned int seqtbl_sz;  // Sequence Table size
+    unsigned char *seqstr_addr; // Stored sequences memory mapping
 
-    unsigned char* dn_conf;
-    int dn_cnt;
-    int* lengths;
-    int nm_len;
-    unsigned char** paths;
-//char * buffer;
-    unsigned char* cbuffer;
-    char* respbuffer;
-    unsigned long *bigbuffer;
+    unsigned char *dn_conf; // Dirnode config memory mapping
+    int dn_cnt;             // DirNode count
+    unsigned char **paths;  // DirNode filepaths
+    int *lengths;           // DirNode filepath lengths
+    int nm_len;             // Iterating variable for DirNode name
 
-
-    size_t dn_size = read_conf(&dn_conf);
-    if (dn_size == -1) {
-        cleanup(hashlattice,dirchains,NULL,dn_conf,dn_size,NULL, NULL, 0);
-        exit(-1);
-    }
-    dn_cnt = nodepaths(dn_conf, &lengths, &paths);
-    Fi_Tbl** tbl_list = (Fi_Tbl**) calloc(dn_cnt,sizeof(Fi_Tbl*));
-    int res = 0;
-    for (int i = 0; i < dn_cnt; i++){
-        nm_len = extract_name(*(paths+i),*(lengths+i));
-        res = map_dir((const char*) *(paths+i),nm_len,(*(paths+i)+nm_len),(*(lengths+i)-nm_len),dirchains,hashlattice,&(tbl_list[i]));
-        printf(">>%d\n",res);
-    }
+    unsigned char *buffer;       // Incoming commands
+    unsigned int *iarr_buf;     // Incoming int strings
+    unsigned char *carr_buf;     // Incoming int strings
+    unsigned char *respbuffer;  // Outgoing responses
 
 
-    //printf("\n\nCOUNT: %d",fitbl->count);
+    do {
+        /*
+        * STRUCTURES & CONFIG
+        **/
+        //  DirNode chains
+        Dir_Chains *dirchains = init_dchains();
+        //  HashBridge lattice
+        HashLattice *hashlattice = init_hashlattice();
+        //  Size of config file in bytes
+        Seq_Tbl *seqTbl;
+        init_seqtbl(&seqTbl, 32);
+        int cnfdir_fd = openat(AT_FDCWD, CNFIGPTH, O_RDONLY | O_DIRECTORY);
+        if (cnfdir_fd == -1) {
+            perror("Error in fd: cnfdir_fd: %d");
+            setErr(&status_frm, FIFAIL, 'd'); // 'd' = confid directory
+            setAct(&status_frm, GBYE, 0, 0);
+            cleanup(hashlattice, dirchains, NULL,
+                    NULL, 0, NULL, 0,
+                    NULL, NULL, 0, 0);
+            serrOut(&status_frm);
+            break;
+        }
 
-    if (spin_up(&cbuffer, &bigbuffer) < 0) {
+        size_t dn_size = read_conf(&dn_conf, cnfdir_fd);
 
-        fprintf(stderr,"Failure");
-    }
-//    if(*buffer != '\0'){
-//        free(buffer);
-//    }
-    free(cbuffer);
-//    if(*respbuffer != '\0') {
-//        free(respbuffer);
-//    }
-    if(*bigbuffer != '\0') {
-        free(bigbuffer);
-    }
+        if (dn_size == -1) {
+            perror("Error dn_conf: ");
+            setErr(&status_frm, BADCNF, 0); // 11 = dirnode conf
+            setAct(&status_frm, GBYE, 0, 0);
+            cleanup(hashlattice, dirchains, NULL,
+                    dn_conf, dn_size, NULL, 0,
+                    NULL, NULL, 0, cnfdir_fd);
+            serrOut(&status_frm);
+            break;
+        }    //    if (sq_size == -1 ) {
+        //        perror("Error seqstr_addr: ");
+        //        close(cnfdir_fd);
+        //        cleanup(hashlattice, dirchains, NULL,
+        //                dn_conf, dn_size, seqstr_addr, sq_size,
+        //                NULL, NULL, 0);
+        //        exit(-1);
+        //    }    //  Number of DirNodes
 
-    cleanup(hashlattice, dirchains, tbl_list, dn_conf, dn_size, lengths, paths, dn_cnt);
+        dn_cnt = nodepaths(dn_conf, &lengths, &paths);
+        //  Array of FileTables connected to DirNodes
+        Fi_Tbl **tbl_list = (Fi_Tbl **) calloc(dn_cnt, sizeof(Fi_Tbl *));
+
+
+        /*
+        *  INIT
+        **/
+        for (i = 0; i < dn_cnt; i++) {
+            nm_len = extract_name(*(paths + i), *(lengths + i));
+            //  Build structures and map each DirNode.
+            if (map_dir((const char *) *(paths + i),
+                        nm_len,
+                        (*(paths + i) + nm_len),
+                        (*(lengths + i) - nm_len),
+                        dirchains,
+                        hashlattice,
+                        &(tbl_list[i])) < 0) {
+                cleanup(hashlattice, dirchains, tbl_list, dn_conf, dn_size, NULL, 0, lengths, paths, dn_cnt, cnfdir_fd);
+                perror("DirNode mapping failed\n");
+                setErr(&status_frm, MISMAP, 0);
+                setAct(&status_frm, GBYE, 0, 0);
+                serrOut(&status_frm);
+                destroy_cmdstructures(buffer, respbuffer, carr_buf, iarr_buf, seqTbl);
+                destroy_metastructures(status_frm, info_frm);
+                return;
+            }  // -1 For failure, 0 for success
+        }
+
+
+        /*
+        *  EXECUTE SERVER
+        */
+        status_frm = spin_up(&iarr_buf, &carr_buf, &buffer, &respbuffer, &status_frm, &info_frm, &seqTbl, &cnfdir_fd);
+        if (status_frm->err_code) {
+            fprintf(stderr, "Failure:"
+                            "\nCode: %d"
+                            "\nAct id: %d"
+                            "\nModr: %c\n", status_frm->status, status_frm->act_id, status_frm->modr);
+        }
+
+
+        /* CLEANUP */
+        destroy_cmdstructures(buffer, respbuffer, carr_buf, iarr_buf, seqTbl);
+        cleanup(hashlattice, dirchains, tbl_list, dn_conf, dn_size, NULL, 0, lengths, paths, dn_cnt, cnfdir_fd);
+
+    } while (status_frm->status != SHTDN);
+    destroy_metastructures(status_frm, info_frm);
 
 }
-

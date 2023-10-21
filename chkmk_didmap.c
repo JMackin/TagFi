@@ -17,6 +17,8 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <sys/time.h>
+
+
 #define DNKEYPATH "/home/ujlm/Code/Clang/C/TagFI/keys"
 
 
@@ -101,25 +103,6 @@ Dir_Chains* init_dchains() {
     free(init_dnodes);
     return dirchains;
 }
-
-
-//lor: 0=left/docs, 1=right/media
-//void travel_dchains(Dir_Node* dnode, unsigned char lor, unsigned char steps) {
-//
-//    if (steps > 0) {
-//        dnode = (lor) ? dnode->left : dnode->right;
-//        steps--;
-//        travel_dchains(dnode, lor, steps);
-//    }
-//}
-
-////lor: 0=left/docs, 1=right/media
-//void walk_dchains(Dir_Node * dnode, unsigned char lor, unsigned char steps) {
-//    while (steps > 0){
-//        dnode = (lor) ? (dnode)->left : (dnode)->right;
-//        steps--;
-//    }
-//}
 
 void travel_dchains(Dir_Chains* dirChains, unsigned int lor, unsigned char steps) {
 
@@ -242,9 +225,9 @@ int make_bridgeanchor(Dir_Node** dirnode, char** path, unsigned int pathlen) {
     sodium_free(dn_hash);
     close(dnkeyfd);
 
-    int diranch = openat(dnfd,(char*) dn_hdid,O_CREAT|O_RDWR, S_IRWXU);
+    int diranch = openat(dnfd, (char*) dn_hdid, O_CREAT|O_RDWR, S_IRWXU);
 
-    write(diranch,path,pathlen);
+    write(diranch, *path, (pathlen+expo_dirnmlen((*dirnode)->did)));
     fsync(diranch);
 
     if (diranch < 0 )
@@ -355,7 +338,7 @@ void make_bridge(Fi_Tbl* fitbl, FiMap* fimap, Dir_Node* dnode,HashLattice* hashl
         fprintf(stderr, "Hash lattice full\n");
     }
 
-    HashBridge* hshbrg = (HashBridge*) sodium_malloc(sizeof(HashBridge));
+    HashBridge* hshbrg = (HashBridge*) malloc(sizeof(HashBridge));
 
     unsigned long idx = little_hsh_llidx(hkey, fimap->finame, expo_finmlen(fimap->fiid), dnode->did) & LTTCMX;
 
@@ -383,7 +366,6 @@ HashBridge* yield_bridge(HashLattice* hashLattice, unsigned char* filename, unsi
 
     recv_little_hash_key(dnkeyfd, root_dnode->diname, expo_dirnmlen(root_dnode->did), kbuf);
 
-    //recv_little_hash_key("/home/ujlm/CLionProjects/TagFI/keys/Tech.lhsk", 7, kbuf);
     close(dnkeyfd);
     unsigned long idx = little_hsh_llidx(kbuf, filename, n_len, root_dnode->did) & LTTCMX;
 
@@ -392,7 +374,7 @@ HashBridge* yield_bridge(HashLattice* hashLattice, unsigned char* filename, unsi
 
 void destoryhashbridge(HashBridge* hashbridge){
     sodium_free(hashbridge->unid);
-    sodium_free(hashbridge);
+    free(hashbridge);
 }
 
 void destryohashlattice(HashLattice* hashlattice) {
@@ -424,8 +406,6 @@ void destroy_tbl(Fi_Tbl* fitbl) {
     if (fitbl->count > 0) {
         fprintf(stderr, "Entry destruction failed. Table count: %d\n", fitbl->count);
     }
-    //free(fitbl->entries);
-    //free(fitbl);
 }
 
 void destroy_chains(Dir_Chains* dirChains) {
@@ -477,7 +457,6 @@ int map_dir(const char* dir_path,
     int k=0;
 
     // Open the directory and read in the contents
-    // Open the directory and read in the contents
 
     struct dirent ***dentrys = (struct dirent***) sodium_malloc(sizeof(struct dirent**));
     int n;
@@ -508,13 +487,11 @@ int map_dir(const char* dir_path,
         }
         free((*dentrys)[i]);
     }
-//    free(*dentrys);
+    free(*dentrys);
 
     // Alloc arrays for file/dir hash value (assigned random num), and id number derived from inode and hash value.
     unsigned long** fhshno_arr = (unsigned long**) calloc((n-dir_cnt),sizeof(unsigned long*));
     unsigned long long* haidarr = (unsigned long long*) calloc((n-dir_cnt),sizeof(unsigned long long));
-    //unsigned long long** dhshno_arr = (unsigned long long**) calloc(dir_cnt, sizeof(unsigned long long*));
-    //unsigned long long* dhaidarr = (unsigned long long*) calloc(dir_cnt, sizeof(unsigned long long));
 
     // Vars for root, i.e. the directory currently being mapped
     unsigned long long rootiid;
@@ -524,22 +501,17 @@ int map_dir(const char* dir_path,
     // Gen numbers for the root first, to be used in the creation of values for its entries
     mk_one_dir_hashes(&rootiid,&roothshno,rootino);
     // Gen numbers for the entries
-    //mk_hashes(haidarr, fhshno_arr, dhaidarr, dhshno_arr, idarr, n, dir_cnt, entype);
     mk_hashes(haidarr, fhshno_arr, idarr, n, dir_cnt, entype);
 
     // Initialize file table assigned to the root
     init_fitbl(&fitbl,HTSIZE);
-    // Initialize double chain structures for directories
-    //Dir_Chains* dirchains = init_dchains();
-    // Initialize hashlattice to connect file tables to root
-    //HashLattice* hashlattice = init_hashlattice();
 
     // Each entry (file) is represented by a Filemap containing fiid, fhshno, finame
     FiMap* fimap_ptr;
     // Each dir node is a link in the dir chains
     Dir_Node* dirNode_ptr;
 
-    unsigned char* hkey = (unsigned char*) malloc(sizeof(unsigned char)*crypto_shorthash_KEYBYTES);
+    unsigned char* hkey = (unsigned char*) sodium_malloc(sizeof(unsigned char)*crypto_shorthash_KEYBYTES);
 
     // Root node is created and added to the chain
     dirNode_ptr = add_dnode(rootiid,rootdirname,dnlen,1,dirchains);
@@ -560,14 +532,6 @@ int map_dir(const char* dir_path,
 
         // If it's a directory
         if (entype[i] == TYPDIR){
-
-//            printf("DIR: %s :", farr[i]);
-//            printf("\n%llu\n",dhaidarr[k]);
-//            printf("%llu\n\n",((((*dhshno_arr[k])>>DMASKSHFT))^((dhaidarr[k])>>DMASKSHFT)));
-
-            // Make and add the entry to the chain as a node
-            //add_dnode(dhaidarr[k],farr[i],nlens[i],1,dirchains);
-            //sodium_free(dhshno_arr[k]);
 
             k++;
         }
@@ -636,19 +600,14 @@ int map_dir(const char* dir_path,
  */
 
     // Cleanup
-//    destryohashlattice(hashlattice);
-//    destroy_tbl(fitbl);
-//    destroy_chains(dirchains);
-//    free(dirchains);
     sodium_free(dentrys);
+    sodium_free(hkey);
     free(farr);
     free(idarr);
     free(entype);
     free(nlens);
     free(haidarr);
     free(fhshno_arr);
-//    free(dhaidarr);
-//    free(dhshno_arr);
 
     return 0;
 }

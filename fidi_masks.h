@@ -119,7 +119,6 @@
 unsigned long clip_to_32(unsigned long num);
 unsigned long expo_fino(unsigned long key, unsigned long long fiid);
 unsigned long long msk_fino(unsigned long rndm_no, unsigned long ino);
-unsigned long expo_fino(unsigned long key, unsigned long long fiid);
 unsigned long long msk_finmlen(unsigned long fiid, unsigned int fnlen);
 unsigned int expo_finmlen(unsigned long long fiid);
 unsigned long long msk_format(unsigned long long fiid, unsigned int fform);

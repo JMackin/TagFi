@@ -5,22 +5,18 @@
 #ifndef TAGFI_CHKMK_DIDMAP_H
 #define TAGFI_CHKMK_DIDMAP_H
 
-typedef enum FITYPES {
-    //( statbuf->st_mode & S_IFMT )>>13
-    TFIO = 0, //FIFO/pipe
-    TCHR = 1, //character device
-    TDIR = 2, //directory
-    TBLK = 3, //block device
-    TREG = 4, //regular file
-    TSYM = 5, //symlink
-    TSCK = 6 //socket
-} fitypes;
+//typedef enum FITYPES {
+//    //( statbuf->st_mode & S_IFMT )>>13
+//    TFIO = 0, //FIFO/pipe
+//    TCHR = 1, //character device
+//    TDIR = 2, //directory
+//    TBLK = 3, //block device
+//    TREG = 4, //regular file
+//    TSYM = 5, //symlink
+//    TSCK = 6 //socket
+//} fitypes;
 
 typedef struct stat* stptr;
-
-fitypes chk_fd(stptr statbuf, char* dir_path, int opt);
-//void stat_fd(char* dir_path, stptr statptr);
-
 
 typedef struct FiMap{
     unsigned long long fiid;
@@ -61,24 +57,61 @@ typedef struct HashLattice {
 } HashLattice;
 
 
-int map_dir(const char* dir_path, unsigned int path_len,unsigned char* dirname, unsigned int dnlen, Dir_Chains* dirchains, HashLattice* hashlattice, Fi_Tbl** fitbl);
+int map_dir(const char* dir_path,
+            unsigned int path_len,
+            unsigned char* dirname,
+            unsigned int dnlen,
+            Dir_Chains* dirchains,
+            HashLattice* hashlattice,
+            Fi_Tbl** fitbl);
+
 Dir_Chains* init_dchains();
+
 HashLattice * init_hashlattice();
-FiMap* mk_fimap(unsigned int nlen, unsigned char* finame,
-                unsigned long long fiid, unsigned  long long did,
+
+FiMap* mk_fimap(unsigned int nlen,
+                unsigned char* finame,
+                unsigned long long fiid,
+                unsigned  long long did,
                 unsigned long fhshno);
+
 unsigned int getidx(FiMap* fimap);
-void add_entry(FiMap* fimap, Fi_Tbl* fiTbl);
-void travel_dchains(Dir_Chains* dirChains, unsigned int lor, unsigned char steps);
-void goto_chain_tail(Dir_Chains* dirChains, unsigned int lor);
-Dir_Node* add_dnode(unsigned long long did, unsigned char* dname, unsigned short nlen, unsigned int mord, Dir_Chains* dirchains);
-HashBridge* yield_bridge(HashLattice* hashLattice, unsigned char* filename, unsigned int n_len, Dir_Node* root_dnode);
+
+void add_entry(FiMap* fimap,
+               Fi_Tbl* fiTbl);
+
+void travel_dchains(Dir_Chains* dirChains,
+                    unsigned int lor,
+                    unsigned char steps);
+
+void goto_chain_tail(Dir_Chains* dirChains,
+                     unsigned int lor);
+
+Dir_Node* add_dnode(unsigned long long did,
+                    unsigned char* dname,
+                    unsigned short nlen,
+                    unsigned int mord,
+                    Dir_Chains* dirchains);
+
+HashBridge* yield_bridge(HashLattice* hashLattice,
+                         unsigned char* filename,
+                         unsigned int n_len,
+                         Dir_Node* root_dnode);
+
 void destoryhashbridge(HashBridge* hashbridge);
+
 void destryohashlattice(HashLattice* hashlattice);
-void destroy_ent(FiMap* fimap, Fi_Tbl* fiTbl);
+
+void destroy_ent(FiMap* fimap,
+                 Fi_Tbl* fiTbl);
+
 void destroy_tbl(Fi_Tbl* fitbl);
+
 void destroy_chains(Dir_Chains* dirChains);
-int make_bridgeanchor(Dir_Node** dirnode, char** path, unsigned int pathlen);
+
+int make_bridgeanchor(Dir_Node** dirnode,
+                      char** path,
+                      unsigned int pathlen);
 
 /**
  *     Dir nodeno begin at 8(0b1000) and are masked to id their parent base (media: 0b100 doc: 0b010)
