@@ -5,17 +5,6 @@
 #ifndef TAGFI_CHKMK_DIDMAP_H
 #define TAGFI_CHKMK_DIDMAP_H
 
-//typedef enum FITYPES {
-//    //( statbuf->st_mode & S_IFMT )>>13
-//    TFIO = 0, //FIFO/pipe
-//    TCHR = 1, //character device
-//    TDIR = 2, //directory
-//    TBLK = 3, //block device
-//    TREG = 4, //regular file
-//    TSYM = 5, //symlink
-//    TSCK = 6 //socket
-//} fitypes;
-
 typedef struct stat* stptr;
 
 typedef struct FiMap{
@@ -55,6 +44,10 @@ typedef struct HashLattice {
     unsigned long count;
     unsigned long max;
 } HashLattice;
+
+typedef HashLattice* Lattice;
+typedef Dir_Chains* DChains;
+
 
 
 int map_dir(const char* dir_path,
@@ -113,50 +106,58 @@ int make_bridgeanchor(Dir_Node** dirnode,
                       char** path,
                       unsigned int pathlen);
 
+unsigned int gotonode(unsigned long long did, Dir_Chains* dchns);
+
+void yield_dnhsh(Dir_Node** dirnode, unsigned char** dn_hash);
+
 /**
- *     Dir nodeno begin at 8(0b1000) and are masked to id their parent base (media: 0b100 doc: 0b010)
- *    MEDIA dirs will be chained LEFT of the head
- *    DOC dirs will be chained RIGHT of the head
- *    nodes are doubly-linked
- *    each node points to their respective fitbl
- *    each node also points to a hash bridge structure, from which
- *    file indexes can be extracted given the directory and file name
- *    if the index is not already known#@T 9ra
  *
- *    In this way a file table can be access from a directory node
- *    but not vice-versa. However the filemap IDs are masked
- *    with a number to ID their resident directory.
- *
- *    This goes the same for the hashlattices
- *    which are meant to provide an easy translation
- *    from a file name to an index, as well as well as natural crossing from
- *    directory to file node, especially if accessing from several levels
- *    away or when the files hashno and index are unknown.
- *
- *    Dir nodes are accessed with "vessel" a dir node pointer
- *    that walks up and down the chains. The vessel can switch
- *    between the two chains by crossing over the head node.
- *    The tails nodes do not link anywhere and are pointed to
- *    by the most recently added directory on a given chain
- *    and serve to provide an unambiguous end point.
+ *<br>    Dir nodeno begin at 8(0b1000) and are masked to id their parent base
+ * <br>  (media: 0b100 doc: 0b010)
+ * <br>
+ *<br>   MEDIA dirs will be chained LEFT of the head
+ *<br>   DOC dirs will be chained RIGHT of the head
+ * <br>
+ *<br>   nodes are doubly-linked
+ *<br>   each node points to their respective fitbl
+ *<br>   each node also points to a hash bridge structure, from which
+ *<br>   file indexes can be extracted given the directory and file name
+ *<br>   if the index is not already known
+ *<br>
+ *<br>   In this way a file table can be access from a directory node
+ *<br>   but not vice-versa. However the filemap IDs are masked
+ *<br>   with a number to ID their resident directory.
+ *<br>
+ *<br>   This goes the same for the hashlattices
+ *<br>   which are meant to provide an easy translation
+ *<br>   from a file name to an index, as well as well as natural crossing from
+ *<br>   directory to file node, especially if accessing from several levels
+ *<br>   away or when the files hashno and index are unknown.
+ *<br>
+ *<br>   Dir nodes are accessed with "vessel" a dir node pointer
+ *<br>   that walks up and down the chains. The vessel can switch
+ *<br>   between the two chains by crossing over the head node.
+ *<br>   The tails nodes do not link anywhere and are pointed to
+ *<br>   by the most recently added directory on a given chain
+ *<br>   and serve to provide an unambiguous end point.
  **/
 
 /**
+ * \verbatim
+ *
 
-                         (vessel)
-                       R/   *    \L
-                      /  (head)   \
-                          /  \
-           {ftbl}   (media)  (docs)  {ftbl}
-            ^    \     /   |      \   /  ^
-            |     (dir)  -(*)-  (dir)    |
-            |     /   \         /   \    |
-          <hshltc>   (...)  (...)    <hshltc>
-                      |        |
-                   (tail)   (tail)
+                   (vessel)
+                 R/   *    \L
+                 /  (head)  \
+                    /  \
+     {ftbl}   (media)  (docs)  {ftbl}
+      ^    \     /   |      \   /  ^
+      |     (dir)  -(*)-  (dir)    |
+      |     /   \         /   \    |
+      [hltc]  (...)    (...)   [hltc]
+                |        |
+             (tail)   (tail)
+
 **/
-
-
-
 
 #endif //TAGFI_CHKMK_DIDMAP_H

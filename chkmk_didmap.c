@@ -96,7 +96,6 @@ Dir_Chains* init_dchains() {
     init_dnodes[1]->right = mk_tailnode();
     init_dnodes[2]->left = mk_tailnode();
 
-
     dirchains->dir_head = init_dnodes[0];
     dirchains->vessel = dirchains->dir_head;
 
@@ -140,21 +139,43 @@ void goto_chain_tail(Dir_Chains* dirChains, unsigned int lor){
     }
 }
 
-//lor: 0=left/docs, 1=right/media,
-void search_dchns_byino(Dir_Node* dnode, unsigned long long did, unsigned int lor){
-    while ((dnode->did) != did){
-
-        *dnode = (lor) ? *dnode->left : *dnode->right;
-    }
-}
 
 void traverse_dchains(Dir_Node* dnode) {
 
     while(dnode->did != (DROOTDID)){
         printf("%s\n", dnode->diname);
         dnode = dnode->left;
-
     }
+}
+
+unsigned int gotonode(unsigned long long did, Dir_Chains* dchns){
+
+    unsigned int lor = expo_dirbase(did);
+    unsigned int dnpos = 0;
+
+    dchns->vessel = dchns->dir_head;
+    if (lor) {
+        do {
+            dchns->vessel = dchns->vessel->right;
+            dnpos++;
+        } while (dchns->vessel->did != did && dchns->vessel->did != 0);
+
+        if (!(did && dchns->vessel->did)) {
+            return -1;
+        }
+        //DOCS
+    }
+    else {
+        do {
+            dchns->vessel = dchns->vessel->left;
+            dnpos++;
+        } while (dchns->vessel->did != did && dchns->vessel->did != 0);
+
+        if (!(dchns->vessel->did)) {
+            return -1;
+        }
+    }
+    return dnpos;
 }
 
 //mord: 0=docs, 1=media
@@ -166,7 +187,7 @@ Dir_Node* add_dnode(unsigned long long did, unsigned char* dname, unsigned short
     dnode->diname = memcpy(dnode->diname, dname, nlen * sizeof(unsigned char));
     unsigned long cnt = ((base->did) & DGCNTMASK) >> DGCNTSHFT;
 
-    dnode->did = did | ((nlen) << DNAMESHFT) | ((mord) ? MEDABASEM : DOCSBASEM) | ++cnt;
+    dnode->did = (did | ((nlen) << DNAMESHFT) | ((mord) ? MEDABASEM : DOCSBASEM) | ++cnt);
     base->did += (64);
 
     dirchains->vessel = dirchains->dir_head;
@@ -183,12 +204,30 @@ Dir_Node* add_dnode(unsigned long long did, unsigned char* dname, unsigned short
         dnode->right = dirchains->vessel;
         dnode->left = dirchains->vessel->left;
         dirchains->vessel->left = dnode;
+    }
+    return dnode;
+}
 
+void yield_dnhsh(Dir_Node** dirnode, unsigned char** dn_hash) {
+
+    int dnkeyfd = openat(AT_FDCWD,DNKEYPATH,O_DIRECTORY);
+
+    if (dnkeyfd < 0 )
+    {
+        perror("make_bridgeanchor/dnkeyfd");
+        close(dnkeyfd);
     }
 
-    return dnode;
+    *dn_hash = (unsigned char*) sodium_malloc(crypto_generichash_BYTES);
+    unsigned char* dkey = (unsigned char*) sodium_malloc(crypto_shorthash_KEYBYTES);
 
+    recv_little_hash_key(dnkeyfd,((*dirnode)->diname),expo_dirnmlen((*dirnode)->did),dkey);
+    real_hash_keyfully((&(*dirnode)->diname), dn_hash, expo_dirnmlen((*dirnode)->did), (const unsigned char **) &dkey, crypto_shorthash_KEYBYTES);
+
+    sodium_free(dkey);
+    close(dnkeyfd);
 }
+
 
 int make_bridgeanchor(Dir_Node** dirnode, char** path, unsigned int pathlen) {
 
@@ -304,7 +343,7 @@ void add_entry(FiMap* fimap, Fi_Tbl* fiTbl) {
         }
 
         fimap->fhshno = *hshno;
-        fimap->fiid = *hshno ^ *fino;
+        fimap->fiid = (*hshno>>1 ^ *fino>>1);
 
         sodium_free(hshno);
         sodium_free(fino);
@@ -354,7 +393,8 @@ void make_bridge(Fi_Tbl* fitbl, FiMap* fimap, Dir_Node* dnode,HashLattice* hashl
         hshbrg->dirnode = dnode;
         hshbrg->finode = fimap;
         hshbrg->fitable = fitbl;
-        hshbrg->unid = sodium_malloc(sizeof(unsigned long long));
+        (hshbrg->unid) = (unsigned long long*) sodium_malloc(sizeof(unsigned long long));
+        *(hshbrg->unid) = ((fimap->fiid) ^ dnode->did);
         hashlattice->bridges[idx] = hshbrg;
         hashlattice->count++;
 }
@@ -526,7 +566,6 @@ int map_dir(const char* dir_path,
         perror("Failed making bridge anchor\n");
     }
 
-
     // For each entry in the root...
     for (i=0;i<n;i++) {
 
@@ -580,6 +619,7 @@ int map_dir(const char* dir_path,
         printf("%llu\n", dirchains->vessel->did);
         printf("%llu\n", dirchains->vessel->did & DCHNSMASK);
         printf("%llu\n", (dirchains->vessel->did & DBASEMASK) >> DBASESHFT);
+        printf("%llu\n", (dirchains->vessel->did & DNAMEMASK) >> DNAMESHFT);
         printf("%llu\n", (dirchains->vessel->did & DNAMEMASK) >> DNAMESHFT);
 
     }

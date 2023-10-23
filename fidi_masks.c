@@ -63,6 +63,7 @@ unsigned int expo_dirbase(unsigned long long did) {
     return (did & DBASEMASK) >> DBASESHFT;
 }
 
-unsigned int expo_dirchainid(unsigned long long did) {
+unsigned int expo_dirchnid(unsigned long long did) {
     return did & DCHNSMASK;
 }
+

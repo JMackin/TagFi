@@ -18,8 +18,6 @@ add_executable(TagFI test_tagfiles.c /usr/local/include/sodium.h
         fi_lattice.h
         lattice_cmds.c
         lattice_cmds.h
-        latticecomm.c
-        latticecomm.h
 )
 include_directories(/usr/local/include/sodium)
 target_link_libraries(TagFI sodium)

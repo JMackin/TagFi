@@ -5,86 +5,398 @@
 #ifndef TAGFI_LATTICE_CMDS_H
 #define TAGFI_LATTICE_CMDS_H
 
-#define ENDBYTES 536870919
+#define ENDBYTES 538968075
+
+#include "chkmk_didmap.h"
+
+/**
+ * \Status
+ * <li>SLEEP : : 0 ::    /sleeping/
+ * <li>LISTN : : 1 ::    /listening/
+ * <li>CNNIN : : 2 ::    /connection received/
+ * <li>REQST : : 4 ::    /received request (pre validation)/
+ * <li>RCVCM : : 8 ::    /cmd valid, processing/
+ * <li>RESPN : : 16 ::   /response pending/
+ * <li>UPDAT : : 32 ::   /item updated/
+ * <li>TRVLD : : 64 ::   /Dir Node location changed/
+ * <li>SHTDN : : 128 ::  /Shutting down/
+ * <li>RESET : : 256 ::  /System reset/
+ * <li>STERR : : 512 ::  /Error occured, see error codes/
+ * */
+typedef enum LattStts{
+    // No value
+    NOTHN = 0,
+    // listening,
+    LISTN = 1,
+    // connection received
+    CNNIN = 2,
+    // received request (pre validation)
+    REQST = 4,
+    // cmd valid, processing
+    RCVCM = 8,
+    // response pending
+    RESPN = 16,
+    // item updated
+    UPDAT = 32,
+    // Dir Node location changed
+    TRVLD = 64,
+    // Shutting down
+    SHTDN = 128,
+    // System reset
+    RESET = 256,
+    // Error occured, see error codes
+    STERR = 512,
+    // sleeping,
+    SLEEP = 1024,
+
+    // 256 512 1024 2048 4096 8192
+}LattStts;
 
 
-/*
- *  // False
- *  FFF = 0,
- *  // True
- *  TTT = 1,
- *  // default argument for previous cmd
- *  DFLT = 2,
- *  // Int that follows is the length of an int array that will follow thereafter.
- *  NARR = 4,
- *  // Int that follows is the length of a char array that will follow thereafter
- *  GCSQ = 8,
- *  // Give current vessel location when next byte is zero, yield file table otherwise.
- *  VESL = 16,
- *  // Goto dirNode of following name, home if next byte is zero
- *  GOTO = 32,
- *  // List dirnode contents of following name. Current dir if next byte is zero.
- *  LIST = 64,
- *  // Return file id for filename, return did for CWD if next byte is zero.
- *  FIID = 128,
- *  // Yield file of following filename, get filename for given id if FIID is set.
- *  FINM  = 256,
- *  // Produce info assoc. with the following ID code.
- *  INFO = 512,
- *  // Save this sequence
- *  SAVE  = 4096,
- *  // Carry byte
- *  LEAD = 536870912,
- *  // End sequence and masking byte
- *  END = 2147483647
+/**
+ * \Responses
+ * <li>SILNT : : 0   ::   /No response/
+ * <li>STATS : : 1   ::   /Current status frame/
+ * <li>CWDIR : : 2   ::   /ID of current working dirnode/
+ * <li>FILID : : 4   ::   /ID of a given file/
+ * <li>DIRID : : 8   ::   /ID of a given dir node/
+ * <li>DNLST : : 16  ::   /Array of contents for a given dirnode/
+ * <li>DCHNS : : 32  ::   /Nodes currently present in the dirchains/
+ * <li>OBYLD : : 64  ::   /Yield object/
+ * <li>ERRCD : : 127 ::   /Error code/
+ * <li>DNODE : : 128 ::   /Resident dirnode for a given file/
+ * <li>OBJNM : : 256 ::   /Name of object for a given ID/
+ * <li>OINFO : : 512 ::   /Info string for a given object/
+ * */
+typedef enum LattReply{
+    // No response
+    SILNT = 0,
+    // Current status frame
+    STATS = 1,
+    // ID of current working dirnode
+    CWDIR = 2,
+    // ID of a given file
+    FILID = 4,
+    // ID of a given dir node
+    DIRID = 8,
+    // Array of contents for a given dirnode
+    DNLST = 16,
+    // Nodes currently present in the dirchains
+    DCHNS = 32,
+    // Yield object
+    OBYLD = 64,
+    // Error code
+    ERRCD = 127,
+    // Resident dirnode for a given file
+    DNODE = 128,
+    // Name of object for a given ID
+    OBJNM = 256,
+    // Info string for a given object
+    OINFO = 512
+    // 1024 2048 4096 8192
+} LattReply;
+
+
+/**
+ * \Errors
+ *<li> IMFINE : : 0     :: /No error status/
+ *<li> MALREQ : : 1     :: /Malformed request/
+ *<li> MISSNG : : 2     :: /Requested object known but not located/
+ *<li> UNKNWN : : 4     :: /Requested object not known/
+ *<li> NOINFO : : 8     :: /Failure to produce/change requested info/
+ *<li> BADCON : : 16    :: /Failure w/ connection socket/
+ *<li> BADSOK : : 32    :: /Failure w/ data socket/
+ *<li> MISMAP : : 64    :: /Error with mmap/
+ *<li> STFAIL : : 128   :: /Error with stat op./
+ *<li> FIFAIL : : 256   :: /Error with a file descriptor op./
+ *<li> MISCLC : : 512   :: /Computed value doesn't match expected or provided/
+ *<li> BADHSH : : 1024  :: /Error with hashing op/
+ *<li> SODIUM : : 2048  :: /Error with sodium/
+ *<li> FULLUP : : 4096  :: /Structure or object at capacity/
+ *<li> ADFAIL : : 8192  :: /Failed to update a structure with an object/
+ *<li> COLISN : : 16384 :: /Collision in hash table/
+ *<li> ILMMOP : : 32768 :: /Failed memory operation or seg fault/
+ *<li> EPOLLE : : 65536 :: /EPOLL error/
+ * */
+typedef enum LattErr{
+    // No error status
+    IMFINE = 0,
+    // Malformed request
+    MALREQ = 1,
+    // Requested object known but not located
+    MISSNG = 2,
+    // Requested object not known
+    UNKNWN = 4,
+    // Requested info unavailable
+    NOINFO = 8,
+    // Failure w/ connection socket
+    BADCON = 16,
+    // Failure w/ data socket
+    BADSOK = 32,
+    // Error with mmap
+    MISMAP = 64,
+    // Error with stat op.
+    STFAIL = 128,
+    // Error with a file descriptor op.
+    FIFAIL = 256,
+    // Computed value doesn't match expected or provided
+    MISCLC = 512,
+    // Error with hashing op
+    BADHSH = 1024,
+    // Error with sodium
+    SODIUM = 2048,
+    // Structure or object at capacity
+    FULLUP = 4096,
+    // Failed to update a structure with an object
+    ADFAIL = 8192,
+    // Collision in hash table
+    COLISN = 16384,
+    // Failed memory operation or seg fault
+    ILMMOP = 32768,
+    // EPOLL error
+    EPOLLE = 65536,
+    // Conf error
+    BADCNF = 131072
+} LattErr;
+
+/**\Actions
+ *  <li>ZZZZ    :: 0 ::    /Do nothing/
+ *  <li>RPNG    :: 1 ::    /Respond True/
+ *  <li>RSET    :: 2 ::    /Clear buffers, reset/
+ *  <li>SVSQ    :: 4 ::    /Save recieved sequence/
+ *  <li>SLPP    :: 8 ::    /Enter sleep mode/
+ *  <li>GBYE    :: 128 ::   /Shutdown exit/
+ * */
+typedef enum LattAct {
+    // Do nothing
+    ZZZZ = 0,
+    // Respond True
+    RPNG = 1,
+    // Clear buffers, reset
+    RSET = 2,
+    // Save recieved sequence
+    SVSQ = 4,
+    // Enter sleep mode
+    SLPP = 8,
+    // Shutdown exit
+    GBYE = 128
+}LattAct;
+
+
+/**
+ *  <h4><code>
+ *  [status code | err code | action | modifier ]
+
+
+ *\Status
+ *<li>NOTHN = 0
+ *<li>LISTN = 1      - listening
+ *<li>CNNIN = 2       -  connection received
+ *<li>REQST = 4       -   received request (pre validation)
+ *<li>RCVCM = 8       -   cmd valid, processing
+ *<li>RESPN = 16       -   response pending
+ *<li>UPDAT = 32       -   item updated
+ *<li>TRVLD = 64     -   Dir Node location changed
+ *<li>SHTDN = 128     -   Shutting down
+ *<li>RESET = 256     -   System reset
+ *<li>STERR = 512     -   Error occured, see error codes
+ *<li>SLEEP = 1024        -   sleeping
+ *
+ * \Error
+ *  <li> IMFINE = 0,       -   No error status
+ * <li>MALREQ = 1,       -   Malformed request
+ * <li>MISSNG = 2,       -   Requested object known but not located
+ * <li>UNKNWN = 4,       -   Requested object not known
+ * <li>NOINFO = 8,       -   Failure to produce/change requested info
+ * <li>BADCON = 16,      -   Failure w/ connection socket
+ * <li>BADSOK = 32,      -   Failure w/ data socket
+ * <li>MISMAP = 64,      -   Error with mmap
+ * <li>STFAIL = 128,     -   Error with stat op.
+ * <li>FIFAIL = 256,     -   Error with a file descriptor op.
+ * <li>MISCLC = 512,     -   Computed value doesn't match expected or provided
+ * <li>BADHSH = 1024,    -   Error with hashing op
+ * <li>SODIUM = 2048,    -   Error with sodium
+ * <li>FULLUP = 4096,    -   Structure or object at capacity
+ * <li>ADFAIL = 8192,    -   Failed to update a structure with an object
+ * <li>COLISN = 16384,    -   Collision in hash table
+ * <li>ILMMOP = 32768,    -   Failed memory operation or seg fault
+ * <li>EPOLLE = 65536,     -   EPOLL error
+ * <li>BADCNF = 131072    -   Config error
+ *
+ * \Action
+ * <li>ZZZZ = 0,     -   Do nothing
+ * <li>RPNG = 1,     -   Respond True
+ * <li>RSET = 2,     -   Clear buffers, reset
+ * <li>SVSQ = 4,     -   Save recieved sequence
+ * <li>SLPP = 8,     -   Enter sleep mode
+ * <li>GBYE = 128    -   Shutdown exit
+
+<br>
+ * \Modifier
+ * <note> 0: None
+ * */
+typedef struct StatFrame{
+
+    LattStts status;
+    LattAct act_id;
+    LattErr err_code;
+    unsigned int modr;
+}StatFrame;
+
+/**
+ * <h3>RequestCMDS
+ \Qualifiers
+ * <li>FFF = 0,
+ * <li> - False
+ * <li>TTT = 1,
+ * <li> - True
+ * <li>DFLT = 2,
+ * <li> - Default argument for previous cmd
+ * <li>QQQQ = 4
+\ArrayOps
+ * <li>NARR = 8,
+ * <li> - Int that follows is the length of an int array that will follow thereafter.
+ * <li>GCSQ = 16,
+ * <li> - Int that follows is the length of a char array that will follow thereafter
+ * <li>RRRR = 32
+ * <li> - Empty
+ * <li>AAAA = 64
+ * <li> - Empty
+ \TravelOps
+ *  <li>VESL = 128,
+ *   <li> - Give current vessel location if DFLT, else find Dnode location of given FiID
+ *  <li>GOTO = 256,
+ *   <li> - Goto dirNode of following name, home if DFLT
+ *  <li>WWWW = 512,
+ *   <li> - Empty
+ *  <li>VVVV = 1024
+ *   <li> - Empty
+
+ ~
+ \FileOps
+ *  <li>FIID = 2048,
+ *   <li> - Return file filename for id. fid for filename if DFLT
+ *  <li>FINM  = 4096,
+ *   <li> - Yield file of following filename , yield resident file table if DFLT
+ *  <li>YYYY = 8192,
+ *   <li> - Empty
+ *  <li>FFFF = 16384
+ *   <li> - Empty
+
+ ~
+ \DirNodeOps
+ *  <li>LIST = 32768,
+ *   <li> - List dirnode contents of following name. Current dir if DFLT
+ *  <li>GGGG = 65536,
+ *   <li> - Empty
+ *  <li>NNNN = 131072,
+ *   <li> - Empty
+ *  <li>DDDD = 262144,
+ *   <li> - Empty
+
+ ~
+ \SystemOps
+ *  <li>SAVE  = 524288,
+ *  <li> - Save this sequence
+ *  <li>INFO = 1048576,
+ *   <li> - Produce info assoc. with the following ID code.
+ *  <li>CCCC = 2097152
+ *   <li> - Empty
+ *  <li>UUUU = 4194304
+ *   <li> - Empty
+
+ \Structure
+ *  <li>LEAD = 536870912,
+ *   <li> -  Carry byte
+ *  <li>END = 2147483647
+ *   - End sequence and masking byte
+ *
+ *
+ * <note>NOTE
+ * <br>
+ *  <note> Op groups marked w/ ~are mutually exclusive in that only one can be processed per command sequence.
+ *  <br>
+ *  <note> They can be combined with flags not marked as such however
  *
  * */
 typedef enum ReqFlag {
-    // False
+
+// False, has no effect
     FFF = 0,
-    // True
+// True
     TTT = 1,
-    // default argument for previous cmd
+// default argument for previous cmd
     DFLT = 2,
-    // Int that follows is the length of an int array that will follow thereafter.
-    NARR = 4,
-    // Int that follows is the length of a char array that will follow thereafter
-    GCSQ = 8,
-    // Give current vessel location when next byte is zero, yield file table otherwise.
-    VESL = 16,
-    // Goto dirNode of following name, home if next byte is zero
-    GOTO = 32,
-    // List dirnode contents of following name. Current dir if next byte is zero.
-    LIST = 64,
-    // Return file id for filename, return did for CWD if next byte is zero.
-    FIID = 128,
-    // Yield file of following filename, get filename for given id if FIID is set.
-    FINM = 256,
-    // Produce info assoc. with the following ID code.
-    INFO = 512,
-    // Save this sequence
-    SAVE = 4096,
-    // Carry byte
+//
+    QQQQ = 4,
+
+// Int that follows is the length of an int array that will follow thereafter.
+    NARR = 8,
+// Int that follows is the length of a char array that will follow thereafter
+    GCSQ = 16,
+//
+    RRRR = 32,
+//
+    AAAA = 64,
+
+// Give current vessel location if DFLT, else find Dnode location of given FiID
+    VESL = 128,
+// Goto dirNode of following did, home if DFLT
+    GOTO = 256,
+//
+    WWWW = 512,
+//
+    VVVV = 1024,
+
+// Return file filename for id. fid for filename if DFLT
+    FIID = 2048,
+// Yield file of following filename , yield resident file table if DFLT
+    FINM = 4096,
+//
+    YYYY = 8192,
+//
+    IIII = 16384,
+
+// List dirnode contents of following name. Current dir if DFLT
+    LIST = 32768,
+//
+    KKKK = 65536,
+//
+    NNNN = 131072,
+//
+    OOOO = 262144,
+
+// Save this sequence
+    SAVE  = 524288,
+// Produce info assoc. with the ID code
+    INFO = 1048576,
+//
+    EXIT = 2097152,
+//
+    UUUU = 4194304,
+
+// Carry byte
     LEAD = 536870912,
-    // End sequence / Masking byte
+// End sequence and masking byte
     END = 2147483647
 } ReqFlag;
 
-/*
- * // False
- * FFFF = 0,
- * // Number of responses to follow
- * NRSP = 1,
- * // The following is the ID code for the info that follows thereafter
- * RARR = 2,
- * // What follows is the length of an array that follows thereafter
- * RLEN = 4,
- * // Arr that follows is a status frame
- * STAS = 8,
- * // Data type of next response
- * CODE = 16,
- * // Next response
- * CINT = 32,
+/**
+ * \ResponseCMDs
+ * <li>FFFF = 0,
+ * <li> -  False
+ * <li>NRSP = 1,
+ * <li> -  Number of responses to follow
+ * <li>RARR = 2,
+ * <li> -  The following is the ID code for the info that follows thereafter
+ * <li>RLEN = 4,
+ * <li> -  What follows is the length of an array that follows thereafter
+ * <li>STAS = 8,
+ * <li> -  Arr that follows is a status frame
+ * <li>CODE = 16,
+ * <li> -  Data type of next response
+ * <li>CINT = 32,
+ * <li> -  Next response
  *
  * */
 typedef enum RspFlag {
@@ -118,11 +430,100 @@ typedef enum RspFlag {
     DONE = 2147483647
 }RspFlag;
 
+/**
+ * \LatticeObjects
+ * <li>NADA = 0,
+ *     <li>-<i>No or nonexistent object
+ * <li>LTTC = 1,
+ *     <li>-<i>  Hash Lattice
+ * <li>BRDG = 2,
+ *     <li>-<i>  Hash bridge
+ * <li>DIRN = 4,
+ *     <li>-<i>  Dir node
+ * <li>FTBL = 8,
+ *     <li>-<i>  File table
+ * <li>FIMP = 16,
+ *     <li>-<i>  File map
+ * <li>LFLG = 32,
+ *     <li>-<i>  Request/response flag
+ * <li>SFRM = 64,
+ *     <li>-<i>  Status frame
+ * <li>IFRM = 128,
+ *     <li>-<i>  Info frame
+ * <li>BUFF = 256,
+ *     <li>-<i>  Buffers
+ * <li>SEQT = 512,
+ *     <li>-<i>  Stored seq table
+ * <li>CMSQ = 1024,
+ *     <li>-<i>  Cmd sequence (response or request)
+ * <li>ICAR = 2048,
+ *     <li>-<i>  Int or Char array
+ * <li>VSSL = 4096,
+ *     <li>-<i>  Dirnode vessel/cursor object
+ * <li>FIOB = 8192,
+ *     <li>-<i>  Actual file object
+ * <li>IDID = 16384,
+ *     <li>-<i>  ID for an object
+ * <li>NMNM = 32768,
+ *     <li>-<i>  Name for an object
+ * <li>FRLD = 65536,
+ *     <li>-<i>  Cmd frame lead
+ * <li>FIDE = 131072,
+ *     <li>-<i>  File desc or socket
+ * <li>HSKY = 262144,
+ *     <li>-<i>  Hash key
+ * <li>DCHN = 524288
+ *     <li>-<i>  Dir Chains
+ */
+typedef enum LattObj{
+    // No or nonexistent object
+    NADA = 0,
+    // Hash Lattice
+    LTTC = 1,
+    // Hash bridge
+    BRDG = 2,
+    // Dir node
+    DIRN = 4,
+    // File table
+    FTBL = 8,
+    // File map
+    FIMP = 16,
+    // Request/response flag
+    LFLG = 32,
+    // Status frame
+    SFRM = 64,
+    // Info frame
+    IFRM = 128,
+    // Buffers
+    BUFF = 256,
+    // Stored seq table
+    SEQT = 512,
+    // Cmd sequence (response or request)
+    CMSQ = 1024,
+    // Int or Char array
+    ICAR = 2048,
+    // Dirnode vessel/cursor object
+    VSSL = 4096,
+    // Actual file object
+    FIOB = 8192,
+    // ID for an object
+    IDID = 16384,
+    // Name for an object
+    NMNM = 32768,
+    // Cmd frame lead
+    FRLD = 65536,
+    // File desc or socket
+    FIDE = 131072,
+    // Hash key
+    HSKY = 262144,
+    // Dir Chains
+    DCHN = 524288
+} LattObj;
 
-typedef ReqFlag* ReqArr;
-typedef RspFlag* RspArr;
 
 typedef unsigned char* cmdKey;
+typedef ReqFlag* ReqArr;
+typedef RspFlag* RspArr;
 
 typedef struct LatticeCommand {
     RspArr rsps;
@@ -144,22 +545,18 @@ typedef union uniArr{
     unsigned char* carr;
 }uniArr;
 
-/*
+/**
  *
- *  Frame:
+ * \Frame
+ *<h4><code>  [ ID | cmd lead | 0: request or 1: response | flags arr |  c/i arr | flag count | arr length ] </h4>
  *
- *      [ ID | cmd lead | 0: request or 1: response | flags arr |  c/i arr | flag count | arr length ]
- *
- *  Sequence:
- *
- *      [cmd-lead] -> [array-length] -> [array] -> [END-flag]
- */
- /*
- * -  cmd-lead      = LEAD-flag ORd with cmd flags. Can be extracted by ANDing with END-flag.
- * -  array-length  = number of discrete items (chars or ints) in the arr. 0 if no array in the request.
- * -  array         = type 0 for no array, 1 for char, 2 for int. Signaled with NARR(int) and GCSQ(char) flags.
- * -  END-Flag      = will trigger a malformed request error if not in expected position.
- *
+ \Sequence
+ *<h4> [CmdLead] -> [ArrayLength] -> [Array] -> [ENDflag] </h4>
+ *<br>
+ *<li><b>cmd-lead</b><br>      <i> LEAD-flag ORd with cmd flags. Can be extracted by ANDing with END-flag.
+ *<li><b>array-length</b><br> <i> number of discrete items (chars or ints) in the arr. 0 if no array in the request.
+ *<li><b>array</b><br>         <i> type 0 for no array, 1 for char, 2 for int. Signaled with NARR(int) and GCSQ(char) flags.
+ *<li><b>END-Flag</b><br>      <i> will trigger a malformed request error if not in expected position.
  * */
 typedef struct Cmd_Seq {
     unsigned long seq_id;
@@ -171,17 +568,46 @@ typedef struct Cmd_Seq {
     uniArr *arr;
 }Cmd_Seq;
 
+/**
+ * \InformationFrame
+ *  <h4> <code> [ req size | arr type | arr len | CmdSeq struct ptr ]
+ */
+typedef struct InfoFrame{
+    unsigned int rsp_size;
+    unsigned int req_size;
+    unsigned int trvl_op;
+    unsigned int fi_op;
+    unsigned int di_op;
+    unsigned int sys_op;
+    unsigned int qual;
+    unsigned int arr_type; //0: none, 1: char, 2: int
+    unsigned int arr_len;
+    Cmd_Seq* cmdSeq;
+}InfoFrame;
+
+
+InfoFrame* init_info_frm(InfoFrame** info_frm);
+
+InfoFrame * parse_req(const unsigned char* req,
+                      Cmd_Seq** cmd_seq,
+                      InfoFrame* rinfo,
+                      StatFrame** sts_frm);
+
+
 typedef struct SeqMap{
     unsigned long seq_id;
     Cmd_Seq** cmd_seq;
 }SeqMap;
 
-/*
+/**
+ * \SequenceTable
+ *<h4> <code>
+ *[ max table size | cmd hash key | sequence arr ]
+ * </h4>
+
  *
- * Hash table storing common sequences
+ * <i>Hash table storing common sequences
  * to compare against or pull from.
- *
- * [ max table size | cmd hash key | sequence arr ]
  * */
 typedef struct Seq_Tbl{
     unsigned long mx_sz;
@@ -221,130 +647,88 @@ int unmask_cmds(unsigned int** cmds,
                 unsigned char*** arrs,
                 int cmdcnt);
 
+void* rsp_acts(StatFrame** sts_frm,
+               InfoFrame** inf_frm,
+               DChains* dchns,
+               Lattice* hltc,
+               int cnfg_fd,
+               uniArr* buf,
+               void (*funarr[5])(StatFrame**, InfoFrame* *, DChains*, Lattice*, uniArr*));
+
+void rsp_gotond(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, uniArr* buf);
+
+void setSts(StatFrame** sts_frm, LattStts ltcst, unsigned int modr);
+
+void setErr(StatFrame** sts_frm, LattErr ltcerr, unsigned int modr);
+
+void setMdr(StatFrame** sts_frm, unsigned int modr);
+
+void setAct(StatFrame** sts_frm, LattAct lttact, LattStts ltsts, unsigned int modr);
+
+void setRsp(StatFrame** sts_frm, LattReply,unsigned int modr);
+
+void stsReset(StatFrame** sts_frm);
+
+void stsOut(StatFrame** sts_frm);
+
+void serrOut(StatFrame** sts_frm);
+
 #endif //TAGFI_LATTICE_CMDS_H
 
-/*
+/**
+<code>
+
+|1		          |0b1                                  |  2        	|	0b10                              |
+*<br>
+|4	              |0b100                                |  8        	|   0b1000                            |
+*<br>
+|16		          |0b10000                              |  32           |   0b100000                          |
+*<br>
+|64		          |0b1000000                            |  128      	|	0b10000000                        |
+*<br>
+|256		      |0b100000000                          |  512      	|	0b1000000000                      |
+*<br>
+|255              |0b11111111                           |  1024         |   0b10000000000                     |
+*<br>
+|2048    	      |0b100000000000                       |  4096     	|	0b1000000000000                   |
+*<br>
+|8192    	      |0b10000000000000                     |  16384    	|	0b100000000000000                 |
+*<br>
+<br>
+|32768   	      |0b1000000000000000                   |  65536    	|	0b10000000000000000               |
+*<br>
+|131072  	      |0b100000000000000000                 |  262144   	|	0b1000000000000000000             |
+*<br>
+|524288  	      |0b10000000000000000000               |  1048576  	|	0b100000000000000000000           |
+*<br>
+|2097152 	      |0b1000000000000000000000             |  4194304  	|	0b10000000000000000000000         |
+*<br>
+|8388608	      |0b100000000000000000000000           |  16777216 	|	0b1000000000000000000000000       |
+*<br>
+|33554432	      |0b10000000000000000000000000
+*<br>
+*<br>
+|67108864 	      |0b100000000000000000000000000                                                              |
+*<br>
+|134217728        |0b1000000000000000000000000000                                                             |
+*<br>
+|268435456	      |0b10000000000000000000000000000                                                           |
+*<br>
+|536870912        |0b100000000000000000000000000000                                                           |
+ *<br>
+
+|1073741824	      |0b1000000000000000000000000000000                                                             |
+ *<br>
+
+|2147483647       |0b1111111111111111111111111111111                                                          |
  *
- *
-1		        0b1
-2       		0b10
-4		        0b100
-8       		0b1000
-16		        0b10000
-32      		0b100000
-64		        0b1000000
-128     		0b10000000
-255             0b11111111
-
-256		        0b100000000
-
-512     		0b1000000000
-1024    		0b10000000000
-2048    		0b100000000000
-4096    		0b1000000000000
-8192    		0b10000000000000
-16384   		0b100000000000000
-32768   		0b1000000000000000
-65536   		0b10000000000000000
-
-131072  		0b100000000000000000
-262144  		0b1000000000000000000
-524288  		0b10000000000000000000
-1048576 		0b100000000000000000000
-2097152 		0b1000000000000000000000
-4194304 		0b10000000000000000000000
-8388608	    	0b100000000000000000000000
-16777216		0b1000000000000000000000000
-33554432		0b10000000000000000000000000
-67108864		0b100000000000000000000000000
-134217728		0b1000000000000000000000000000
-268435456		0b10000000000000000000000000000
-536870912		0b100000000000000000000000000000
-
-1073741824		0b1000000000000000000000000000000
-2147483647      0b1111111111111111111111111111111
-
- *
- *
- *
-
-1: 1
-2: 2
-3: 3
-4: 4
-5: 5
-6: 6
-7: 7
-8: 8
-9: 9
-10: :
-11: ;
-12: <
-13: =
-14: >
-15: ?
-16: @
-17: A
-18: B
-19: C
-20: D
-21: E
-22: F
-23: G
-24: H
-25: I
-26: J
-27: K
-28: L
-29: M
-30: N
-31: O
-32: P
-33: Q
-34: R
-35: S
-36: T
-37: U
-38: V
-39: W
-40: X
-41: Y
-42: Z
-43: [
-44: \
-45: ]
-46: ^
-47: _
-48: `
-49: a
-50: b
-51: c
-52: d
-53: e
-54: f
-55: g
-56: h
-57: i
-58: j
-59: k
-60: l
-61: m
-62: n
-63: o
-64: p
-65: q
-66: r
-67: s
-68: t
-69: u
-70: v
-71: w
-72: x
-73: y
-74: z
-75: {
-76: |
-77: }
-78: ~
-
 **/
+
+/**
+ 1: 1 |  2: 2 |  3: 3 |  4: 4 |  5: 5 |  6: 6 |  7: 7 |  8: 8 |  9: 9 |  10: : |  11: ; |  12: < |  13: = |  14: > |
+ 15: ? |  16: @ |  17: A |  18: B |  19: C |  20: D |  21: E |  22: F |  23: G |  24: H |  25: I |  26: J |  27: K |
+ 28: L |  29: M |  30: N |  31: O |  32: P |  33: Q |  34: R |  35: S |  36: T |  37: U |  38: V |  39: W |  40: X |
+ 41: Y |  42: Z |  43: [ |  44: \ |  45: ] |  46: ^ |  47: _ |  48: ` |  49: a |  50: b |  51: c |  52: d |  53: e |
+ 54: f |  55: g |  56: h |  57: i |  58: j |  59: k |  60: l |  61: m |  62: n |  63: o |  64: p |  65: q |  66: r |
+ 67: s |  68: t |  69: u |  70: v |  71: w |  72: x |  73: y |  74: z |  75: { |  76: | |  77: } |  78: ~ |
+*/

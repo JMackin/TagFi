@@ -4,6 +4,9 @@
 
 #ifndef TAGFI_FI_LATTICE_H
 #define TAGFI_FI_LATTICE_H
+#include "chkmk_didmap.h"
+#include "lattice_cmds.h"
+
 
 
 void summon_lattice();
