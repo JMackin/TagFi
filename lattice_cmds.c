@@ -15,13 +15,13 @@
 
 #define REQ 0
 #define RSP 1
-#define INTARR 2
-#define CHRARR 1
+#define INTARR 8
+#define CHRARR 16
 #define NOARR 0
 #define SEQSTORE "sequences"
 #define crypto_shorthash_KEYBYTES 16u
 #define SELFRESET 2147483647
-#define CMDCNT 14
+#define CMDCNT 16
 
 
 int is_init = 0;
@@ -37,7 +37,7 @@ unsigned long UCSiZ = sizeof(unsigned char);
 
 void init_cmdseq(Cmd_Seq** cmdSeq, unsigned int arrsize, unsigned int type){
     *cmdSeq = malloc(sizeof(Cmd_Seq));
-    (*cmdSeq)->arr = (uniArr*) calloc(arrsize,UCSiZ);
+    (*cmdSeq)->arr = (uniArr*) calloc(arrsize,sizeof(uniArr));
     (*cmdSeq)->flags = (LttcFlags*) calloc(sizeof(LttcFlags), sizeof(UISiZ));
     (*cmdSeq)->arr_len = 0;
     (*cmdSeq)->seq_id = 0;
@@ -46,8 +46,8 @@ void init_cmdseq(Cmd_Seq** cmdSeq, unsigned int arrsize, unsigned int type){
 }
 
 void reset_cmdseq(Cmd_Seq** cmdSeq, unsigned int arrsize, unsigned int type){
-
 }
+
 //
 //void init_lttccmd(){
 //    if (is_init){
@@ -87,7 +87,6 @@ void destroy_cmdstructures(unsigned char* buffer, unsigned char* respbuffer, uns
     free(seqTbl->cmd_key);
     free(seqTbl);
 }
-
 
 /*
  * Iterate through cmds, an array of cmd sequences, for each sequence unmask the leading 4-bytes
@@ -216,8 +215,7 @@ unsigned int build_lead(const unsigned int* cmd_flags, unsigned int flg_cnt) {
 
 /**
  * \SerializeCmdSequence
- *<br>
- * -    cmd -> arr len -> arr -> end
+ *     cmd -> arr len -> arr -> end
  *<br>
  * -    For empty array set arr to NULL and arr_len to 0
  * */
@@ -354,43 +352,6 @@ unsigned long save_seq(Cmd_Seq* cmd_seq, Seq_Tbl** seq_tbl, int cnfdir_fd){
 
 }
 
-
-unsigned int* flagcnt(ReqFlag** flags_branch, unsigned int* itr, unsigned int* cntr, unsigned int* flg, unsigned int** flag_list){
-
-    if(((**(flags_branch)+(*itr)) << 1) & (*flg)){
-        *(flag_list + *itr) = flg;
-        cntr++;
-    }
-    if (*itr > 2){
-        return cntr;
-    }
-
-    return flagcnt(flags_branch, (++itr), cntr, flg,flag_list);
-}
-
-unsigned int cntflags( ReqFlag lead_flags[4], ReqFlag *flag_list){
-
-    unsigned int itr = 0;
-    int idx= 0;
-
-    unsigned int cntr = 0;
-    unsigned int flg = 128;
-
-    while(!flagcnt((&lead_flags+(idx++)), &itr, &cntr, &flg, &flag_list)){
-         if (idx > 3 || itr > 20)
-        {
-            return 0;
-        }
-         else {
-             idx++;
-         }
-    }
-    return idx;
-
-    printf("FLGCNT <<%d>>\n", idx);
-}
-
-
 size_t read_seqs(unsigned char** seq_arr, int cnfdir_fd){
     struct stat sb;
 
@@ -416,63 +377,18 @@ size_t read_seqs(unsigned char** seq_arr, int cnfdir_fd){
 }
 
 
-//FREE: flag_list
-unsigned int parse_lead(const unsigned int lead, ReqArr* flag_list, StatFrame** sts_frm){
-    unsigned int flg_cnt = 0;
-    unsigned int lslicr = 0;
-    ReqFlag i;
-    unsigned int k = 120;
-    unsigned int j = 1;
-    unsigned int l;
-
-    // [ quals | trvl/fiops/dirops/ | sysops | arrsigs ]
-    ReqFlag lead_flags[4] = {0,0,0,0};
-
-    ReqFlag flg;
-    *flag_list = (ReqArr) calloc(CMDCNT, UISiZ);
-
-    lead_flags[0] = lead & QUALIFIR;
-    lead_flags[1] = lead & ARRAYOPS;
-    lead_flags[2] = lead & SYSTMOPS;
-
-    while (!lead_flags[3]) {
-        lead_flags[3] = (lead & k);
-        k <<= 4;
-        j++;
-        if (j > 4) {
-            break;
-        }
-    }
-
-    for (l = 0; l < 4; l++) {
-        flg_cnt += cntflags(lead_flags, *flag_list);
-    }
-    return flg_cnt;
-//
-//    for (l = 0; l < 4; l++) {
-//
-//        for (i = TTT; i < LEAD; i <<= 1) {
-//
-//        }
-//    }
-
-//
-//    if (flg_cnt != 0 && flg_cnt < CMDCNT){
-//        *flag_list = reallocarray(*flag_list,flg_cnt,UISiZ);
-//        return flg_cnt;
-//    }else {
-//        free(flag_list);
-//        setErr(sts_frm, MISCLC, 'p'); // p = parsing lead
-//        return 0;
-//    }
-}
-
-
+/** Initialize InfoFrame */
 InfoFrame* init_info_frm(InfoFrame** info_frm){
     *info_frm = (InfoFrame*) malloc(sizeof(InfoFrame));
-    (*info_frm)->arr_len=0;
     (*info_frm)->req_size=0;
     (*info_frm)->rsp_size=0;
+    (*info_frm)->trfidi[0]= 0;
+    (*info_frm)->trfidi[1]= 0;
+    (*info_frm)->trfidi[2]= 0;
+    (*info_frm)->sys_op=0;
+    (*info_frm)->qual=0;
+    (*info_frm)->arr_type=0;
+    (*info_frm)->arr_len=0;
     (*info_frm)->cmdSeq=NULL;
 
     return *info_frm;
@@ -480,7 +396,7 @@ InfoFrame* init_info_frm(InfoFrame** info_frm){
 }
 
 /**
- * StatusFrame error code is set, modifier is set to previous status code.
+ * Reset Info Frame, set StatusFrame to error code, set modifier is set to previous status code.
  */
 void err_info_frm(InfoFrame* info_frm, StatFrame** stats_frm, LattErr errcode, unsigned int modr){
 
@@ -494,27 +410,150 @@ void err_info_frm(InfoFrame* info_frm, StatFrame** stats_frm, LattErr errcode, u
 }
 
 
-//FREE: rinfo, cmd_seq
+  /* * * * * * * * * *
+  * Request Parsing *
+ * * * * * * * * * */
+
+/**
+ * \SplitCategories
+ *  Recursively iterate array of masked integers representing the OR'd value for
+ *      the flags in each of the 4 categories defined in ParseLead. Pass each value into the
+ *      DivideFlags recursive sub-process.
+ *<br><br>
+ *<sub>
+ *   Note: Variable 'trfidi' is passed in to inform
+ *      the process of which of the three exclusive categories are present if any.
+ *      <br>(0 = TravelOps, 1 = FileOps, 2 = DirNode Ops)
+ *</sub>
+ */
+unsigned int split_cats(const unsigned int* lead_flags,
+                        ReqFlag ** flag_list,
+                        ReqFlag * flg_itr,
+                        unsigned int s_itr,
+                        unsigned int l_itr,
+                        unsigned int cnt,
+                        unsigned int trfidi);
+/**
+* \DivideFlags
+*  Receives each combined flag value from SplitCategories and recursively apply
+*      each of the 4 flag values in that category as an AND mask. If the AND operation results true,
+*      the flag is appended to an array of ReqFlags point to by 'flag_list'.
+**/
+unsigned int div_flgs(const unsigned int* lead_flags,
+                      ReqFlag *flag_list,
+                      ReqFlag * flg_itr,
+                      unsigned int s_itr,
+                      unsigned int l_itr,
+                      unsigned int cnt,
+                      unsigned int trfidi){
+
+    if (s_itr > 3) {
+        return cnt;
+    }
+    if((*(lead_flags+l_itr) & *flg_itr)) {
+        *(flag_list+(cnt)) = *flg_itr;
+        ++(cnt);
+    }
+    *flg_itr <<=1;
+    div_flgs(lead_flags, flag_list, flg_itr, ++s_itr, l_itr, cnt,trfidi);
+
+}
+unsigned int split_cats(const unsigned int* lead_flags,
+                        ReqFlag ** flag_list,
+                        ReqFlag * flg_itr,
+                        unsigned int s_itr,
+                        unsigned int l_itr,
+                        unsigned int cnt,
+                        unsigned int trfidi) {
+
+    if (l_itr > 5 || (*flg_itr) >= UUUU) {
+        return cnt;
+    }
+    else {
+        if (l_itr == 2 && trfidi){
+            *flg_itr <<= (4*trfidi);
+            trfidi = 0;
+        }else if (l_itr == 3){
+            *flg_itr = SAVE;
+        }
+
+        cnt = div_flgs(lead_flags, *flag_list, flg_itr, s_itr, l_itr, cnt, trfidi);
+        (++l_itr);
+        split_cats(lead_flags, (flag_list), flg_itr, 0, l_itr, cnt, trfidi);
+
+    }
+}
+
+/**
+ *\ParseLead
+ * Convert request-lead to an array of flags using bit-masking and return the flag count.
+ */
+unsigned int parse_lead(const unsigned int lead, ReqFlag ** flg_list, StatFrame** sts_frm, InfoFrame** inf_frm) {
+    unsigned int lslicr = 0;
+    unsigned int k = 1920;
+    unsigned int j = 0;
+    unsigned int i = 0;
+    unsigned int flgcnt = 0;
+
+    // [ quals | trvl/fiops/dirops/ | sysops | arrsigs ]
+    unsigned int* lead_flags = (unsigned int*) calloc(4, UISiZ);
+    *flg_list = (ReqFlag *) (calloc(CMDCNT,sizeof(ReqFlag)));
+    unsigned int masks[4] = {QUALIFIR,ARRAYOPS,SYSTMOPS,1920};
+
+    *lead_flags = lead & QUALIFIR;
+    (*inf_frm)->qual = *lead_flags;
+    *(lead_flags+1) = lead & ARRAYOPS;
+    (*inf_frm)->arr_type = *(lead_flags+1);
+    do {
+        *(lead_flags+2) = (lead & k);
+        k <<= 4;
+        (*inf_frm)->trfidi[i] = *(lead_flags+2);
+        i++;
+        if (i > 2) {
+            break;
+        }
+    } while (!(*(lead_flags+2)));
+
+    for (j = 0; j < 4; j++){
+        if (*(lead_flags+j)){
+            flgcnt++;
+        }
+    }
+    *(lead_flags+3) = lead & SYSTMOPS;
+    (*inf_frm)->sys_op = *(lead_flags+3);
+
+    ReqFlag flg_itr = TTT;
+    flgcnt = split_cats(lead_flags, flg_list, (&flg_itr), 1, 0, 0,(i-1));
+
+   // free(lead_flags);
+
+    return flgcnt;
+}
+
+/**
+ *\ParseRequest
+ *  Convert char buffer with a request to a CMD Sequence struct
+ *  and return an InfoFrame with request metadata
+ *  and a pointer to the CMD structure.
+ */
 InfoFrame* parse_req(const unsigned char* req,
                      Cmd_Seq** cmd_seq,
                      InfoFrame* rinfo,
                      StatFrame** sts_frm){
 
-
-    unsigned int exit_flg = 1;
-    int k = 0;
+    unsigned int exit_flg = 1; int k = 0;
     unsigned int is_arr = 0; //1 = char, 2 = int
     unsigned int arrlen;
-    unsigned int flag;
-    unsigned int flgcnt = 0;
-    unsigned int end;
-    unsigned char* carr_buf;
-    unsigned int* iarr_buf;
+    unsigned int flag; unsigned int flgcnt = 0; unsigned int end;
+    unsigned char* carr_buf; unsigned int* iarr_buf;
+    ReqFlag* reqflg_arr = (ReqFlag*) calloc(CMDCNT,sizeof(ReqFlag));
 
+    /**
+     * Parse sequence lead and init CMD struct
+     * */
     memcpy(&flag,req,UISiZ);
-    ReqArr req_arr;
+    flgcnt = parse_lead(flag, &reqflg_arr, sts_frm, &rinfo);
 
-    flgcnt = parse_lead(flag, &req_arr, sts_frm); //Lead -> flag arr. Returns flag count
     init_cmdseq(cmd_seq,flgcnt,REQ);
 
     if (!flgcnt){
@@ -522,57 +561,74 @@ InfoFrame* parse_req(const unsigned char* req,
         err_info_frm(rinfo,sts_frm,MALREQ,'l'); // l = parsing lead
         return rinfo;
     }
-    (*cmd_seq)->flags = (LttcFlags *) req_arr;
+
+    /**
+     * Build CMD struct
+     * */
+    *((*cmd_seq)->flags) = (LttcFlags) (reqflg_arr); //Note: *((*cmd_seq)->flags)+X to access flags
     (*cmd_seq)->lead = flag;
     (*cmd_seq)->flg_cnt = flgcnt;
 
-    if ( flag>>29 != 1) //Check carrier byte
+    /**
+     * Check carrier byte
+     * */
+    if ( flag>>29 != 1)
     {
         fprintf(stderr,"Malformed request>\n> %d\n",flag);
         err_info_frm(rinfo,sts_frm,MALREQ,'l'); //
         return rinfo;
     }
 
-    if (flag & NARR & END) {    //Check for Int arr
-        memcpy(&(rinfo->arr_len),(req+UISiZ),UISiZ);
-        rinfo->arr_type=INTARR;
-        (*cmd_seq)->arr_len = rinfo->arr_len;
-        memcpy(&end,(req+(UISiZ*2)+(UISiZ*rinfo->arr_len)),UISiZ);  //Calc request endpoint
+    /**
+     * Check for Int arr
+     * */
+    if (rinfo->arr_type==INTARR) {
+        memcpy(&(rinfo->arr_len),(req+UISiZ),UISiZ); // Set InfoFrame -> arr length
+        (*cmd_seq)->arr_len = rinfo->arr_len; // Set CMD -> arr length
+        memcpy(&end,(req+(UISiZ*2)+(UISiZ*rinfo->arr_len)),UISiZ);  // Calc request endpoint
 
-        exit_flg = rinfo->arr_len == 1 ? (exit_flg << 1 ) : 1; // EXIT 1
+        exit_flg = rinfo->arr_len == 1 ? (exit_flg << 1 ) : 1; // EXIT trigger 1
 
-        rinfo->req_size = (UISiZ*3)+(UISiZ*rinfo->arr_len);
+        rinfo->req_size = (UISiZ*3)+(UISiZ*rinfo->arr_len); // Set InfoFrame -> request size
 
-        if (end != END) {   //Check tail byte
+        /**
+         * Check tail byte
+         * */
+        if (end != END) {
             fprintf(stderr,"Malformed request>\n> %d\n> %d\n> %d\n",flag,end,rinfo->arr_len);
             err_info_frm(rinfo,sts_frm,MALREQ,'t'); // 't' = tail
             return rinfo;
         }
 
-        exit_flg = flag == ENDBYTES ? (exit_flg << 1) : 1; //   EXIT 2
+        exit_flg = flag == ENDBYTES ? (exit_flg << 1) : 1; //   EXIT trigger 2
 
-
-        iarr_buf = (unsigned int*) calloc(rinfo->arr_len,UISiZ);    // Init int arr buffer if iarr follows. Tobe FREEd
+        /**
+         * Alloc and populate int buffer
+         * */
+        iarr_buf = (unsigned int*) calloc(rinfo->arr_len,UISiZ);
         memcpy(iarr_buf,req+(UISiZ*2),(UISiZ*rinfo->arr_len));
         (*cmd_seq)->arr->iarr = iarr_buf;
 
-        /*Exit for shutdown upon receiving three shutdown triggers*/
-        exit_flg = *iarr_buf == SHTDN ? (exit_flg << 1) : 1;    //  EXIT 3
+        exit_flg = *iarr_buf == SHTDN ? (exit_flg << 1) : 1;    //  EXIT trigger 3
 
+        /**
+         * Exit for shutdown upon receiving three shutdown triggers
+         * */
         if (exit_flg == 8) {
-
             setAct(sts_frm,GBYE,SHTDN,SELFRESET);
             return rinfo;
         }
     }
-
-    else if(flag & GCSQ & END) {
+    /**
+     * Check for char arr
+     * */
+    else if(rinfo->arr_type==CHRARR) {
         memcpy(&(rinfo->arr_len),(req+UISiZ),UISiZ);
-        rinfo->arr_type=CHRARR;
         (*cmd_seq)->arr_len = rinfo->arr_len;
         memcpy(&end,(req+(UISiZ*2)+(UCSiZ*rinfo->arr_len)),UISiZ); //Calc request endpoint
 
-        rinfo->req_size = (UISiZ*3)+(UISiZ*rinfo->arr_len);
+
+        rinfo->req_size = (UISiZ*3)+(UISiZ*rinfo->arr_len); // Set InfoFrame -> req size
 
         if (end != END) {
             fprintf(stderr,"Malformed request>\n> %d\n> %d\n> %d\n",flag,end,rinfo->arr_len); // Init int arr buffer if iarr follows
@@ -584,6 +640,7 @@ InfoFrame* parse_req(const unsigned char* req,
         (*cmd_seq)->arr->carr = carr_buf;
     }
 
+
     (rinfo->cmdSeq) = *cmd_seq;
     (*sts_frm)->status <<= 1;
 
@@ -591,6 +648,11 @@ InfoFrame* parse_req(const unsigned char* req,
 }
 
 
+   /* * * * * * * * * * * * * *
+  *  StatusFrame Functions   *
+ * * * * * * * * * * * * * */
+
+/** Set error */
 void setErr(StatFrame** sts_frm, LattErr ltcerr, unsigned int modr){
     (*sts_frm)->status = STERR;
     (*sts_frm)->err_code = ltcerr;
@@ -599,6 +661,7 @@ void setErr(StatFrame** sts_frm, LattErr ltcerr, unsigned int modr){
     }
 }
 
+/** Set status */
 void setSts(StatFrame** sts_frm, LattStts ltcst, unsigned int modr){
     (*sts_frm)->status = ltcst;
     if (modr){
@@ -609,6 +672,7 @@ void setSts(StatFrame** sts_frm, LattStts ltcst, unsigned int modr){
     }
 }
 
+/** Set action id*/
 void setAct(StatFrame** sts_frm, LattAct lttact, LattStts ltsts, unsigned int modr)
 {
     (*sts_frm)->act_id = lttact;
@@ -623,6 +687,7 @@ void setAct(StatFrame** sts_frm, LattAct lttact, LattStts ltsts, unsigned int mo
     }
 }
 
+/** Set modifier */
 void setMdr(StatFrame** sts_frm, unsigned int modr){
     (*sts_frm)->modr = modr ? modr : ++((*sts_frm)->modr);
     if (modr == SELFRESET) {
@@ -630,6 +695,7 @@ void setMdr(StatFrame** sts_frm, unsigned int modr){
     }
 }
 
+/** Reset StatusFrame fields*/
 void stsReset(StatFrame** sts_frm)
 {
     (*sts_frm)->status=LISTN;
@@ -638,11 +704,13 @@ void stsReset(StatFrame** sts_frm)
     (*sts_frm)->modr=0;
 }
 
+/** Output current StatusFrame */
 void stsOut(StatFrame** sts_frm)
 {
     printf("Status:%d\n",(*sts_frm)->status);
 }
 
+/** Output error code */
 void serrOut(StatFrame** sts_frm)
 {
     fprintf(stderr,"[ Error Code: %d ]", (*sts_frm)->err_code);
@@ -654,14 +722,17 @@ void serrOut(StatFrame** sts_frm)
 }
 
 
-/**
- *  <h2>ResponseCMDs
- * */
-/**
- *  <b>Travel ops
- * */
-//void rsp_cwnd(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, unsigned char ** nm_buf){
+   /* * * * * * *  * *
+  *  ResponseCMDs  *
+ * * * * * * * * */
 
+/* *
+ * Travel Ops
+ * */
+
+  /**
+ * Response: Current working directory
+ * */
 void rsp_cwnd(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, uniArr* buf){
 
 //    unsigned char* dn_hash;
@@ -673,11 +744,11 @@ void rsp_cwnd(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice*
     printf("\n>> %s\n",buf->carr);
 
     setSts(sts_frm,RESPN,OBJNM);
-
-
-//    yield_bridge(hltc,)
 }
 
+/**
+* Response: Go to node
+* */
 void rsp_gotond(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, uniArr* buf){
 
     unsigned long long* dest_id = (unsigned long long*) malloc(sizeof(unsigned long long));
@@ -688,27 +759,44 @@ void rsp_gotond(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattic
 
     setSts(sts_frm,TRVLD,stepcnt); //Modr set to step count
     buf = (uniArr*) &((*dchns)->vessel->diname);
-
-//    unsigned char* dn_hash;
-//
-//    HashBridge* hbrg;
-//    yield_bridge()
-//     expo_dirbase(*dchns)->vessel
-
 }
 
+/* *
+ * DirNode ops
+ * */
+
+/**
+* Response: List contents of current DirNode
+* */
 void rsp_listnd(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, uniArr* buf){
 }
+
+/* *
+ * Info ops
+ * */
+
+/**
+* Response: Current status frame
+* */
 void rsp_status(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, uniArr* buf){
 }
+
+/* *
+ * File ops
+ * */
+
+/**
+* Response: Return file ID given a filename
+* */
 void rsp_fiid(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, uniArr* buf){
 }
 
-/**
- * \ResponseActions
- * Initialize and return arr of response action functions
- */
-void* rsp_acts(StatFrame** sts_frm,
+
+  /**
+   * \ResponseAction
+   * Initialize and return arr of response action functions
+  * */
+void* rsp_act(StatFrame** sts_frm,
               InfoFrame** inf_frm,
               DChains* dchns,
               Lattice* hltc,

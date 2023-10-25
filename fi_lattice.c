@@ -9,6 +9,7 @@
 #include <sys/mman.h>
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <time.h>
 #include <unistd.h>
 #include <string.h>
 #include <sys/epoll.h>
@@ -73,7 +74,6 @@ void cleanup(HashLattice* hashlattice,
          if (cnfdir_fd > 0){
             close(cnfdir_fd);
         }
-
 }
 
 
@@ -109,15 +109,7 @@ size_t read_conf(unsigned char** dnconf_addr, int cnfdir_fd){
         return -1;
     }
 
-//    ssize_t s = write(STDOUT_FILENO,*dnconf_addr,sb.st_size);
-//
-//    if (s != sb.st_size) {
-//        fprintf(stderr, "partial write");
-//        return -1;
-//    }
-
     close(dnconf_fd);
-
     return sb.st_size;
 }
 
@@ -244,9 +236,9 @@ StatFrame* spin_up(unsigned int** iarr,
     epevent->events = EPOLLIN | EPOLLOUT;
 
 
-    /** * * * * * * * *
-   *   MAIN START   *
- * * * * * * * * **/
+      /* * * * * * * * *
+     *   MAIN START   *
+    * * * * * * * * */
     while (!exit_flag) {
         i = 0;
         stsReset(status_frm);
@@ -267,8 +259,7 @@ StatFrame* spin_up(unsigned int** iarr,
          * */
         setSts(status_frm, LISTN, 0);
         epoll_ctl(efd, EPOLL_CTL_ADD, data_socket, epevent);
-
-
+        clock_t clka = clock();
         /**
          * RECIEVE
          * */
@@ -279,6 +270,8 @@ StatFrame* spin_up(unsigned int** iarr,
             return *status_frm;
         }
         (*status_frm)->status <<= 1;
+        clock_t clkb = clock();
+
 
         /**
          * EPOLL MONITOR DATA CONN
@@ -300,6 +293,7 @@ StatFrame* spin_up(unsigned int** iarr,
                 break;
             } while ((epevent->events & EPOLLIN) != EPOLLIN);
         }
+        clock_t clkc = clock();
 
         /**
          * READ REQUEST INTO BUFFER
@@ -311,11 +305,14 @@ StatFrame* spin_up(unsigned int** iarr,
             return *status_frm;
         }
         (*status_frm)->status <<= 1;
+        clock_t clkd = clock();
 
         /**
          * CMD RECEIVED
          * */
         *info_frm = parse_req(*buffer, &cmd_seq, *info_frm, status_frm); // PARSE
+
+        clock_t clke = clock();
 
         if ((*status_frm)->err_code) {
             fprintf(stderr, "Error processing request: %d\n", (*status_frm)->err_code);
@@ -371,15 +368,25 @@ StatFrame* spin_up(unsigned int** iarr,
             exit_flag = 1;
             serrOut(status_frm);
         }
+        clock_t clkf = clock();
+
+        printf("time accept%ld\n",(clkb-clka));
+        printf("time epoll:%ld\n",(clkc-clkb));
+        printf("time read:%ld\n",(clkd-clkc));
+        printf("time parse:%ld\n",(clke-clkd));
+        printf("time close:%ld\n",(clkf-clke));
+
+
     }// END WHILE !EXITFLAG
 
     close(connection_socket);
     unlink(SOCKET_NAME);
+    free(cmd_seq);
     return *status_frm;
-}
-    /** * * * **
-       *  CLOSE  *
-        ** * * * **/
+}   /* * * * *
+      * CLOSE *
+       * * * * */
+
 
 
 void summon_lattice() {
@@ -411,14 +418,14 @@ void summon_lattice() {
     unsigned char *carr_buf;     // char strings
     unsigned char *respbuffer;  // Outgoing responses
 
-    InfoFrame *info_frm;
+    InfoFrame *info_frm;    // Frame for storing request info
     StatFrame *status_frm; // Frame for storing sys info
     status_frm = init_stat_frm(&status_frm);
 
 
-       /** * * * * * *
-      *   BOOT UP   *
-    * * * * * * **/
+       /* * * * * * *
+      *   BOOT UP  *
+     * * * * * * */
     do {
 
         /**
@@ -475,9 +482,9 @@ void summon_lattice() {
         Fi_Tbl **tbl_list = (Fi_Tbl **) calloc(dn_cnt, sizeof(Fi_Tbl *));
 
 
-           /** * * * * * * * **
+           /* * * * * * * * * *
           *  BUILD LATTICE  *
-        ** * * * * * * * **/
+         * * * * * * * * **/
         for (i = 0; i < dn_cnt; i++) {
             nm_len = extract_name(*(paths + i), *(lengths + i));
             //  Build structures and map each DirNode.
@@ -502,10 +509,10 @@ void summon_lattice() {
           *  INIT FUNC ARRAY
           * */
          void (*funarr[5])(StatFrame **, InfoFrame **, DChains *, Lattice *, uniArr *);
-         *funarr = rsp_acts(&status_frm, &info_frm, &dirchains, &hashlattice, cnfdir_fd, (uniArr *) &buffer, funarr);
+         *funarr = rsp_act(&status_frm, &info_frm, &dirchains, &hashlattice, cnfdir_fd, (uniArr *) &buffer, funarr);
 
 
-           /** * * * * * * * * **
+           /* * * * * * * * * * *
           *   EXECUTE SERVER   *
          ** * * * * * * * * **/
          status_frm = spin_up(&iarr_buf, &carr_buf, &buffer, &respbuffer, &status_frm, &info_frm, &seqTbl,
@@ -524,8 +531,9 @@ void summon_lattice() {
          cleanup(hashlattice, dirchains, tbl_list, dn_conf, dn_size, NULL, 0, lengths, paths, dn_cnt, cnfdir_fd);
 
     }while (status_frm->status != SHTDN);
-    /** * * * * *
+    /* * * * * * *
        *   EXIT   *
          * * * * * **/
+
     destroy_metastructures(status_frm, info_frm);
 }

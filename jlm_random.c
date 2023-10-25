@@ -204,7 +204,6 @@ unsigned long long little_hsh_llidx(unsigned char* hkey, unsigned char* tobehshe
 //    return outidx;
 //}
 
-
 void get_many_big_salts(unsigned long long** bigsaltls, int n){
     do{
         bigsaltls[n] = (unsigned long long*) sodium_malloc(sizeof(unsigned long long));

@@ -10,18 +10,19 @@
 #include "chkmk_didmap.h"
 
 /**
+ *  <h4><code>
  * \Status
- * <li>SLEEP : : 0 ::    /sleeping/
- * <li>LISTN : : 1 ::    /listening/
- * <li>CNNIN : : 2 ::    /connection received/
- * <li>REQST : : 4 ::    /received request (pre validation)/
- * <li>RCVCM : : 8 ::    /cmd valid, processing/
- * <li>RESPN : : 16 ::   /response pending/
- * <li>UPDAT : : 32 ::   /item updated/
- * <li>TRVLD : : 64 ::   /Dir Node location changed/
- * <li>SHTDN : : 128 ::  /Shutting down/
- * <li>RESET : : 256 ::  /System reset/
- * <li>STERR : : 512 ::  /Error occured, see error codes/
+ * <li> SLEEP = 0   -  sleeping
+ * <li> LISTN = 1   -  listening
+ * <li> CNNIN = 2   -  connection received
+ * <li> REQST = 4   -  received request (pre validation)
+ * <li> RCVCM = 8   -  cmd valid, processing
+ * <li> RESPN = 16  -  response pending
+ * <li> UPDAT = 32  -  item updated
+ * <li> TRVLD = 64  -  Dir Node location changed
+ * <li> SHTDN = 128 -  Shutting down
+ * <li> RESET = 256 -  System reset
+ * <li> STERR = 512 -  Error occured, see error codes
  * */
 typedef enum LattStts{
     // No value
@@ -54,19 +55,20 @@ typedef enum LattStts{
 
 
 /**
+ *  <h4><code>
  * \Responses
- * <li>SILNT : : 0   ::   /No response/
- * <li>STATS : : 1   ::   /Current status frame/
- * <li>CWDIR : : 2   ::   /ID of current working dirnode/
- * <li>FILID : : 4   ::   /ID of a given file/
- * <li>DIRID : : 8   ::   /ID of a given dir node/
- * <li>DNLST : : 16  ::   /Array of contents for a given dirnode/
- * <li>DCHNS : : 32  ::   /Nodes currently present in the dirchains/
- * <li>OBYLD : : 64  ::   /Yield object/
- * <li>ERRCD : : 127 ::   /Error code/
- * <li>DNODE : : 128 ::   /Resident dirnode for a given file/
- * <li>OBJNM : : 256 ::   /Name of object for a given ID/
- * <li>OINFO : : 512 ::   /Info string for a given object/
+ * <li>SILNT = 0   -   No response
+ * <li>STATS = 1   -   Current status frame
+ * <li>CWDIR = 2   -   ID of current working dirnode
+ * <li>FILID = 4   -   ID of a given file
+ * <li>DIRID = 8   -   ID of a given dir node
+ * <li>DNLST = 16  -   Array of contents for a given dirnode
+ * <li>DCHNS = 32  -   Nodes currently present in the dirchains
+ * <li>OBYLD = 64  -   Yield object
+ * <li>ERRCD = 127 -   Error code
+ * <li>DNODE = 128 -   Resident dirnode for a given file
+ * <li>OBJNM = 256 -   Name of object for a given ID
+ * <li>OINFO = 512 -   Info string for a given object
  * */
 typedef enum LattReply{
     // No response
@@ -96,27 +98,27 @@ typedef enum LattReply{
     // 1024 2048 4096 8192
 } LattReply;
 
-
 /**
+ * <h4><code>
  * \Errors
- *<li> IMFINE : : 0     :: /No error status/
- *<li> MALREQ : : 1     :: /Malformed request/
- *<li> MISSNG : : 2     :: /Requested object known but not located/
- *<li> UNKNWN : : 4     :: /Requested object not known/
- *<li> NOINFO : : 8     :: /Failure to produce/change requested info/
- *<li> BADCON : : 16    :: /Failure w/ connection socket/
- *<li> BADSOK : : 32    :: /Failure w/ data socket/
- *<li> MISMAP : : 64    :: /Error with mmap/
- *<li> STFAIL : : 128   :: /Error with stat op./
- *<li> FIFAIL : : 256   :: /Error with a file descriptor op./
- *<li> MISCLC : : 512   :: /Computed value doesn't match expected or provided/
- *<li> BADHSH : : 1024  :: /Error with hashing op/
- *<li> SODIUM : : 2048  :: /Error with sodium/
- *<li> FULLUP : : 4096  :: /Structure or object at capacity/
- *<li> ADFAIL : : 8192  :: /Failed to update a structure with an object/
- *<li> COLISN : : 16384 :: /Collision in hash table/
- *<li> ILMMOP : : 32768 :: /Failed memory operation or seg fault/
- *<li> EPOLLE : : 65536 :: /EPOLL error/
+ *<li> IMFINE = 0     -  No error status
+ *<li> MALREQ = 1     -  Malformed request
+ *<li> MISSNG = 2     -  Requested object known but not located
+ *<li> UNKNWN = 4     -  Requested object not known
+ *<li> NOINFO = 8     -  Failure to produce/change requested info
+ *<li> BADCON = 16    -  Failure w/ connection socket
+ *<li> BADSOK = 32    -  Failure w/ data socket
+ *<li> MISMAP = 64    -  Error with mmap
+ *<li> STFAIL = 128   -  Error with stat op.
+ *<li> FIFAIL = 256   -  Error with a file descriptor op.
+ *<li> MISCLC = 512   -  Computed value doesn't match expected or provided
+ *<li> BADHSH = 1024  -  Error with hashing op
+ *<li> SODIUM = 2048  -  Error with sodium
+ *<li> FULLUP = 4096  -  Structure or object at capacity
+ *<li> ADFAIL = 8192  -  Failed to update a structure with an object
+ *<li> COLISN = 16384 -  Collision in hash table
+ *<li> ILMMOP = 32768 -  Failed memory operation or seg fault
+ *<li> EPOLLE = 65536 -  EPOLL error
  * */
 typedef enum LattErr{
     // No error status
@@ -159,13 +161,15 @@ typedef enum LattErr{
     BADCNF = 131072
 } LattErr;
 
-/**\Actions
- *  <li>ZZZZ    :: 0 ::    /Do nothing/
- *  <li>RPNG    :: 1 ::    /Respond True/
- *  <li>RSET    :: 2 ::    /Clear buffers, reset/
- *  <li>SVSQ    :: 4 ::    /Save recieved sequence/
- *  <li>SLPP    :: 8 ::    /Enter sleep mode/
- *  <li>GBYE    :: 128 ::   /Shutdown exit/
+/**
+ * <h4><code>
+ *\Actions
+ *  <li> ZZZZ = 0 - Do nothing
+ *  <li> RPNG = 1 - Respond True
+ *  <li> RSET = 2 - Clear buffers, reset
+ *  <li> SVSQ = 4 - Save recieved sequence
+ *  <li> SLPP = 8 - Enter sleep mode
+ *  <li> GBYE = 12 - Shutdown exit
  * */
 typedef enum LattAct {
     // Do nothing
@@ -188,48 +192,48 @@ typedef enum LattAct {
  *  [status code | err code | action | modifier ]
 
 
- *\Status
- *<li>NOTHN = 0
- *<li>LISTN = 1      - listening
- *<li>CNNIN = 2       -  connection received
- *<li>REQST = 4       -   received request (pre validation)
- *<li>RCVCM = 8       -   cmd valid, processing
- *<li>RESPN = 16       -   response pending
- *<li>UPDAT = 32       -   item updated
- *<li>TRVLD = 64     -   Dir Node location changed
- *<li>SHTDN = 128     -   Shutting down
- *<li>RESET = 256     -   System reset
- *<li>STERR = 512     -   Error occured, see error codes
- *<li>SLEEP = 1024        -   sleeping
+ * \Status
+ * <li> NOTHN = 0
+ * <li> LISTN = 1      - listening
+ * <li> CNNIN = 2       -  connection received
+ * <li> REQST = 4       -   received request (pre validation)
+ * <li> RCVCM = 8       -   cmd valid, processing
+ * <li> RESPN = 16       -   response pending
+ * <li> UPDAT = 32       -   item updated
+ * <li> TRVLD = 64     -   Dir Node location changed
+ * <li> SHTDN = 128     -   Shutting down
+ * <li> RESET = 256     -   System reset
+ * <li> STERR = 512     -   Error occured, see error codes
+ * <li> SLEEP = 1024        -   sleeping
  *
  * \Error
- *  <li> IMFINE = 0,       -   No error status
- * <li>MALREQ = 1,       -   Malformed request
- * <li>MISSNG = 2,       -   Requested object known but not located
- * <li>UNKNWN = 4,       -   Requested object not known
- * <li>NOINFO = 8,       -   Failure to produce/change requested info
- * <li>BADCON = 16,      -   Failure w/ connection socket
- * <li>BADSOK = 32,      -   Failure w/ data socket
- * <li>MISMAP = 64,      -   Error with mmap
- * <li>STFAIL = 128,     -   Error with stat op.
- * <li>FIFAIL = 256,     -   Error with a file descriptor op.
- * <li>MISCLC = 512,     -   Computed value doesn't match expected or provided
- * <li>BADHSH = 1024,    -   Error with hashing op
- * <li>SODIUM = 2048,    -   Error with sodium
- * <li>FULLUP = 4096,    -   Structure or object at capacity
- * <li>ADFAIL = 8192,    -   Failed to update a structure with an object
- * <li>COLISN = 16384,    -   Collision in hash table
- * <li>ILMMOP = 32768,    -   Failed memory operation or seg fault
- * <li>EPOLLE = 65536,     -   EPOLL error
- * <li>BADCNF = 131072    -   Config error
+ * <li> IMFINE = 0,       -   No error status
+ * <li> MALREQ = 1,       -   Malformed request
+ * <li> MISSNG = 2,       -   Requested object known but not located
+ * <li> UNKNWN = 4,       -   Requested object not known
+ * <li> NOINFO = 8,       -   Failure to produce/change requested info
+ * <li> BADCON = 16,      -   Failure w/ connection socket
+ * <li> BADSOK = 32,      -   Failure w/ data socket
+ * <li> MISMAP = 64,      -   Error with mmap
+ * <li> STFAIL = 128,     -   Error with stat op.
+ * <li> FIFAIL = 256,     -   Error with a file descriptor op.
+ * <li> MISCLC = 512,     -   Computed value doesn't match expected or provided
+ * <li> BADHSH = 1024,    -   Error with hashing op
+ * <li> SODIUM = 2048,    -   Error with sodium
+ * <li> FULLUP = 4096,    -   Structure or object at capacity
+ * <li> ADFAIL = 8192,    -   Failed to update a structure with an object
+ * <li> COLISN = 16384,    -   Collision in hash table
+ * <li> ILMMOP = 32768,    -   Failed memory operation or seg fault
+ * <li> EPOLLE = 65536,     -   EPOLL error
+ * <li> BADCNF = 131072    -   Config error
  *
  * \Action
- * <li>ZZZZ = 0,     -   Do nothing
- * <li>RPNG = 1,     -   Respond True
- * <li>RSET = 2,     -   Clear buffers, reset
- * <li>SVSQ = 4,     -   Save recieved sequence
- * <li>SLPP = 8,     -   Enter sleep mode
- * <li>GBYE = 128    -   Shutdown exit
+ * <li> ZZZZ = 0,     -   Do nothing
+ * <li> RPNG = 1,     -   Respond True
+ * <li> RSET = 2,     -   Clear buffers, reset
+ * <li> SVSQ = 4,     -   Save recieved sequence
+ * <li> SLPP = 8,     -   Enter sleep mode
+ * <li> GBYE = 128    -   Shutdown exit
 
 <br>
  * \Modifier
@@ -244,77 +248,50 @@ typedef struct StatFrame{
 }StatFrame;
 
 /**
- * <h3>RequestCMDS
+ *<h3><code>
+ * RequestCMDS
+ *<br>
+
  \Qualifiers
- * <li>FFF = 0,
- * <li> - False
- * <li>TTT = 1,
- * <li> - True
- * <li>DFLT = 2,
- * <li> - Default argument for previous cmd
- * <li>QQQQ = 4
+ * <li> FFF = 0 - False
+ * <li> TTT = 1 - True
+ * <li> DFLT = 2 - Default argument for previous cmd
+ * <li> QQQQ = 4  - Empty
 \ArrayOps
- * <li>NARR = 8,
- * <li> - Int that follows is the length of an int array that will follow thereafter.
- * <li>GCSQ = 16,
- * <li> - Int that follows is the length of a char array that will follow thereafter
- * <li>RRRR = 32
- * <li> - Empty
- * <li>AAAA = 64
- * <li> - Empty
+ * <li> NARR = 8 - Int that follows is the length of an int array that will follow thereafter.
+ * <li> GCSQ = 16 - Int that follows is the length of a char array that will follow thereafter
+ * <li> RRRR = 32 - Empty
+ * <li> AAAA = 64 - Empty
  \TravelOps
- *  <li>VESL = 128,
- *   <li> - Give current vessel location if DFLT, else find Dnode location of given FiID
- *  <li>GOTO = 256,
- *   <li> - Goto dirNode of following name, home if DFLT
- *  <li>WWWW = 512,
- *   <li> - Empty
- *  <li>VVVV = 1024
- *   <li> - Empty
-
- ~
+ *  <li> ~
+ *  <li> VESL = 128 - Give current vessel location if DFLT, else find Dnode location of given FiID
+ *  <li> GOTO = 256 - Goto dirNode of following name, home if DFLT
+ *  <li> WWWW = 512 - Empty
+ *  <li> VVVV = 1024 - Empty
  \FileOps
- *  <li>FIID = 2048,
- *   <li> - Return file filename for id. fid for filename if DFLT
- *  <li>FINM  = 4096,
- *   <li> - Yield file of following filename , yield resident file table if DFLT
- *  <li>YYYY = 8192,
- *   <li> - Empty
- *  <li>FFFF = 16384
- *   <li> - Empty
-
- ~
+ *  <li> ~
+ *  <li> FIID = 2048 - Return file filename for id. fid for filename if DFLT
+ *  <li> FINM  = 4096 - Yield file of following filename , yield resident file table if DFLT
+ *  <li> YYYY = 8192 - Empty
+ *  <li> IIII = 16384 - Empty
  \DirNodeOps
- *  <li>LIST = 32768,
- *   <li> - List dirnode contents of following name. Current dir if DFLT
- *  <li>GGGG = 65536,
- *   <li> - Empty
- *  <li>NNNN = 131072,
- *   <li> - Empty
- *  <li>DDDD = 262144,
- *   <li> - Empty
-
- ~
+ *  <li> ~
+ *  <li> LIST = 32768 - List dirnode contents of following name. Current dir if DFLT
+ *  <li> KKKK = 65536 - Empty
+ *  <li> NNNN = 131072 - Empty
+ *  <li> DDDD = 262144 - Empty
  \SystemOps
- *  <li>SAVE  = 524288,
- *  <li> - Save this sequence
- *  <li>INFO = 1048576,
- *   <li> - Produce info assoc. with the following ID code.
- *  <li>CCCC = 2097152
- *   <li> - Empty
- *  <li>UUUU = 4194304
- *   <li> - Empty
-
+ *  <li> SAVE  = 524288 - Save this sequence
+ *  <li> INFO = 1048576 - Produce info assoc. with the following ID code.
+ *  <li> EXIT = 2097152 - Reset/Sleep/Shutdown
+ *  <li> UUUU = 4194304 - Empty
  \Structure
- *  <li>LEAD = 536870912,
- *   <li> -  Carry byte
- *  <li>END = 2147483647
- *   - End sequence and masking byte
- *
+ *  <li> LEAD = 536870912 -  Carry byte
+ *  <li> END = 2147483647 - End sequence and masking byte
  *
  * <note>NOTE
  * <br>
- *  <note> Op groups marked w/ ~are mutually exclusive in that only one can be processed per command sequence.
+ *  <note> Op groups marked with a '~' are mutually exclusive in that only one can be processed per command sequence.
  *  <br>
  *  <note> They can be combined with flags not marked as such however
  *
@@ -370,7 +347,7 @@ typedef enum ReqFlag {
     SAVE  = 524288,
 // Produce info assoc. with the ID code
     INFO = 1048576,
-//
+// Exit/Sleep/Shutdown
     EXIT = 2097152,
 //
     UUUU = 4194304,
@@ -382,22 +359,15 @@ typedef enum ReqFlag {
 } ReqFlag;
 
 /**
+ * <h4><code>
  * \ResponseCMDs
- * <li>FFFF = 0,
- * <li> -  False
- * <li>NRSP = 1,
- * <li> -  Number of responses to follow
- * <li>RARR = 2,
- * <li> -  The following is the ID code for the info that follows thereafter
- * <li>RLEN = 4,
- * <li> -  What follows is the length of an array that follows thereafter
- * <li>STAS = 8,
- * <li> -  Arr that follows is a status frame
- * <li>CODE = 16,
- * <li> -  Data type of next response
- * <li>CINT = 32,
- * <li> -  Next response
- *
+ * <li> FFFF = 0 -  False
+ * <li> NRSP = 1 -  Number of responses to follow
+ * <li> RARR = 2 -  The following is the ID code for the info that follows thereafter
+ * <li> RLEN = 4 -  What follows is the length of an array that follows thereafter
+ * <li> STAS = 8 -  Arr that follows is a status frame
+ * <li> CODE = 16 - Data type of next response
+ * <li> CINT = 32 -  Next response
  * */
 typedef enum RspFlag {
     // False
@@ -431,49 +401,29 @@ typedef enum RspFlag {
 }RspFlag;
 
 /**
+ * <h4><code>
  * \LatticeObjects
- * <li>NADA = 0,
- *     <li>-<i>No or nonexistent object
- * <li>LTTC = 1,
- *     <li>-<i>  Hash Lattice
- * <li>BRDG = 2,
- *     <li>-<i>  Hash bridge
- * <li>DIRN = 4,
- *     <li>-<i>  Dir node
- * <li>FTBL = 8,
- *     <li>-<i>  File table
- * <li>FIMP = 16,
- *     <li>-<i>  File map
- * <li>LFLG = 32,
- *     <li>-<i>  Request/response flag
- * <li>SFRM = 64,
- *     <li>-<i>  Status frame
- * <li>IFRM = 128,
- *     <li>-<i>  Info frame
- * <li>BUFF = 256,
- *     <li>-<i>  Buffers
- * <li>SEQT = 512,
- *     <li>-<i>  Stored seq table
- * <li>CMSQ = 1024,
- *     <li>-<i>  Cmd sequence (response or request)
- * <li>ICAR = 2048,
- *     <li>-<i>  Int or Char array
- * <li>VSSL = 4096,
- *     <li>-<i>  Dirnode vessel/cursor object
- * <li>FIOB = 8192,
- *     <li>-<i>  Actual file object
- * <li>IDID = 16384,
- *     <li>-<i>  ID for an object
- * <li>NMNM = 32768,
- *     <li>-<i>  Name for an object
- * <li>FRLD = 65536,
- *     <li>-<i>  Cmd frame lead
- * <li>FIDE = 131072,
- *     <li>-<i>  File desc or socket
- * <li>HSKY = 262144,
- *     <li>-<i>  Hash key
- * <li>DCHN = 524288
- *     <li>-<i>  Dir Chains
+ * <li> NADA = 0 - No or nonexistent object
+ * <li> LTTC = 1 -  Hash Lattice
+ * <li> BRDG = 2 -  Hash bridge
+ * <li> DIRN = 4 -  Dir node
+ * <li> FTBL = 8 -  File table
+ * <li> FIMP = 16 - File map
+ * <li> LFLG = 32 -  Request/response flag
+ * <li> SFRM = 64 -  Status frame
+ * <li> IFRM = 128 -  Info frame
+ * <li> BUFF = 256 -  Buffers
+ * <li> SEQT = 512 -  Stored seq table
+ * <li> CMSQ = 1024 -   Cmd sequence (response or request)
+ * <li> ICAR = 2048 - Int or Char array
+ * <li> VSSL = 4096 - Dirnode vessel/cursor object
+ * <li> FIOB = 8192 - Actual file object
+ * <li> IDID = 16384 - ID for an object
+ * <li> NMNM = 32768 - Name for an object
+ * <li> FRLD = 65536 - Cmd frame lead
+ * <li> FIDE = 131072 - File desc or socket
+ * <li> HSKY = 262144 - Hash key
+ * <li> DCHN = 524288 - Dir Chains
  */
 typedef enum LattObj{
     // No or nonexistent object
@@ -522,6 +472,7 @@ typedef enum LattObj{
 
 
 typedef unsigned char* cmdKey;
+
 typedef ReqFlag* ReqArr;
 typedef RspFlag* RspArr;
 
@@ -568,16 +519,19 @@ typedef struct Cmd_Seq {
     uniArr *arr;
 }Cmd_Seq;
 
-/**
+/** <h4><code>
  * \InformationFrame
- *  <h4> <code> [ req size | arr type | arr len | CmdSeq struct ptr ]
+ * <br><verbatim>
+ *<br> [ rsp size | req size |
+ *<br> |[trvl_op,  fi_op,  di_op]|
+ *<br> | sys_op  |  qual  |
+ *<br> | arr type |  arr len |
+ *<br> | CmdSeq ptr ]
  */
 typedef struct InfoFrame{
     unsigned int rsp_size;
     unsigned int req_size;
-    unsigned int trvl_op;
-    unsigned int fi_op;
-    unsigned int di_op;
+    unsigned int trfidi[3];
     unsigned int sys_op;
     unsigned int qual;
     unsigned int arr_type; //0: none, 1: char, 2: int
@@ -601,9 +555,9 @@ typedef struct SeqMap{
 
 /**
  * \SequenceTable
- *<h4> <code>
- *[ max table size | cmd hash key | sequence arr ]
- * </h4>
+ *<h4><code>
+ * [ max table size | cmd hash key | sequence arr ]
+ *</h4>
 
  *
  * <i>Hash table storing common sequences
@@ -647,7 +601,7 @@ int unmask_cmds(unsigned int** cmds,
                 unsigned char*** arrs,
                 int cmdcnt);
 
-void* rsp_acts(StatFrame** sts_frm,
+void* rsp_act(StatFrame** sts_frm,
                InfoFrame** inf_frm,
                DChains* dchns,
                Lattice* hltc,
