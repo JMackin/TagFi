@@ -6,6 +6,7 @@
 #define TAGFI_LATTICE_CMDS_H
 
 #define ENDBYTES 538968075
+#define RSPARR 5
 
 #include "chkmk_didmap.h"
 
@@ -57,44 +58,73 @@ typedef enum LattStts{
 /**
  *  <h4><code>
  * \Responses
- * <li>SILNT = 0   -   No response
- * <li>STATS = 1   -   Current status frame
- * <li>CWDIR = 2   -   ID of current working dirnode
- * <li>FILID = 4   -   ID of a given file
- * <li>DIRID = 8   -   ID of a given dir node
- * <li>DNLST = 16  -   Array of contents for a given dirnode
- * <li>DCHNS = 32  -   Nodes currently present in the dirchains
- * <li>OBYLD = 64  -   Yield object
- * <li>ERRCD = 127 -   Error code
- * <li>DNODE = 128 -   Resident dirnode for a given file
- * <li>OBJNM = 256 -   Name of object for a given ID
- * <li>OINFO = 512 -   Info string for a given object
+
+ * \Logic
+ * <li> SILNT = 0 - False
+ * <li> SCCSS = 1 - True/Success
+ * <li> MODIF = 128 - Modified response nature
+ *
+ * \Info
+ * <li> ERRCD = 2 - An errorcode
+ * <li> OINFO = 3 - Info string for a given object
+ * <li> STATS = 4 - Current status frame
+ * \Dir
+ * <li> DIRID = 5 -  ID of a given dirnode
+ * <li> CWDIR = 6 -  ID of current working dirnode
+ * <li> DCHNS = 7 -   Nodes currently present in the dirchains
+ * \File
+ * <li> DNLST = 8  -   Array of contents for a given dirnode
+ * <li> FILID = 9  -   ID of a given file
+ * <li> DNODE = 10 -   Resident dirnode for a given file
+ * <li> OBYLD = 11 -   Yield file object
+ * <li> OBJNM = 12 - Filename
  * */
 typedef enum LattReply{
-    // No response
+    /* *
+     * LOGIC
+     * */
+    //- No response
     SILNT = 0,
-    // Current status frame
-    STATS = 1,
-    // ID of current working dirnode
-    CWDIR = 2,
-    // ID of a given file
-    FILID = 4,
-    // ID of a given dir node
-    DIRID = 8,
-    // Array of contents for a given dirnode
-    DNLST = 16,
-    // Nodes currently present in the dirchains
-    DCHNS = 32,
-    // Yield object
-    OBYLD = 64,
-    // Error code
-    ERRCD = 127,
-    // Resident dirnode for a given file
-    DNODE = 128,
-    // Name of object for a given ID
-    OBJNM = 256,
-    // Info string for a given object
-    OINFO = 512
+    //- Requested operation completed
+    SCCSS = 1,
+    // Modified response nature
+    MODIF = 128,
+
+    /* *
+     * INFO
+     * */
+    //-  Error code
+    ERRCD = 2,
+    //-  Info string for a given object
+    OINFO = 3,
+    //- Current status frame
+    STATS = 4,
+
+    /* *
+     * DIR
+     * */
+    //- ID of a given dir node
+    DIRID = 5,
+    //-  ID of current working dirnode
+    CWDIR = 6,
+    //-   Nodes currently present in the dirchains
+    DCHNS = 7,
+    //-   Array of contents for a given dirnode
+    DNLST = 8,
+
+    /* *
+     * FILE
+     * */
+    //-   ID of a given file
+    FILID = 9,
+    //-   Resident dirnode for a given file
+    DNODE = 10,
+    //-   Yield file
+    OBYLD = 11,
+    //-   Filename for a given ID
+    OBJNM = 12,
+
+
     // 1024 2048 4096 8192
 } LattReply;
 
@@ -169,7 +199,8 @@ typedef enum LattErr{
  *  <li> RSET = 2 - Clear buffers, reset
  *  <li> SVSQ = 4 - Save recieved sequence
  *  <li> SLPP = 8 - Enter sleep mode
- *  <li> GBYE = 12 - Shutdown exit
+ *  <li> FRSP = 16 - Form response and reply to request
+ *  <li> GBYE = 128 - Shutdown exit
  * */
 typedef enum LattAct {
     // Do nothing
@@ -182,6 +213,8 @@ typedef enum LattAct {
     SVSQ = 4,
     // Enter sleep mode
     SLPP = 8,
+    // Form response and reply to request
+    FRSP = 16,
     // Shutdown exit
     GBYE = 128
 }LattAct;
@@ -233,6 +266,7 @@ typedef enum LattAct {
  * <li> RSET = 2,     -   Clear buffers, reset
  * <li> SVSQ = 4,     -   Save recieved sequence
  * <li> SLPP = 8,     -   Enter sleep mode
+ * <li> FRSP = 16     - Form response and reply to request
  * <li> GBYE = 128    -   Shutdown exit
 
 <br>
@@ -499,7 +533,7 @@ typedef union uniArr{
 /**
  *
  * \Frame
- *<h4><code>  [ ID | cmd lead | 0: request or 1: response | flags arr |  c/i arr | flag count | arr length ] </h4>
+ *<h4><code>  [ ID | cmd lead | 0: request or 1: response | flags arr | flag count | arr length | arr* ] </h4>
  *
  \Sequence
  *<h4> [CmdLead] -> [ArrayLength] -> [Array] -> [ENDflag] </h4>
@@ -570,6 +604,16 @@ typedef struct Seq_Tbl{
     SeqMap* seq_map;
 } Seq_Tbl;
 
+typedef unsigned int** RspMap;
+
+typedef void (*RspFunc[RSPARR])(StatFrame**, InfoFrame* *, DChains*, Lattice*, uniArr*);
+
+typedef struct Resp_Tbl{
+    unsigned int fcnt;
+    RspMap* rsp_map; // 3 x 3 x fcnt - 3D array: {LattReply,Mod,actIdx}
+    RspFunc* rsp_funcarr;
+} Resp_Tbl;
+
 
 int list_cmds();
 
@@ -589,6 +633,7 @@ void destroy_cmdstructures(unsigned char* buffer,
                            unsigned char* respbuffer,
                            unsigned char* carr,
                            unsigned int* iarr,
+                           Resp_Tbl * rsp_tbl,
                            Seq_Tbl* sqTbl);
 
 unsigned int serial_seq(unsigned char* seq_out,
@@ -601,13 +646,28 @@ int unmask_cmds(unsigned int** cmds,
                 unsigned char*** arrs,
                 int cmdcnt);
 
-void* rsp_act(StatFrame** sts_frm,
-               InfoFrame** inf_frm,
-               DChains* dchns,
-               Lattice* hltc,
-               int cnfg_fd,
-               uniArr* buf,
-               void (*funarr[5])(StatFrame**, InfoFrame* *, DChains*, Lattice*, uniArr*));
+RspFunc* rsp_act(
+              RspMap rspMap,
+              StatFrame** sts_frm,
+              InfoFrame** inf_frm,
+              RspFunc* (funarr));
+// VER. A
+//RspFunc* rsp_act(int cnfg_fd,
+//              RspMap rspMap,
+//              StatFrame** sts_frm,
+//              InfoFrame** inf_frm,
+//              DChains* dchns,
+//              Lattice* hltc,
+//              uniArr* buf,
+//              RspFunc* (funarr));
+
+void init_rsptbl(int cnfg_fd,
+                 Resp_Tbl** rsp_tbl,
+                 StatFrame** sts_frm,
+                 InfoFrame** inf_frm,
+                 DChains* dchns,
+                 Lattice* hltc,
+                 uniArr* buf);
 
 void rsp_gotond(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, uniArr* buf);
 
@@ -625,7 +685,7 @@ void stsReset(StatFrame** sts_frm);
 
 void stsOut(StatFrame** sts_frm);
 
-void serrOut(StatFrame** sts_frm);
+void serrOut(StatFrame** sts_frm, char* msg);
 
 #endif //TAGFI_LATTICE_CMDS_H
 
@@ -678,6 +738,7 @@ void serrOut(StatFrame** sts_frm);
  *
 **/
 
+
 /**
  1: 1 |  2: 2 |  3: 3 |  4: 4 |  5: 5 |  6: 6 |  7: 7 |  8: 8 |  9: 9 |  10: : |  11: ; |  12: < |  13: = |  14: > |
  15: ? |  16: @ |  17: A |  18: B |  19: C |  20: D |  21: E |  22: F |  23: G |  24: H |  25: I |  26: J |  27: K |
@@ -685,4 +746,27 @@ void serrOut(StatFrame** sts_frm);
  41: Y |  42: Z |  43: [ |  44: \ |  45: ] |  46: ^ |  47: _ |  48: ` |  49: a |  50: b |  51: c |  52: d |  53: e |
  54: f |  55: g |  56: h |  57: i |  58: j |  59: k |  60: l |  61: m |  62: n |  63: o |  64: p |  65: q |  66: r |
  67: s |  68: t |  69: u |  70: v |  71: w |  72: x |  73: y |  74: z |  75: { |  76: | |  77: } |  78: ~ |
+*/
+
+/**
+*<verbatim><code>
+ * x % 11:
+<br>----
+<br>2 : 2
+<br>4 : 4
+<br>8 : 8
+<br>16 : 5
+<br>32 : 10
+<br>64 : 9
+<br>128 : 7
+<br>256 : 3
+<br>512 : 6
+<br>1024 : 1
+<br>2048 : 2
+<br>4096 : 4
+<br>8192 : 8
+<br>16384 : 5
+<br>32768 : 10
+<br>65536 : 9
+
 */

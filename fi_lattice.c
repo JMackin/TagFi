@@ -319,6 +319,9 @@ StatFrame* spin_up(unsigned int** iarr,
             fprintf(stderr, "lead: %d\nbuffer: %s", (*cmd_seq).lead, *buffer);
         }
 
+        /** Determine response*/
+
+
         /**
          * ACTION:
          *  shutdown
@@ -341,7 +344,9 @@ StatFrame* spin_up(unsigned int** iarr,
          * ACTION:
          * prepare response
          * */
-        if ((*status_frm)->status == RESPN) {
+        if ((*status_frm)->act_id == FRSP) {
+            //prepresp()
+
             ret = write(data_socket, respbuffer, resp_len);
             if (ret == -1) {
                 setErr(status_frm, BADSOK, 'W'); // W = write op
@@ -366,7 +371,7 @@ StatFrame* spin_up(unsigned int** iarr,
          * */
         if ((*status_frm)->err_code && (*status_frm)->act_id == GBYE) {
             exit_flag = 1;
-            serrOut(status_frm);
+            serrOut(status_frm,NULL);
         }
         clock_t clkf = clock();
 
@@ -438,6 +443,7 @@ void summon_lattice() {
         //  Size of config file in bytes
         Seq_Tbl *seqTbl;
         init_seqtbl(&seqTbl, 32);
+        //  Response array
 
         /**
          * OPEN CONFIG
@@ -450,7 +456,7 @@ void summon_lattice() {
             cleanup(hashlattice, dirchains, NULL,
                     NULL, 0, NULL, 0,
                     NULL, NULL, 0, 0);
-            serrOut(&status_frm);
+            serrOut(&status_frm,NULL);
             break;
         }
 
@@ -465,7 +471,7 @@ void summon_lattice() {
             cleanup(hashlattice, dirchains, NULL,
                     dn_conf, dn_size, NULL, 0,
                     NULL, NULL, 0, cnfdir_fd);
-            serrOut(&status_frm);
+            serrOut(&status_frm,NULL);
             break;
         }
         //    if (sq_size == -1 ) {
@@ -499,8 +505,8 @@ void summon_lattice() {
                 perror("DirNode mapping failed\n");
                 setErr(&status_frm, MISMAP, 0);
                 setAct(&status_frm, GBYE, 0, 0);
-                serrOut(&status_frm);
-                destroy_cmdstructures(buffer, respbuffer, carr_buf, iarr_buf, seqTbl);
+                serrOut(&status_frm,NULL);
+                destroy_cmdstructures(buffer, respbuffer, carr_buf, iarr_buf, NULL, seqTbl);
                 destroy_metastructures(status_frm, info_frm);
                 return;
             }
@@ -508,8 +514,9 @@ void summon_lattice() {
          /**
           *  INIT FUNC ARRAY
           * */
-         void (*funarr[5])(StatFrame **, InfoFrame **, DChains *, Lattice *, uniArr *);
-         *funarr = rsp_act(&status_frm, &info_frm, &dirchains, &hashlattice, cnfdir_fd, (uniArr *) &buffer, funarr);
+         Resp_Tbl* rsp_tbl;
+
+         init_rsptbl(cnfdir_fd, &rsp_tbl, &status_frm, &info_frm, &dirchains, &hashlattice, (uniArr *) respbuffer);
 
 
            /* * * * * * * * * * *
@@ -527,7 +534,7 @@ void summon_lattice() {
          /**
           * CLEANUP
           * */
-         destroy_cmdstructures(buffer, respbuffer, carr_buf, iarr_buf, seqTbl);
+         destroy_cmdstructures(buffer, respbuffer, carr_buf, iarr_buf, rsp_tbl, seqTbl);
          cleanup(hashlattice, dirchains, tbl_list, dn_conf, dn_size, NULL, 0, lengths, paths, dn_cnt, cnfdir_fd);
 
     }while (status_frm->status != SHTDN);

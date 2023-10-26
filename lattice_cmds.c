@@ -9,6 +9,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include "jlm_random.h"
+#include "sodium.h"
 #include "chkmk_didmap.h"
 #include "fidi_masks.h"
 #include "lattice_cmds.h"
@@ -19,7 +20,6 @@
 #define CHRARR 16
 #define NOARR 0
 #define SEQSTORE "sequences"
-#define crypto_shorthash_KEYBYTES 16u
 #define SELFRESET 2147483647
 #define CMDCNT 16
 
@@ -72,7 +72,7 @@ void reset_cmdseq(Cmd_Seq** cmdSeq, unsigned int arrsize, unsigned int type){
 //    is_init = 0;
 //}
 
-void destroy_cmdstructures(unsigned char* buffer, unsigned char* respbuffer, unsigned char* carr, unsigned int* iarr, Seq_Tbl* seqTbl){
+void destroy_cmdstructures(unsigned char* buffer, unsigned char* respbuffer, unsigned char* carr, unsigned int* iarr, Resp_Tbl* rsp_tbl, Seq_Tbl* seqTbl){
 
     free(buffer);
     free(respbuffer);
@@ -86,6 +86,9 @@ void destroy_cmdstructures(unsigned char* buffer, unsigned char* respbuffer, uns
     }
     free(seqTbl->cmd_key);
     free(seqTbl);
+   // free(((rsp_tbl)->rsp_map));
+    //free(((rsp_tbl)->rsp_funcarr));
+    sodium_free(rsp_tbl);
 }
 
 /*
@@ -410,6 +413,7 @@ void err_info_frm(InfoFrame* info_frm, StatFrame** stats_frm, LattErr errcode, u
 }
 
 
+
   /* * * * * * * * * *
   * Request Parsing *
  * * * * * * * * * */
@@ -489,21 +493,26 @@ unsigned int split_cats(const unsigned int* lead_flags,
  * Convert request-lead to an array of flags using bit-masking and return the flag count.
  */
 unsigned int parse_lead(const unsigned int lead, ReqFlag ** flg_list, StatFrame** sts_frm, InfoFrame** inf_frm) {
-    unsigned int lslicr = 0;
     unsigned int k = 1920;
-    unsigned int j = 0;
     unsigned int i = 0;
     unsigned int flgcnt = 0;
 
-    // [ quals | trvl/fiops/dirops/ | sysops | arrsigs ]
-    unsigned int* lead_flags = (unsigned int*) calloc(4, UISiZ);
+    /** Alloc buffer to hold OR'd category flag values
+     * and an array for the final parsed flag list.
+     * */
+    unsigned int* lead_flags = (unsigned int*) calloc(4, UISiZ);    // [ quals | trvl/fiops/dirops/ | sysops | arrsigs ]
     *flg_list = (ReqFlag *) (calloc(CMDCNT,sizeof(ReqFlag)));
-    unsigned int masks[4] = {QUALIFIR,ARRAYOPS,SYSTMOPS,1920};
 
+    /** Extract qualifier flags */
     *lead_flags = lead & QUALIFIR;
     (*inf_frm)->qual = *lead_flags;
+
+    /** Extract array op flags*/
     *(lead_flags+1) = lead & ARRAYOPS;
     (*inf_frm)->arr_type = *(lead_flags+1);
+
+    /** Extract op flags from one of three possible categories:
+     * <br> Travel, File, or DirNode*/
     do {
         *(lead_flags+2) = (lead & k);
         k <<= 4;
@@ -514,22 +523,19 @@ unsigned int parse_lead(const unsigned int lead, ReqFlag ** flg_list, StatFrame*
         }
     } while (!(*(lead_flags+2)));
 
-    for (j = 0; j < 4; j++){
-        if (*(lead_flags+j)){
-            flgcnt++;
-        }
-    }
+    /** Extract system op flags */
     *(lead_flags+3) = lead & SYSTMOPS;
     (*inf_frm)->sys_op = *(lead_flags+3);
 
+    /** Call for further processing to divide the OR'd category values into their individual flags  */
     ReqFlag flg_itr = TTT;
     flgcnt = split_cats(lead_flags, flg_list, (&flg_itr), 1, 0, 0,(i-1));
 
-   // free(lead_flags);
+    free(lead_flags);
+    *flg_list = (ReqFlag*) reallocarray(*flg_list,flgcnt,sizeof(ReqFlag));
 
     return flgcnt;
 }
-
 /**
  *\ParseRequest
  *  Convert char buffer with a request to a CMD Sequence struct
@@ -549,7 +555,7 @@ InfoFrame* parse_req(const unsigned char* req,
     ReqFlag* reqflg_arr = (ReqFlag*) calloc(CMDCNT,sizeof(ReqFlag));
 
     /**
-     * Parse sequence lead and init CMD struct
+     * Parse request sequence-lead and init CMD struct
      * */
     memcpy(&flag,req,UISiZ);
     flgcnt = parse_lead(flag, &reqflg_arr, sts_frm, &rinfo);
@@ -603,7 +609,7 @@ InfoFrame* parse_req(const unsigned char* req,
         exit_flg = flag == ENDBYTES ? (exit_flg << 1) : 1; //   EXIT trigger 2
 
         /**
-         * Alloc and populate int buffer
+         * Alloc and populate int buffer with the cmd sequence
          * */
         iarr_buf = (unsigned int*) calloc(rinfo->arr_len,UISiZ);
         memcpy(iarr_buf,req+(UISiZ*2),(UISiZ*rinfo->arr_len));
@@ -639,7 +645,6 @@ InfoFrame* parse_req(const unsigned char* req,
         memcpy(carr_buf,req+(UISiZ*2),(UCSiZ*rinfo->arr_len));
         (*cmd_seq)->arr->carr = carr_buf;
     }
-
 
     (rinfo->cmdSeq) = *cmd_seq;
     (*sts_frm)->status <<= 1;
@@ -710,21 +715,31 @@ void stsOut(StatFrame** sts_frm)
     printf("Status:%d\n",(*sts_frm)->status);
 }
 
-/** Output error code */
-void serrOut(StatFrame** sts_frm)
+/** Output error code
+ *<br>
+ *  - Optionally, exit if StatusFrame Act-code is set to GBYE.
+ *<br>
+ *  - A message string can be passed in for display or pass in NULL
+ *  for none;
+ * */
+void serrOut(StatFrame** sts_frm, char* msg)
 {
-    fprintf(stderr,"[ Error Code: %d ]", (*sts_frm)->err_code);
+    fprintf(stderr,"[ Error Code: %d ]\n", (*sts_frm)->err_code);
     fprintf(stderr,"< %d >\n", (*sts_frm)->modr);
+
     if ((*sts_frm)->act_id == GBYE){
         fprintf(stderr,"Shutting down\n");
         (*sts_frm)->status = SHTDN;
     }
+    if (msg != NULL) {
+        fprintf(stdout,"---------\n\t%s\n---------\n", msg);
+    }
 }
 
 
-   /* * * * * * *  * *
-  *  ResponseCMDs  *
- * * * * * * * * */
+   /* * * * * * * * * *
+  *  Response CMDS  *
+ * * * * * * * * **/
 
 /* *
  * Travel Ops
@@ -741,7 +756,7 @@ void rsp_cwnd(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice*
 //    hbrg = yield_bridge(*hltc, dn_hash,crypto_shorthash_KEYBYTES,((*dchns)->vessel));
 //
     buf->carr = (unsigned char*) ((*dchns)->vessel)->diname;
-    printf("\n>> %s\n",buf->carr);
+    printf("\nRESPONSE>> %s\n",buf->carr);
 
     setSts(sts_frm,RESPN,OBJNM);
 }
@@ -779,6 +794,19 @@ void rsp_listnd(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattic
 * Response: Current status frame
 * */
 void rsp_status(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, uniArr* buf){
+
+    for(int i = 0; i < 16; i+= 4){
+        if ((unsigned int) *buf->carr+i){
+            stsReset(sts_frm);
+            setErr(sts_frm,ILMMOP,0);
+            serrOut(sts_frm,"Response processing failed.\nBuffer not empty.");
+            return;
+        }
+        memcpy((buf->carr+i),*(sts_frm+i),UISiZ);
+    }
+
+    printf("\nRESPONSE>> %s\n",buf->carr);
+
 }
 
 /* *
@@ -792,39 +820,180 @@ void rsp_fiid(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice*
 }
 
 
+    /* * * * * * * * * * * **
+   *  Response processing  *
+ * * * * * * * * * * * * */
+
   /**
    * \ResponseAction
-   * Initialize and return arr of response action functions
+   *    Initialize and return ResponseMap struct.
+   * <br>
+   *        Call fucntions with:
+   * <br><br>
+   * <code>
+   *        (*funarr[cmd])(sts_frm, inf_frm, dchns, hltc, buf);
   * */
-void* rsp_act(StatFrame** sts_frm,
+RspFunc* rsp_act(
+              RspMap rsp_map,
+              StatFrame** sts_frm,
               InfoFrame** inf_frm,
-              DChains* dchns,
-              Lattice* hltc,
-              int cnfg_fd,
-              uniArr* buf,
-               void (*funarr[5])(StatFrame**, InfoFrame* *, DChains*, Lattice*, uniArr*)){
-
-    int fcnt = 1;
+              RspFunc* funarr)
+// VER. A
+//              {RspFunc* rsp_act(int cnfg_fd,
+//              RspMap rsp_map,
+//              StatFrame** sts_frm,
+//              InfoFrame** inf_frm,
+//              DChains* dchns,
+//              Lattice* hltc,
+//              uniArr* buf,
+//              RspFunc* funarr)
+{
+    // {LattReply,Mod,actIdx}
+    *(*rsp_map) = 0;     *((*rsp_map)+1) = 0;   *((*rsp_map)+2) = STATS;
+    *(*(rsp_map+1)) = 1; *(*(rsp_map+1)+1) = 0; *((*rsp_map+2)+1) = CWDIR;
+    *((*rsp_map+2)) = 2; *((*rsp_map+1)+2) = 0; *((*rsp_map+2)+2) = FILID;
+    *((*rsp_map+3)) = 3; *((*rsp_map+1)+3) = 0; *((*rsp_map+2)+3) = DNLST;
+    *((*rsp_map+4)) = 4; *((*rsp_map+1)+4) = 0; *((*rsp_map+2)+4) = OBJNM;
 
     void (*cwdn)(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, uniArr* buf); // return CWD
-    cwdn = rsp_cwnd;
+    cwdn = &rsp_cwnd;
     void (*gond)(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, uniArr* buf); // Goto dirndode
     gond = &rsp_gotond;
     void (*lsnd)(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, uniArr* buf); // list dirnode contents
     lsnd = &rsp_listnd;
-    void (*psts)(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, uniArr* buf); // return status
-    psts = &rsp_status;
+    void (*stts)(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, uniArr* buf); // return status
+    stts = &rsp_status;
     void (*fiid)(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, uniArr* buf); // return fiid for given filename
     fiid = &rsp_fiid;
-
-    (funarr)[0] = cwdn;
-    (funarr)[1] = gond;
-    (funarr)[2] = lsnd;
-    (funarr)[3] = psts;
-    (funarr)[4] = fiid;
+                        // LattReply's:
+    (*funarr)[0] = stts; // STATS 1
+    (*funarr)[1] = gond; // CWDIR 2
+    (*funarr)[2] = fiid; // FILID 3
+    (*funarr)[3] = lsnd; // DNLST 4
+    (*funarr)[4] = cwdn; // OBJNM 5
 
     return funarr;
-
-    //(*funarr[cmd])(sts_frm, inf_frm, dchns, hltc, buf);
 }
 
+/**
+ * Init response table
+ * */
+void init_rsptbl(int cnfg_fd,
+                 Resp_Tbl** rsp_tbl,
+                 StatFrame** sts_frm,
+                 InfoFrame** inf_frm,
+                 DChains* dchns,
+                 Lattice* hltc,
+                 uniArr* buf){
+
+    unsigned int* rsp_map;
+    unsigned int fcnt = RSPARR;
+    RspFunc* rsp_func;
+
+    rsp_map = (unsigned int*) sodium_malloc(sizeof(unsigned int)*(fcnt*3*3));
+    *rsp_tbl = (Resp_Tbl*) sodium_malloc(sizeof(Resp_Tbl));
+    rsp_func = (RspFunc*) sodium_malloc(sizeof(RspFunc));
+
+//VER. A
+//    (*rsp_tbl)->rsp_funcarr = rsp_act(cnfg_fd,&rsp_map,sts_frm,inf_frm,dchns,hltc,buf,rsp_func);
+    (*rsp_tbl)->rsp_funcarr = rsp_act(&rsp_map,sts_frm,inf_frm,rsp_func);
+    (*rsp_tbl)->rsp_map = (RspMap*) &rsp_map;
+    (*rsp_tbl)->fcnt = fcnt;
+}
+
+LattReply dtrm_rsp(StatFrame** sts_frm,
+              InfoFrame** inf_frm,
+              DChains* dchns,
+              Lattice* hltc,
+              uniArr* buf) {
+
+    unsigned int genrsp = 0;
+
+    unsigned int itm_rsp;
+    unsigned int i;
+
+    for (i = 1; i < 4; i++){
+        if((*inf_frm)->trfidi[i-1]){
+            genrsp = 1;
+            break;
+        }
+    }
+     if(genrsp)
+    {
+
+
+
+    }
+
+
+
+}
+
+/**
+ * \ProcessResponse
+ */
+unsigned char* proc_rsp(Resp_Tbl* rsp_tbl,
+                        LattReply rsp,
+                        StatFrame** sts_frm,
+                        InfoFrame** inf_frm,
+                        DChains* dchns,
+                        Lattice* hltc,
+                        uniArr* buf) {
+
+    if (rsp > rsp_tbl->fcnt) {
+        setErr(sts_frm, MISCLC, rsp);
+        serrOut(sts_frm, "LattReply for response processing outside defined functionality.");
+        return NULL;
+    }
+
+    Cmd_Seq *rsp_frm;
+    init_cmdseq(&rsp_frm, (*inf_frm)->arr_len, RSP);
+
+    (*(rsp_tbl->rsp_funcarr[rsp]))(sts_frm, inf_frm, dchns, hltc, buf);
+
+    setSts(sts_frm, RESPN, 0);
+}
+
+
+//
+//    /* *
+//     * LOGIC
+//     * */
+//    //- No response
+//    SILNT = 0,
+//            //- Requested operation completed
+//    SCCSS = 1,
+//
+//            /* *
+//             * INFO
+//             * */
+//            //-  Error code
+//    ERRCD = 2,
+//            //-  Info string for a given object
+//    OINFO = 3,
+//            //- Current status frame
+//    STATS = 4,
+//
+//            /* *
+//             * DIR
+//             * */
+//            //- ID of a given dir node
+//    DIRID = 5,
+//            //-  ID of current working dirnode
+//    CWDIR = 6,
+//            //-   Nodes currently present in the dirchains
+//    DCHNS = 7,
+//            //-   Array of contents for a given dirnode
+//    DNLST = 8,
+//
+//            /* *
+//             * FILE
+//             * */
+//            //-   ID of a given file
+//    FILID = 9,
+//            //-   Resident dirnode for a given file
+//    DNODE = 10,
+//            //-   Yield file
+//    OBYLD = 11,
+//            //-   Filename for a given ID
+//    OBJNM = 12,
