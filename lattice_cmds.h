@@ -6,7 +6,7 @@
 #define TAGFI_LATTICE_CMDS_H
 
 #define ENDBYTES 538968075
-#define RSPARR 5
+#define RSPARR 16
 
 #include "chkmk_didmap.h"
 
@@ -56,76 +56,78 @@ typedef enum LattStts{
 
 
 /**
- *  <h4><code>
- * \Responses
+ *<h4><code>
+ * Responses
+ *<br>
 
- * \Logic
- * <li> SILNT = 0 - False
- * <li> SCCSS = 1 - True/Success
- * <li> MODIF = 128 - Modified response nature
+ \InfoOp
+ *<li> UNDEF  = 6   - Undefined
+ *<li> ERRCD = 10   - An errorcode
+ *<li> OINFO = 12   - Info string for a given object
+ *<li> STATS = 14   - Current status frame
+ \TravelOp
+ *<li> DIRIDQ = 3   -  Go to: Change dir to given
+ *<li> DSRCHQ = 7   -  Search for given files resident dir
+ *<li> DCHNSQ = 11  -  Go to: head node.
+ *<li> VVVVVV = 15  -  Empty
+ *\DirOp
+ *<li> DIRID = 1   - ID of a given dirnode
+ *<li> JJJJJ = 5   - Empty
+ *<li> DCHNS = 9   - Nodes currently present in the dirchains
+ *<li> DNLST = 13  - Array of contents for a given dirnode
+ *\FileOp
+ *<li> FILID = 0   - ID of a given file
+ *<li> DNODE = 2   - Resident dirnode for a given file
+ *<li> OBYLD = 4   - Yield file object
+ *<li> IIIII = 8   - Empty
  *
- * \Info
- * <li> ERRCD = 2 - An errorcode
- * <li> OINFO = 3 - Info string for a given object
- * <li> STATS = 4 - Current status frame
- * \Dir
- * <li> DIRID = 5 -  ID of a given dirnode
- * <li> CWDIR = 6 -  ID of current working dirnode
- * <li> DCHNS = 7 -   Nodes currently present in the dirchains
- * \File
- * <li> DNLST = 8  -   Array of contents for a given dirnode
- * <li> FILID = 9  -   ID of a given file
- * <li> DNODE = 10 -   Resident dirnode for a given file
- * <li> OBYLD = 11 -   Yield file object
- * <li> OBJNM = 12 - Filename
  * */
+
 typedef enum LattReply{
-    /* *
-     * LOGIC
-     * */
-    //- No response
-    SILNT = 0,
-    //- Requested operation completed
-    SCCSS = 1,
-    // Modified response nature
-    MODIF = 128,
-
-    /* *
-     * INFO
-     * */
-    //-  Error code
-    ERRCD = 2,
+/* *
+ * INFO
+ **/
+    //-  Undefined
+    UNDEF = 6,
     //-  Info string for a given object
-    OINFO = 3,
+    ERRCD = 10,
+    //-  Error code
+    OINFO = 12,
     //- Current status frame
-    STATS = 4,
-
-    /* *
-     * DIR
-     * */
-    //- ID of a given dir node
-    DIRID = 5,
-    //-  ID of current working dirnode
-    CWDIR = 6,
-    //-   Nodes currently present in the dirchains
-    DCHNS = 7,
-    //-   Array of contents for a given dirnode
-    DNLST = 8,
-
-    /* *
-     * FILE
-     * */
-    //-   ID of a given file
-    FILID = 9,
-    //-   Resident dirnode for a given file
-    DNODE = 10,
-    //-   Yield file
-    OBYLD = 11,
-    //-   Filename for a given ID
-    OBJNM = 12,
-
-
-    // 1024 2048 4096 8192
+    STATS = 14,
+/* *
+ * Travel
+ **/
+    //-  Go to: Change dir to given, or to resdir of given file
+    DIRIDQ = 3,
+    //-  Search for DirNode
+    DSRCHQ = 7,
+    //-  Go to: head node or opposite base.
+    DCHNSQ = 11,
+    //-
+    VVVVVV = 15,
+/* *
+ * DIR
+ **/
+    //-  ID of a given dir node
+    DIRID = 1,
+    //-
+    JJJJJ = 5,
+    //-  Nodes currently present in the dirchains
+    DCHNS = 9,
+    //-  Array of contents for a given dirnode
+    DNLST = 13,
+/* *
+ * FILE
+ **/
+    //-  ID of a given file
+    FILID = 0,
+    //-  Resident dirnode for a given file
+    DNODE = 2,
+    //-  Yield file
+    OBYLD = 4,
+    //-  Empty
+    IIIII = 8,
 } LattReply;
 
 /**
@@ -282,41 +284,41 @@ typedef struct StatFrame{
 }StatFrame;
 
 /**
- *<h3><code>
+ *<h4><code>
  * RequestCMDS
  *<br>
 
  \Qualifiers
- * <li> FFF = 0 - False
- * <li> TTT = 1 - True
+ * <li> FFF  = 0  - False
+ * <li> TTT  = 1  - True
  * <li> DFLT = 2 - Default argument for previous cmd
- * <li> QQQQ = 4  - Empty
+ * <li> QQQQ = 4 - Empty
 \ArrayOps
- * <li> NARR = 8 - Int that follows is the length of an int array that will follow thereafter.
+ * <li> NARR = 8  - Int that follows is the length of an int array that will follow thereafter.
  * <li> GCSQ = 16 - Int that follows is the length of a char array that will follow thereafter
  * <li> RRRR = 32 - Empty
  * <li> AAAA = 64 - Empty
  \TravelOps
  *  <li> ~
- *  <li> VESL = 128 - Give current vessel location if DFLT, else find Dnode location of given FiID
- *  <li> GOTO = 256 - Goto dirNode of following name, home if DFLT
- *  <li> WWWW = 512 - Empty
+ *  <li> GOTO = 128  - Goto dirNode of following id, goto resdir of given file if DFLT
+ *  <li> SRCH = 256  - Search for resident dir for given fiid
+ *  <li> HEAD = 512  - Goto head node, switch bases if default
  *  <li> VVVV = 1024 - Empty
  \FileOps
  *  <li> ~
- *  <li> FIID = 2048 - Return file filename for id. fid for filename if DFLT
- *  <li> FINM  = 4096 - Yield file of following filename , yield resident file table if DFLT
- *  <li> YYYY = 8192 - Empty
+ *  <li> FIID = 2048  - Return file filename for id. fid for filename if DFLT
+ *  <li> FRES = 4096  - Return resident dir node for given file.
+ *  <li> YILD = 8192 - Yield file of following filename , yield resident file table if DFLT
  *  <li> IIII = 16384 - Empty
  \DirNodeOps
  *  <li> ~
- *  <li> LIST = 32768 - List dirnode contents of following name. Current dir if DFLT
- *  <li> KKKK = 65536 - Empty
- *  <li> NNNN = 131072 - Empty
- *  <li> DDDD = 262144 - Empty
+ *  <li> DCWD = 32768  - Return ID for given dirnode, current vessel location
+ *  <li> JJJJ = 65536  - Empty
+ *  <li> LDCH = 131072 - Return list of DirChain node ids. Return list under current base if DFLT.
+ *  <li> LIST = 262144 - List dirnode contents of following dID. Current dir if DFLT
  \SystemOps
- *  <li> SAVE  = 524288 - Save this sequence
- *  <li> INFO = 1048576 - Produce info assoc. with the following ID code.
+ *  <li> INFO = 524288  - Produce info assoc. with the following ID code. StatusFrame if defaults
+ *  <li> SAVE = 1048576 - Save this sequence
  *  <li> EXIT = 2097152 - Reset/Sleep/Shutdown
  *  <li> UUUU = 4194304 - Empty
  \Structure
@@ -350,37 +352,37 @@ typedef enum ReqFlag {
 //
     AAAA = 64,
 
-// Give current vessel location if DFLT, else find Dnode location of given FiID
-    VESL = 128,
-// Goto dirNode of following did, home if DFLT
-    GOTO = 256,
-//
-    WWWW = 512,
+// Goto dirNode of following id, goto resdir of given file if DFLT
+    GOTO = 128,
+// Search for resident dir for given fiid
+    SRCH = 256,
+// Goto headnode, switch bases if DFLT
+    HEAD = 512,
 //
     VVVV = 1024,
 
 // Return file filename for id. fid for filename if DFLT
     FIID = 2048,
+// Return resident dirnode for given file
+    FRES = 4096,
 // Yield file of following filename , yield resident file table if DFLT
-    FINM = 4096,
-//
-    YYYY = 8192,
+    YILD = 8192,
 //
     IIII = 16384,
 
-// List dirnode contents of following name. Current dir if DFLT
-    LIST = 32768,
+// Return diid for given Dirnode. CWD if DFLT.
+    DCWD = 32768,
 //
-    KKKK = 65536,
-//
-    NNNN = 131072,
-//
-    OOOO = 262144,
+    JJJJ = 65536,
+// Return list of DirChain node ids. Return list under current base if DFLT.
+    LDCH = 131072,
+// List dirnode contents for given id. Current dir if DFLT
+    LIST = 262144,
 
+// Produce info assoc. with the ID code. StatusFrame if defaults
+    INFO = 524288,
 // Save this sequence
-    SAVE  = 524288,
-// Produce info assoc. with the ID code
-    INFO = 1048576,
+    SAVE  = 1048576,
 // Exit/Sleep/Shutdown
     EXIT = 2097152,
 //
@@ -556,13 +558,11 @@ typedef struct Cmd_Seq {
 /** <h4><code>
  * \InformationFrame
  * <br><verbatim>
- *<br> [ rsp size | req size |
- *<br> |[trvl_op,  fi_op,  di_op]|
- *<br> | sys_op  |  qual  |
- *<br> | arr type |  arr len |
- *<br> | CmdSeq ptr ]
+ *<br> [ rsp size | req size | [trvl_op,  |  fi_op,   | di_op |
+ *<br> | sys_op   |  qual    |  arr type  |   arr len | CmdSeq ptr ]
  */
 typedef struct InfoFrame{
+    unsigned int cat_sffx;
     unsigned int rsp_size;
     unsigned int req_size;
     unsigned int trfidi[3];
@@ -571,6 +571,7 @@ typedef struct InfoFrame{
     unsigned int arr_type; //0: none, 1: char, 2: int
     unsigned int arr_len;
     Cmd_Seq* cmdSeq;
+
 }InfoFrame;
 
 
@@ -579,7 +580,13 @@ InfoFrame* init_info_frm(InfoFrame** info_frm);
 InfoFrame * parse_req(const unsigned char* req,
                       Cmd_Seq** cmd_seq,
                       InfoFrame* rinfo,
-                      StatFrame** sts_frm);
+                      StatFrame** sts_frm,
+                      unsigned char** carr_buf);
+//VER B.
+//InfoFrame * parse_req(const unsigned char* req,
+//                      Cmd_Seq** cmd_seq,
+//                      InfoFrame* rinfo,
+//                      StatFrame** sts_frm,
 
 
 typedef struct SeqMap{
@@ -621,7 +628,7 @@ void init_lttccmd();
 
 void destroy_lttccmd();
 
-void init_cmdseq(Cmd_Seq** cmdSeq, unsigned int arrsize, unsigned int type);
+Cmd_Seq* init_cmdseq(Cmd_Seq** cmdSeq, unsigned int arrsize, unsigned int type);
 
 unsigned int init_seqtbl(Seq_Tbl** seq_tbl, unsigned long mx_sz);
 
@@ -646,6 +653,9 @@ int unmask_cmds(unsigned int** cmds,
                 unsigned char*** arrs,
                 int cmdcnt);
 
+Cmd_Seq* destroy_cmdseq(StatFrame** sts_frm, Cmd_Seq** cmdSeq);
+Cmd_Seq* copy_cmdseq(unsigned int flip, Cmd_Seq** cmdSeq, Cmd_Seq** copy, StatFrame** sts_frm);
+
 RspFunc* rsp_act(
               RspMap rspMap,
               StatFrame** sts_frm,
@@ -669,7 +679,39 @@ void init_rsptbl(int cnfg_fd,
                  Lattice* hltc,
                  uniArr* buf);
 
-void rsp_gotond(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, uniArr* buf);
+LattReply dtrm_rsp(StatFrame** sts_frm,
+                   InfoFrame** inf_frm);
+
+/** Response actions */
+/** Info ops */
+void rsp_sts(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, uniArr* buf);
+void rsp_nfo(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, uniArr* buf);
+void rsp_err(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, uniArr* buf);
+void rsp_UND(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, uniArr* buf);
+
+/** Travel ops */
+void rsp_gond(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, uniArr* buf);
+void rsp_gohd(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, uniArr* buf);
+void rsp_gobs(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, uniArr* buf);
+void rsp_gofi(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, uniArr* buf);
+
+/** Dir ops */
+void rsp_diid(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, uniArr* buf);
+void rsp_dxxx(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, uniArr* buf);
+void rsp_dcls(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, uniArr* buf);
+void rsp_dnls(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, uniArr* buf);
+
+/** File ops */
+void rsp_fiid(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, uniArr* buf);
+void rsp_frdn(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, uniArr* buf);
+void rsp_finm(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, uniArr* buf);
+void rsp_fyld(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, uniArr* buf);
+
+/** Sys ops */
+
+
+
+/** Status ops **/
 
 void setSts(StatFrame** sts_frm, LattStts ltcst, unsigned int modr);
 

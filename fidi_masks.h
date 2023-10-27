@@ -56,24 +56,23 @@
 #define FINMMAXL 256                // Max number of chars allocated for a path title.
 
 
-/**
- *  FileMap Id masks and attributes
- * */
+  /* * * * * * * * * * * * * * * * * * *
+  *  FileMap Id masks and attributes  *
+ * * * * * * * * * * * * * * * * * **/
 
-#define FMIDTMPL 576460752303423488     \
 /** \verbatim
  * FileMap ID empty template
  * 1 set leading bit and 59 empty trailing bits
  *
  * 0b100000000000000000000000000000000000000000000000000000000000
  *  C||                FMIDTMPL - 59bits                        |  */
+#define FMIDTMPL 576460752303423488
 
 #define FMIDSHFT 59                     // Num trailing bits after the leading control bit in the fiid
 
 #define CLIPHSH 4294967295              // &mask to clip the random number and guarantee 32 bit length
 
 
-#define FINOMASK 1152921504472629248
 /** \verbatim
 
  * File XOR'd INo. &mask
@@ -82,11 +81,12 @@
  *
  * 0b111111111111111111111111111111111000000000000000000000000000
  *  C||      FINOMASK - 32bits       ||       FiMap attr.       |  */
+#define FINOMASK 1152921504472629248
+
 
 #define FINOSHFT 27  // Num of trailing bits after FINOMASK
 
 
-#define FNLENMSK 133955584
 /**
  *\verbatim
  * File name length &mask
@@ -99,12 +99,12 @@
  *  * FNLENMSK - 9 bits
  *
  *  */
+#define FNLENMSK 133955584
 
 
 #define FNLENSHFT 18 // Num of trailing bits after FNLENMSK
 
 
-#define FFRMTMSK 130560                   \
 /** \verbatim
  * File format &mask
  *
@@ -114,11 +114,12 @@
  *   C||         fhshno               ||add.atr||   *  ||add.atr|
  *
  *  * FFRMTMSK - 8 bits */
+#define FFRMTMSK 130560
+
 
 #define FFRMTSHFT 9 // Num of trailing bits after FFRMTMSK
 
 
-#define FRDIRMSK 252                   \
 /** \verbatim
  * File resident directory &mask
  *
@@ -128,13 +129,13 @@
  *   C||         fhshno               ||   add.attr.   || *   || |
  *
  *  * FRDIRMSK - 7 bits */
+#define FRDIRMSK 252
 
 #define FBSGPCLIP 127 // &mask to clip down a did for masking with a FiMap object
 
 #define FRDIRSHFT 2  // Num of trailing bits after FRDIRMSK
 
 
-#define FDCHNGMSK 2                      \
 /**
  * \verbatim
  *
@@ -146,6 +147,7 @@
  *   C||         fhshno               ||     add.attr.         |*|
  *
  *  * FDCHNGMSK - 1 bit */
+#define FDCHNGMSK 2
 
 #define FDCHNGSHFT 1 // Num of trailing bits after FDCHNGMSK
 

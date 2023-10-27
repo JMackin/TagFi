@@ -80,10 +80,6 @@ void cleanup(HashLattice* hashlattice,
 void destroy_metastructures(StatFrame* statFrame,
                             InfoFrame* infoFrame){
     free(statFrame);
-
-    if (infoFrame->cmdSeq){
-        free(infoFrame->cmdSeq);
-    }
     free(infoFrame);
 }
 
@@ -152,12 +148,13 @@ int extract_name(const unsigned char* path, int length) {
         }
     }
     return fs_pos + 1;
-
 }
 
 
+
+
 StatFrame* spin_up(unsigned int** iarr,
-            unsigned char** carr,
+            unsigned char** req_arr_buf,
             unsigned char** buffer,
             unsigned char** respbuffer,
             StatFrame** status_frm,
@@ -168,7 +165,11 @@ StatFrame* spin_up(unsigned int** iarr,
     /**
      * INFO AND STATUS VARS
      * */
-    Cmd_Seq *cmd_seq;           // Request and Response Frame
+
+    Cmd_Seq *cmd_seq = NULL;           // Request and Response Frame
+    Cmd_Seq *prev_seq = NULL;          // Keep last request frame.
+
+
     *info_frm = init_info_frm(info_frm); // Request/Response Info Frame
 
     int exit_flag = 0;
@@ -185,7 +186,7 @@ StatFrame* spin_up(unsigned int** iarr,
     *respbuffer = (unsigned char *) calloc((buf_len), sizeof(unsigned char));
     *buffer = (unsigned char *) calloc(buf_len, sizeof(unsigned char));
     *iarr = (unsigned int *) calloc(arrbuf_len, sizeof(unsigned int));
-    *carr = (unsigned char *) calloc(arrbuf_len, sizeof(unsigned char));
+    *req_arr_buf = (unsigned char *) calloc(arrbuf_len, sizeof(unsigned char));
 
     /**
      * SOCKET INIT
@@ -272,6 +273,7 @@ StatFrame* spin_up(unsigned int** iarr,
         (*status_frm)->status <<= 1;
         clock_t clkb = clock();
 
+/** Read and Parse */
 
         /**
          * EPOLL MONITOR DATA CONN
@@ -310,7 +312,7 @@ StatFrame* spin_up(unsigned int** iarr,
         /**
          * CMD RECEIVED
          * */
-        *info_frm = parse_req(*buffer, &cmd_seq, *info_frm, status_frm); // PARSE
+        *info_frm = parse_req(*buffer, &cmd_seq, *info_frm, status_frm, req_arr_buf); // PARSE
 
         clock_t clke = clock();
 
@@ -319,18 +321,10 @@ StatFrame* spin_up(unsigned int** iarr,
             fprintf(stderr, "lead: %d\nbuffer: %s", (*cmd_seq).lead, *buffer);
         }
 
-        /** Determine response*/
+        /** Determine response */
 
+        LattReply resp_ave = dtrm_rsp(status_frm,info_frm);
 
-        /**
-         * ACTION:
-         *  shutdown
-         * */
-        if ((*status_frm)->act_id == GBYE) {
-            setSts(status_frm, SHTDN, 0);
-            exit_flag = 1;
-            return *status_frm;
-        }
 
         /**
          * ACTION:
@@ -345,7 +339,6 @@ StatFrame* spin_up(unsigned int** iarr,
          * prepare response
          * */
         if ((*status_frm)->act_id == FRSP) {
-            //prepresp()
 
             ret = write(data_socket, respbuffer, resp_len);
             if (ret == -1) {
@@ -354,15 +347,29 @@ StatFrame* spin_up(unsigned int** iarr,
                 return *status_frm;
             }
         }
+        /**
+         * ACTION:
+         *  shutdown
+         * */
+        if ((*status_frm)->act_id == GBYE) {
+            setSts(status_frm, SHTDN, 0);
+            exit_flag = 1;
+        }
         i++;
 
         /**
          * CLEAR CONNECTION
          * */
+
+        /** Save cmd seq **/
+
+
         bzero(*buffer, buf_len);
         bzero(*respbuffer, buf_len);
         bzero(*iarr, arrbuf_len);
-        bzero(*carr, arrbuf_len);
+        bzero(*req_arr_buf, arrbuf_len);
+        prev_seq = copy_cmdseq(0,&cmd_seq,&prev_seq,status_frm);
+        cmd_seq = destroy_cmdseq(status_frm,&cmd_seq);
         close(data_socket);
 
 
@@ -374,19 +381,18 @@ StatFrame* spin_up(unsigned int** iarr,
             serrOut(status_frm,NULL);
         }
         clock_t clkf = clock();
-
-        printf("time accept%ld\n",(clkb-clka));
-        printf("time epoll:%ld\n",(clkc-clkb));
-        printf("time read:%ld\n",(clkd-clkc));
-        printf("time parse:%ld\n",(clke-clkd));
-        printf("time close:%ld\n",(clkf-clke));
-
+        printf("\n-----------------\ntimes:\n accept%ld\n",(clkb-clka));
+        printf("epoll:%ld\n",(clkc-clkb));
+        printf("read:%ld\n",(clkd-clkc));
+        printf("parse:%ld\n",(clke-clkd));
+        printf("close:%ld\n-----------------\n",(clkf-clke));
 
     }// END WHILE !EXITFLAG
 
     close(connection_socket);
+    destroy_cmdseq(status_frm,&prev_seq);
+
     unlink(SOCKET_NAME);
-    free(cmd_seq);
     return *status_frm;
 }   /* * * * *
       * CLOSE *
@@ -441,9 +447,7 @@ void summon_lattice() {
         //  HashBridge lattice
         HashLattice *hashlattice = init_hashlattice();
         //  Size of config file in bytes
-        Seq_Tbl *seqTbl;
-        init_seqtbl(&seqTbl, 32);
-        //  Response array
+
 
         /**
          * OPEN CONFIG
@@ -486,6 +490,9 @@ void summon_lattice() {
         dn_cnt = nodepaths(dn_conf, &lengths, &paths);
         // Array of FileTables connected to DirNodes
         Fi_Tbl **tbl_list = (Fi_Tbl **) calloc(dn_cnt, sizeof(Fi_Tbl *));
+
+        Seq_Tbl *seqTbl;
+        init_seqtbl(&seqTbl, 32);
 
 
            /* * * * * * * * * *

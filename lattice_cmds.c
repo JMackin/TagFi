@@ -32,20 +32,65 @@ int is_init = 0;
 enum ReqFlag reqFlag;
 enum RspFlag rspFlag;
 
-unsigned long UISiZ  = sizeof(unsigned int);
+unsigned long UISiZ = sizeof(unsigned int);
 unsigned long UCSiZ = sizeof(unsigned char);
 
-void init_cmdseq(Cmd_Seq** cmdSeq, unsigned int arrsize, unsigned int type){
+Cmd_Seq *init_cmdseq(Cmd_Seq **cmdSeq, unsigned int arrsize, unsigned int type) {
     *cmdSeq = malloc(sizeof(Cmd_Seq));
-    (*cmdSeq)->arr = (uniArr*) calloc(arrsize,sizeof(uniArr));
-    (*cmdSeq)->flags = (LttcFlags*) calloc(sizeof(LttcFlags), sizeof(UISiZ));
+    (*cmdSeq)->arr = (uniArr *) calloc(arrsize, sizeof(uniArr));
+    (*cmdSeq)->flags = (LttcFlags *) calloc(sizeof(LttcFlags), sizeof(UISiZ));
     (*cmdSeq)->arr_len = 0;
     (*cmdSeq)->seq_id = 0;
     (*cmdSeq)->flg_cnt = 0;
     (*cmdSeq)->type = type;
+    return *cmdSeq;
 }
 
-void reset_cmdseq(Cmd_Seq** cmdSeq, unsigned int arrsize, unsigned int type){
+// Secure zero and destroy CMD struct. Returns pointer to NULL.
+Cmd_Seq *destroy_cmdseq(StatFrame **sts_frm, Cmd_Seq **cmdSeq) {
+
+    bzero((*cmdSeq)->flags, ((*cmdSeq)->flg_cnt));
+    bzero((*cmdSeq)->arr, ((*cmdSeq)->arr_len));
+    (*cmdSeq)->arr_len = 0;
+    (*cmdSeq)->seq_id = 0;
+    (*cmdSeq)->flg_cnt = 0;
+    free((*cmdSeq)->flags);
+    free((*cmdSeq)->arr);
+    free(*cmdSeq);
+    *cmdSeq = NULL;
+    return *cmdSeq;
+}
+
+/** Set flip to 0 when using.*/
+Cmd_Seq *copy_cmdseq(unsigned int flip, Cmd_Seq **cmdSeq, Cmd_Seq **copy, StatFrame **sts_frm) {
+
+    if (*cmdSeq != NULL) {
+        if (*copy != NULL) {
+            if (!flip) {
+                *copy = destroy_cmdseq(sts_frm, copy);
+                copy_cmdseq(1, cmdSeq, copy, sts_frm);
+            } else {
+                setErr(sts_frm, ADFAIL, flip);
+                serrOut(sts_frm, "Recursion failed in copyCmdSeq");
+                return NULL;
+            }
+        } else {
+            size_t arrsize = (*cmdSeq)->type == 8 ? (*cmdSeq)->arr_len * UCSiZ : (*cmdSeq)->arr_len * UISiZ;
+            *copy = init_cmdseq(copy, (*cmdSeq)->arr_len, (*cmdSeq)->type);
+            memcpy((*copy)->arr, (*cmdSeq)->arr, arrsize);
+            memcpy((*copy)->flags, (*cmdSeq)->flags, (*cmdSeq)->flg_cnt * UISiZ);
+            (*copy)->arr_len = (*cmdSeq)->arr_len;
+            (*copy)->flg_cnt = (*cmdSeq)->flg_cnt;
+            (*copy)->seq_id = (*cmdSeq)->seq_id;
+
+            return *copy;
+        }
+    } else {
+        setErr(sts_frm, ILMMOP, 0);
+        serrOut(sts_frm, "CMD struct to be copied points to NULL");
+        return NULL;
+    }
+    return *copy;
 }
 
 //
@@ -72,21 +117,26 @@ void reset_cmdseq(Cmd_Seq** cmdSeq, unsigned int arrsize, unsigned int type){
 //    is_init = 0;
 //}
 
-void destroy_cmdstructures(unsigned char* buffer, unsigned char* respbuffer, unsigned char* carr, unsigned int* iarr, Resp_Tbl* rsp_tbl, Seq_Tbl* seqTbl){
+void destroy_cmdstructures(unsigned char *buffer, unsigned char *respbuffer, unsigned char *carr, unsigned int *iarr,
+                           Resp_Tbl *rsp_tbl, Seq_Tbl *seqTbl) {
 
     free(buffer);
     free(respbuffer);
     free(carr);
     free(iarr);
-    for (int i = 0; i < seqTbl->cnt; i++){
-        free((seqTbl)->seq_map+i);
-        free((*(seqTbl)->seq_map->cmd_seq+i)->arr);
-        free((*seqTbl->seq_map->cmd_seq+i)->flags);
-        free(*seqTbl->seq_map->cmd_seq+i);
+    for (int i = 0; i < seqTbl->cnt; i++) {
+        free((*(seqTbl)->seq_map->cmd_seq + i)->arr);
+        free((*seqTbl->seq_map->cmd_seq + i)->flags);
+        free(*seqTbl->seq_map->cmd_seq + i);
+        free((seqTbl)->seq_map + i);
+
     }
+    free(seqTbl->seq_map);
     free(seqTbl->cmd_key);
+
     free(seqTbl);
-   // free(((rsp_tbl)->rsp_map));
+
+    // free(((rsp_tbl)->rsp_map));
     //free(((rsp_tbl)->rsp_funcarr));
     sodium_free(rsp_tbl);
 }
@@ -207,11 +257,11 @@ int unmask_cmds(unsigned int** cmds,
 }
 */
 
-unsigned int build_lead(const unsigned int* cmd_flags, unsigned int flg_cnt) {
+unsigned int build_lead(const unsigned int *cmd_flags, unsigned int flg_cnt) {
 
     unsigned int cmd = LEAD;
-    for (int i=0;i<flg_cnt;i++){
-        cmd = cmd | *(cmd_flags+i);
+    for (int i = 0; i < flg_cnt; i++) {
+        cmd = cmd | *(cmd_flags + i);
     }
     return cmd;
 }
@@ -222,55 +272,55 @@ unsigned int build_lead(const unsigned int* cmd_flags, unsigned int flg_cnt) {
  *<br>
  * -    For empty array set arr to NULL and arr_len to 0
  * */
-unsigned int serial_seq(unsigned char* seq_out,
-                        Cmd_Seq** cmd_seq){
+unsigned int serial_seq(unsigned char *seq_out,
+                        Cmd_Seq **cmd_seq) {
 
     unsigned int flgcnt = ((*cmd_seq)->flg_cnt);
     unsigned int flg;
     unsigned int byte_cnt;
 
-    byte_cnt = (UISiZ * 3) + (UCSiZ*((*cmd_seq)->arr_len));
+    byte_cnt = (UISiZ * 3) + (UCSiZ * ((*cmd_seq)->arr_len));
 
-    flg = build_lead(((unsigned int*) (*cmd_seq)->flags),flgcnt);
+    flg = build_lead(((unsigned int *) (*cmd_seq)->flags), flgcnt);
 
-    memcpy((seq_out),&flg,UISiZ);
-    memcpy((seq_out+UISiZ),&((*cmd_seq)->arr_len),UCSiZ);
+    memcpy((seq_out), &flg, UISiZ);
+    memcpy((seq_out + UISiZ), &((*cmd_seq)->arr_len), UCSiZ);
 
     if (((*cmd_seq)->arr_len) && ((*cmd_seq)->arr) != NULL) {
-        memcpy(seq_out+(2*UISiZ), ((*cmd_seq)->arr), ((*cmd_seq)->arr_len)*UCSiZ);
+        memcpy(seq_out + (2 * UISiZ), ((*cmd_seq)->arr), ((*cmd_seq)->arr_len) * UCSiZ);
     }
 
     flg = END;
-    memcpy(seq_out+(2*UISiZ)+(UCSiZ*((*cmd_seq)->arr_len)),&flg,UISiZ);
+    memcpy(seq_out + (2 * UISiZ) + (UCSiZ * ((*cmd_seq)->arr_len)), &flg, UISiZ);
     free(*cmd_seq);
 
     return byte_cnt;
 }
 
 
-unsigned int init_seqtbl(Seq_Tbl** seq_tbl, unsigned long mx_sz) {
-    *seq_tbl = (Seq_Tbl*) malloc(sizeof(Seq_Tbl));
-    ((*seq_tbl)->seq_map) = (SeqMap*) calloc(mx_sz,sizeof(SeqMap));
-    ((*seq_tbl)->cmd_key) = (unsigned char*) malloc(crypto_shorthash_KEYBYTES);
+unsigned int init_seqtbl(Seq_Tbl **seq_tbl, unsigned long mx_sz) {
+    *seq_tbl = (Seq_Tbl *) malloc(sizeof(Seq_Tbl));
+    ((*seq_tbl)->seq_map) = (SeqMap *) calloc(mx_sz, sizeof(SeqMap));
+    ((*seq_tbl)->cmd_key) = (unsigned char *) malloc(crypto_shorthash_KEYBYTES);
     (*seq_tbl)->mx_sz = mx_sz;
+    (*seq_tbl)->cnt = 0;
     mk_little_hash_key(&(*seq_tbl)->cmd_key);
 
     return sizeof(seq_tbl);
 }
 
 
-unsigned long cnvrt_iarr_to_carr(unsigned int* intin, unsigned int iarr_len, unsigned char** char_buf){
+unsigned long cnvrt_iarr_to_carr(unsigned int *intin, unsigned int iarr_len, unsigned char **char_buf) {
     int i;
-    for (i =0; i < iarr_len; i++){
-        if (*(*char_buf+(UISiZ*i))){
-            fprintf(stderr,"buff for int->char not empty @ index %d\n",i);
+    for (i = 0; i < iarr_len; i++) {
+        if (*(*char_buf + (UISiZ * i))) {
+            fprintf(stderr, "buff for int->char not empty @ index %d\n", i);
             return 0;
-        }
-        else {
-            memcpy((*char_buf+(UISiZ*i)),intin+i,UISiZ);
+        } else {
+            memcpy((*char_buf + (UISiZ * i)), intin + i, UISiZ);
         }
     }
-    return (i*UISiZ);
+    return (i * UISiZ);
 }
 
 
@@ -280,7 +330,7 @@ unsigned long cnvrt_iarr_to_carr(unsigned int* intin, unsigned int iarr_len, uns
  *<br>
  *  -   Seq hash generated from flags, arr len, and first arr element
  * */
-unsigned long mk_seq_hash(Cmd_Seq** cmdSeq, Seq_Tbl** seqTbl) {
+unsigned long mk_seq_hash(Cmd_Seq **cmdSeq, Seq_Tbl **seqTbl) {
 
     unsigned int posi = 0;
     unsigned int posi_tmp = 0;
@@ -306,7 +356,7 @@ unsigned long mk_seq_hash(Cmd_Seq** cmdSeq, Seq_Tbl** seqTbl) {
     } else {
         posi += posi_tmp;
     }
-    posi_tmp = cnvrt_iarr_to_carr((unsigned int *) &(*cmdSeq)->flags + posi,(*cmdSeq)->flg_cnt, &seq_buf);
+    posi_tmp = cnvrt_iarr_to_carr((unsigned int *) &(*cmdSeq)->flags + posi, (*cmdSeq)->flg_cnt, &seq_buf);
     if (posi_tmp == 0) {
         free(seq_buf);
         return 0;
@@ -331,9 +381,9 @@ unsigned long mk_seq_hash(Cmd_Seq** cmdSeq, Seq_Tbl** seqTbl) {
 
 
 //FREE seq_buf
-unsigned long save_seq(Cmd_Seq* cmd_seq, Seq_Tbl** seq_tbl, int cnfdir_fd){
+unsigned long save_seq(Cmd_Seq *cmd_seq, Seq_Tbl **seq_tbl, int cnfdir_fd) {
 
-    int seqstr_fd = openat(cnfdir_fd,SEQSTORE, O_APPEND|O_RDWR);
+    int seqstr_fd = openat(cnfdir_fd, SEQSTORE, O_APPEND | O_RDWR);
     if (seqstr_fd == -1) {
         perror("Error opening sequence store\n");
         return -1;
@@ -341,13 +391,13 @@ unsigned long save_seq(Cmd_Seq* cmd_seq, Seq_Tbl** seq_tbl, int cnfdir_fd){
 
     unsigned int smapcnt = (*seq_tbl)->cnt;
 
-    cmd_seq->seq_id =  mk_seq_hash(&cmd_seq,seq_tbl);
-    (((*seq_tbl)->seq_map+smapcnt)->seq_id) = cmd_seq->seq_id;
-    ((*seq_tbl)->seq_map+smapcnt)->cmd_seq = &cmd_seq;
+    cmd_seq->seq_id = mk_seq_hash(&cmd_seq, seq_tbl);
+    (((*seq_tbl)->seq_map + smapcnt)->seq_id) = cmd_seq->seq_id;
+    ((*seq_tbl)->seq_map + smapcnt)->cmd_seq = &cmd_seq;
     (*seq_tbl)->cnt++;
 
-    printf("%lu: seq_tbl\n",(unsigned long) (((*seq_tbl)->seq_map+smapcnt)->seq_id));
-    printf("%lu: cmd_seq\n",(unsigned long) (*((*seq_tbl)->seq_map+smapcnt)->cmd_seq)->seq_id );
+    printf("%lu: seq_tbl\n", (unsigned long) (((*seq_tbl)->seq_map + smapcnt)->seq_id));
+    printf("%lu: cmd_seq\n", (unsigned long) (*((*seq_tbl)->seq_map + smapcnt)->cmd_seq)->seq_id);
 
     close(seqstr_fd);
 
@@ -355,7 +405,7 @@ unsigned long save_seq(Cmd_Seq* cmd_seq, Seq_Tbl** seq_tbl, int cnfdir_fd){
 
 }
 
-size_t read_seqs(unsigned char** seq_arr, int cnfdir_fd){
+size_t read_seqs(unsigned char **seq_arr, int cnfdir_fd) {
     struct stat sb;
 
     int seqstr_fd = openat(cnfdir_fd, SEQSTORE, O_RDONLY);
@@ -381,18 +431,19 @@ size_t read_seqs(unsigned char** seq_arr, int cnfdir_fd){
 
 
 /** Initialize InfoFrame */
-InfoFrame* init_info_frm(InfoFrame** info_frm){
-    *info_frm = (InfoFrame*) malloc(sizeof(InfoFrame));
-    (*info_frm)->req_size=0;
-    (*info_frm)->rsp_size=0;
-    (*info_frm)->trfidi[0]= 0;
-    (*info_frm)->trfidi[1]= 0;
-    (*info_frm)->trfidi[2]= 0;
-    (*info_frm)->sys_op=0;
-    (*info_frm)->qual=0;
-    (*info_frm)->arr_type=0;
-    (*info_frm)->arr_len=0;
-    (*info_frm)->cmdSeq=NULL;
+InfoFrame *init_info_frm(InfoFrame **info_frm) {
+    *info_frm = (InfoFrame *) malloc(sizeof(InfoFrame));
+    unsigned int cat_sffx = 0;
+    (*info_frm)->req_size = 0;
+    (*info_frm)->rsp_size = 0;
+    (*info_frm)->trfidi[0] = 0;
+    (*info_frm)->trfidi[1] = 0;
+    (*info_frm)->trfidi[2] = 0;
+    (*info_frm)->sys_op = 0;
+    (*info_frm)->qual = 0;
+    (*info_frm)->arr_type = 0;
+    (*info_frm)->arr_len = 0;
+    (*info_frm)->cmdSeq = NULL;
 
     return *info_frm;
 
@@ -401,10 +452,10 @@ InfoFrame* init_info_frm(InfoFrame** info_frm){
 /**
  * Reset Info Frame, set StatusFrame to error code, set modifier is set to previous status code.
  */
-void err_info_frm(InfoFrame* info_frm, StatFrame** stats_frm, LattErr errcode, unsigned int modr){
+void err_info_frm(InfoFrame *info_frm, StatFrame **stats_frm, LattErr errcode, unsigned int modr) {
 
     stsReset(stats_frm);
-    setErr(stats_frm,errcode,modr);
+    setErr(stats_frm, errcode, modr);
 
     info_frm->arr_len = 0;
     info_frm->req_size = 0;
@@ -412,11 +463,27 @@ void err_info_frm(InfoFrame* info_frm, StatFrame** stats_frm, LattErr errcode, u
     info_frm->cmdSeq = NULL;
 }
 
+/**
+ * Reset InfoFrame
+ */
+void info_frm_rst(InfoFrame **info_frm) {
+    unsigned int cat_sffx = 0;
+    (*info_frm)->req_size = 0;
+    (*info_frm)->rsp_size = 0;
+    (*info_frm)->trfidi[0] = 0;
+    (*info_frm)->trfidi[1] = 0;
+    (*info_frm)->trfidi[2] = 0;
+    (*info_frm)->sys_op = 0;
+    (*info_frm)->qual = 0;
+    (*info_frm)->arr_type = 0;
+    (*info_frm)->arr_len = 0;
+    (*info_frm)->cmdSeq = NULL;
+};
 
 
-  /* * * * * * * * * *
-  * Request Parsing *
- * * * * * * * * * */
+/* * * * * * * * * *
+* Request Parsing *
+* * * * * * * * * */
 
 /**
  * \SplitCategories
@@ -430,141 +497,164 @@ void err_info_frm(InfoFrame* info_frm, StatFrame** stats_frm, LattErr errcode, u
  *      <br>(0 = TravelOps, 1 = FileOps, 2 = DirNode Ops)
  *</sub>
  */
-unsigned int split_cats(const unsigned int* lead_flags,
-                        ReqFlag ** flag_list,
-                        ReqFlag * flg_itr,
+unsigned int split_cats(const unsigned int *lead_flags,
+                        ReqFlag **flag_list,
+                        ReqFlag *flg_itr,
                         unsigned int s_itr,
                         unsigned int l_itr,
                         unsigned int cnt,
-                        unsigned int trfidi);
+                        unsigned int trfidi,
+                        unsigned int *subflg);
+
 /**
 * \DivideFlags
 *  Receives each combined flag value from SplitCategories and recursively apply
 *      each of the 4 flag values in that category as an AND mask. If the AND operation results true,
 *      the flag is appended to an array of ReqFlags point to by 'flag_list'.
 **/
-unsigned int div_flgs(const unsigned int* lead_flags,
+unsigned int div_flgs(const unsigned int *lead_flags,
                       ReqFlag *flag_list,
-                      ReqFlag * flg_itr,
+                      ReqFlag *flg_itr,
                       unsigned int s_itr,
                       unsigned int l_itr,
                       unsigned int cnt,
-                      unsigned int trfidi){
+                      unsigned int trfidi,
+                      unsigned int *subflg) {
 
     if (s_itr > 3) {
         return cnt;
     }
-    if((*(lead_flags+l_itr) & *flg_itr)) {
-        *(flag_list+(cnt)) = *flg_itr;
+    if ((*(lead_flags + l_itr) & *flg_itr)) {
+        *(flag_list + (cnt)) = *flg_itr;
         ++(cnt);
+        if (!*subflg) {
+            (*subflg) = (*flg_itr) >> ((4 * trfidi) + 7);
+        }
     }
-    *flg_itr <<=1;
-    div_flgs(lead_flags, flag_list, flg_itr, ++s_itr, l_itr, cnt,trfidi);
+    *flg_itr <<= 1;
+    div_flgs(lead_flags, flag_list, flg_itr, ++s_itr, l_itr, cnt, trfidi, subflg);
 
 }
-unsigned int split_cats(const unsigned int* lead_flags,
-                        ReqFlag ** flag_list,
-                        ReqFlag * flg_itr,
+
+unsigned int split_cats(const unsigned int *lead_flags,
+                        ReqFlag **flag_list,
+                        ReqFlag *flg_itr,
                         unsigned int s_itr,
                         unsigned int l_itr,
                         unsigned int cnt,
-                        unsigned int trfidi) {
+                        unsigned int trfidi,
+                        unsigned int *subflg) {
 
     if (l_itr > 5 || (*flg_itr) >= UUUU) {
         return cnt;
-    }
-    else {
-        if (l_itr == 2 && trfidi){
-            *flg_itr <<= (4*trfidi);
-            trfidi = 0;
-        }else if (l_itr == 3){
+    } else {
+        if (l_itr == 2 && trfidi) {
+            *flg_itr <<= (4 * trfidi);
+        } else if (l_itr == 3) {
             *flg_itr = SAVE;
         }
-
-        cnt = div_flgs(lead_flags, *flag_list, flg_itr, s_itr, l_itr, cnt, trfidi);
+        cnt = div_flgs(lead_flags, *flag_list, flg_itr, s_itr, l_itr, cnt, trfidi, subflg);
         (++l_itr);
-        split_cats(lead_flags, (flag_list), flg_itr, 0, l_itr, cnt, trfidi);
+        split_cats(lead_flags, (flag_list), flg_itr, 0, l_itr, cnt, trfidi, subflg);
 
     }
+    //TODO: Implement return 0 in default cases, and flgcnt updatted with '+=' rather than assignment.
 }
 
 /**
  *\ParseLead
  * Convert request-lead to an array of flags using bit-masking and return the flag count.
  */
-unsigned int parse_lead(const unsigned int lead, ReqFlag ** flg_list, StatFrame** sts_frm, InfoFrame** inf_frm) {
+unsigned int parse_lead(const unsigned int lead, ReqFlag **flg_list, StatFrame **sts_frm, InfoFrame **inf_frm) {
     unsigned int k = 1920;
     unsigned int i = 0;
+    unsigned int flg_suffx = 0;
     unsigned int flgcnt = 0;
 
     /** Alloc buffer to hold OR'd category flag values
      * and an array for the final parsed flag list.
      * */
-    unsigned int* lead_flags = (unsigned int*) calloc(4, UISiZ);    // [ quals | trvl/fiops/dirops/ | sysops | arrsigs ]
-    *flg_list = (ReqFlag *) (calloc(CMDCNT,sizeof(ReqFlag)));
+    unsigned int *lead_flags = (unsigned int *) calloc(4,
+                                                       UISiZ);    // [ quals | trvl/fiops/dirops/ | sysops | arrsigs ]
+    //*flg_list = (ReqFlag *) (calloc(CMDCNT,sizeof(ReqFlag)));
 
     /** Extract qualifier flags */
     *lead_flags = lead & QUALIFIR;
     (*inf_frm)->qual = *lead_flags;
 
     /** Extract array op flags*/
-    *(lead_flags+1) = lead & ARRAYOPS;
-    (*inf_frm)->arr_type = *(lead_flags+1);
+    *(lead_flags + 1) = lead & ARRAYOPS;
+    (*inf_frm)->arr_type = *(lead_flags + 1);
 
     /** Extract op flags from one of three possible categories:
      * <br> Travel, File, or DirNode*/
     do {
-        *(lead_flags+2) = (lead & k);
+        *(lead_flags + 2) = (lead & k);
         k <<= 4;
-        (*inf_frm)->trfidi[i] = *(lead_flags+2);
+        (*inf_frm)->trfidi[i] = *(lead_flags + 2);
         i++;
         if (i > 2) {
             break;
         }
-    } while (!(*(lead_flags+2)));
+    } while (!(*(lead_flags + 2)));
 
     /** Extract system op flags */
-    *(lead_flags+3) = lead & SYSTMOPS;
-    (*inf_frm)->sys_op = *(lead_flags+3);
+    *(lead_flags + 3) = lead & SYSTMOPS;
+    (*inf_frm)->sys_op = *(lead_flags + 3);
 
     /** Call for further processing to divide the OR'd category values into their individual flags  */
     ReqFlag flg_itr = TTT;
-    flgcnt = split_cats(lead_flags, flg_list, (&flg_itr), 1, 0, 0,(i-1));
+    flgcnt = split_cats(lead_flags, flg_list, (&flg_itr), 1, 0, 0, (i - 1), &flg_suffx);
 
     free(lead_flags);
-    *flg_list = (ReqFlag*) reallocarray(*flg_list,flgcnt,sizeof(ReqFlag));
+    *flg_list = (ReqFlag *) reallocarray(*flg_list, flgcnt, sizeof(ReqFlag));
+    (*inf_frm)->cat_sffx = flg_suffx;
+
 
     return flgcnt;
 }
+
 /**
  *\ParseRequest
  *  Convert char buffer with a request to a CMD Sequence struct
  *  and return an InfoFrame with request metadata
  *  and a pointer to the CMD structure.
  */
-InfoFrame* parse_req(const unsigned char* req,
-                     Cmd_Seq** cmd_seq,
-                     InfoFrame* rinfo,
-                     StatFrame** sts_frm){
+InfoFrame *parse_req(const unsigned char *req,
+                     Cmd_Seq **cmd_seq,
+                     InfoFrame *rinfo,
+                     StatFrame **sts_frm,
+                     unsigned char **carr_buf) {
+//VER B.
+//                     {InfoFrame* parse_req(const unsigned char* req,
+//                     Cmd_Seq** cmd_seq,
+//                     InfoFrame* rinfo,
+//                     StatFrame** sts_frm){
 
-    unsigned int exit_flg = 1; int k = 0;
+    unsigned int exit_flg = 1;
+    int k = 0;
     unsigned int is_arr = 0; //1 = char, 2 = int
     unsigned int arrlen;
-    unsigned int flag; unsigned int flgcnt = 0; unsigned int end;
-    unsigned char* carr_buf; unsigned int* iarr_buf;
-    ReqFlag* reqflg_arr = (ReqFlag*) calloc(CMDCNT,sizeof(ReqFlag));
+    unsigned int flag;
+    unsigned int flgcnt;
+    unsigned int end;
+
+    //VER B
+    // unsigned char* carr_buf;
+    unsigned int *iarr_buf;
+    ReqFlag *reqflg_arr = (ReqFlag *) calloc(CMDCNT, sizeof(ReqFlag));
 
     /**
      * Parse request sequence-lead and init CMD struct
      * */
-    memcpy(&flag,req,UISiZ);
+    memcpy(&flag, req, UISiZ);
     flgcnt = parse_lead(flag, &reqflg_arr, sts_frm, &rinfo);
 
-    init_cmdseq(cmd_seq,flgcnt,REQ);
+    init_cmdseq(cmd_seq, flgcnt, REQ);
 
-    if (!flgcnt){
-        fprintf(stderr,"Malformed request: Error parsing lead.\n");
-        err_info_frm(rinfo,sts_frm,MALREQ,'l'); // l = parsing lead
+    if (!flgcnt) {
+        fprintf(stderr, "Malformed request: Error parsing lead.\n");
+        err_info_frm(rinfo, sts_frm, MALREQ, 'l'); // l = parsing lead
         return rinfo;
     }
 
@@ -578,31 +668,30 @@ InfoFrame* parse_req(const unsigned char* req,
     /**
      * Check carrier byte
      * */
-    if ( flag>>29 != 1)
-    {
-        fprintf(stderr,"Malformed request>\n> %d\n",flag);
-        err_info_frm(rinfo,sts_frm,MALREQ,'l'); //
+    if (flag >> 29 != 1) {
+        fprintf(stderr, "Malformed request>\n> %d\n", flag);
+        err_info_frm(rinfo, sts_frm, MALREQ, 'l'); //
         return rinfo;
     }
 
     /**
      * Check for Int arr
      * */
-    if (rinfo->arr_type==INTARR) {
-        memcpy(&(rinfo->arr_len),(req+UISiZ),UISiZ); // Set InfoFrame -> arr length
+    if (rinfo->arr_type == INTARR) {
+        memcpy(&(rinfo->arr_len), (req + UISiZ), UISiZ); // Set InfoFrame -> arr length
         (*cmd_seq)->arr_len = rinfo->arr_len; // Set CMD -> arr length
-        memcpy(&end,(req+(UISiZ*2)+(UISiZ*rinfo->arr_len)),UISiZ);  // Calc request endpoint
+        memcpy(&end, (req + (UISiZ * 2) + (UISiZ * rinfo->arr_len)), UISiZ);  // Calc request endpoint
 
-        exit_flg = rinfo->arr_len == 1 ? (exit_flg << 1 ) : 1; // EXIT trigger 1
+        exit_flg = rinfo->arr_len == 1 ? (exit_flg << 1) : 1; // EXIT trigger 1
 
-        rinfo->req_size = (UISiZ*3)+(UISiZ*rinfo->arr_len); // Set InfoFrame -> request size
+        rinfo->req_size = (UISiZ * 3) + (UISiZ * rinfo->arr_len); // Set InfoFrame -> request size
 
         /**
          * Check tail byte
          * */
         if (end != END) {
-            fprintf(stderr,"Malformed request>\n> %d\n> %d\n> %d\n",flag,end,rinfo->arr_len);
-            err_info_frm(rinfo,sts_frm,MALREQ,'t'); // 't' = tail
+            fprintf(stderr, "Malformed request>\n> %d\n> %d\n> %d\n", flag, end, rinfo->arr_len);
+            err_info_frm(rinfo, sts_frm, MALREQ, 't'); // 't' = tail
             return rinfo;
         }
 
@@ -611,8 +700,8 @@ InfoFrame* parse_req(const unsigned char* req,
         /**
          * Alloc and populate int buffer with the cmd sequence
          * */
-        iarr_buf = (unsigned int*) calloc(rinfo->arr_len,UISiZ);
-        memcpy(iarr_buf,req+(UISiZ*2),(UISiZ*rinfo->arr_len));
+        iarr_buf = (unsigned int *) calloc(rinfo->arr_len, UISiZ);
+        memcpy(iarr_buf, req + (UISiZ * 2), (UISiZ * rinfo->arr_len));
         (*cmd_seq)->arr->iarr = iarr_buf;
 
         exit_flg = *iarr_buf == SHTDN ? (exit_flg << 1) : 1;    //  EXIT trigger 3
@@ -621,29 +710,35 @@ InfoFrame* parse_req(const unsigned char* req,
          * Exit for shutdown upon receiving three shutdown triggers
          * */
         if (exit_flg == 8) {
-            setAct(sts_frm,GBYE,SHTDN,SELFRESET);
+            setAct(sts_frm, GBYE, SHTDN, SELFRESET);
             return rinfo;
         }
     }
-    /**
-     * Check for char arr
-     * */
-    else if(rinfo->arr_type==CHRARR) {
-        memcpy(&(rinfo->arr_len),(req+UISiZ),UISiZ);
+        /**
+         * Check for char arr
+         * */
+    else if (rinfo->arr_type == CHRARR) {
+        memcpy(&(rinfo->arr_len), (req + UISiZ), UISiZ);
         (*cmd_seq)->arr_len = rinfo->arr_len;
-        memcpy(&end,(req+(UISiZ*2)+(UCSiZ*rinfo->arr_len)),UISiZ); //Calc request endpoint
+        memcpy(&end, (req + (UISiZ * 2) + (UCSiZ * rinfo->arr_len)), UISiZ); //Calc request endpoint
 
 
-        rinfo->req_size = (UISiZ*3)+(UISiZ*rinfo->arr_len); // Set InfoFrame -> req size
+        rinfo->req_size = (UISiZ * 3) + (UISiZ * rinfo->arr_len); // Set InfoFrame -> req size
 
         if (end != END) {
-            fprintf(stderr,"Malformed request>\n> %d\n> %d\n> %d\n",flag,end,rinfo->arr_len); // Init int arr buffer if iarr follows
-            err_info_frm(rinfo,sts_frm,MALREQ,0);
+            fprintf(stderr, "Malformed request>\n> %d\n> %d\n> %d\n", flag, end,
+                    rinfo->arr_len); // Init int arr buffer if iarr follows
+            err_info_frm(rinfo, sts_frm, MALREQ, 0);
             return rinfo;
         }
-        carr_buf = (unsigned char*) calloc(rinfo->arr_len,UCSiZ); // Init char arr buffer if carr follows
-        memcpy(carr_buf,req+(UISiZ*2),(UCSiZ*rinfo->arr_len));
-        (*cmd_seq)->arr->carr = carr_buf;
+
+//VER B
+//        carr_buf = (unsigned char*) calloc(rinfo->arr_len,UCSiZ); // Init char arr buffer if carr follows
+
+        memcpy(carr_buf, req + (UISiZ * 2), (UCSiZ * rinfo->arr_len));
+        (*cmd_seq)->arr->carr = *carr_buf;
+//VER B
+//        (*cmd_seq)->arr->carr = carr_buf;
     }
 
     (rinfo->cmdSeq) = *cmd_seq;
@@ -653,23 +748,23 @@ InfoFrame* parse_req(const unsigned char* req,
 }
 
 
-   /* * * * * * * * * * * * * *
-  *  StatusFrame Functions   *
- * * * * * * * * * * * * * */
+/* * * * * * * * * * * * * *
+*  StatusFrame Functions   *
+* * * * * * * * * * * * * */
 
 /** Set error */
-void setErr(StatFrame** sts_frm, LattErr ltcerr, unsigned int modr){
+void setErr(StatFrame **sts_frm, LattErr ltcerr, unsigned int modr) {
     (*sts_frm)->status = STERR;
     (*sts_frm)->err_code = ltcerr;
-    if (modr){
+    if (modr) {
         (*sts_frm)->modr = modr;
     }
 }
 
 /** Set status */
-void setSts(StatFrame** sts_frm, LattStts ltcst, unsigned int modr){
+void setSts(StatFrame **sts_frm, LattStts ltcst, unsigned int modr) {
     (*sts_frm)->status = ltcst;
-    if (modr){
+    if (modr) {
         (*sts_frm)->modr = modr;
     }
     if (modr == SELFRESET) {
@@ -678,10 +773,9 @@ void setSts(StatFrame** sts_frm, LattStts ltcst, unsigned int modr){
 }
 
 /** Set action id*/
-void setAct(StatFrame** sts_frm, LattAct lttact, LattStts ltsts, unsigned int modr)
-{
+void setAct(StatFrame **sts_frm, LattAct lttact, LattStts ltsts, unsigned int modr) {
     (*sts_frm)->act_id = lttact;
-    if(ltsts != NOTHN){
+    if (ltsts != NOTHN) {
         (*sts_frm)->status = ltsts;
     }
     if (modr) {
@@ -693,7 +787,7 @@ void setAct(StatFrame** sts_frm, LattAct lttact, LattStts ltsts, unsigned int mo
 }
 
 /** Set modifier */
-void setMdr(StatFrame** sts_frm, unsigned int modr){
+void setMdr(StatFrame **sts_frm, unsigned int modr) {
     (*sts_frm)->modr = modr ? modr : ++((*sts_frm)->modr);
     if (modr == SELFRESET) {
         (*sts_frm)->modr = 0;
@@ -701,18 +795,16 @@ void setMdr(StatFrame** sts_frm, unsigned int modr){
 }
 
 /** Reset StatusFrame fields*/
-void stsReset(StatFrame** sts_frm)
-{
-    (*sts_frm)->status=LISTN;
-    (*sts_frm)->act_id=ZZZZ;
-    (*sts_frm)->err_code=IMFINE;
-    (*sts_frm)->modr=0;
+void stsReset(StatFrame **sts_frm) {
+    (*sts_frm)->status = LISTN;
+    (*sts_frm)->act_id = ZZZZ;
+    (*sts_frm)->err_code = IMFINE;
+    (*sts_frm)->modr = 0;
 }
 
 /** Output current StatusFrame */
-void stsOut(StatFrame** sts_frm)
-{
-    printf("Status:%d\n",(*sts_frm)->status);
+void stsOut(StatFrame **sts_frm) {
+    printf("Status:%d\n", (*sts_frm)->status);
 }
 
 /** Output error code
@@ -722,122 +814,74 @@ void stsOut(StatFrame** sts_frm)
  *  - A message string can be passed in for display or pass in NULL
  *  for none;
  * */
-void serrOut(StatFrame** sts_frm, char* msg)
-{
-    fprintf(stderr,"[ Error Code: %d ]\n", (*sts_frm)->err_code);
-    fprintf(stderr,"< %d >\n", (*sts_frm)->modr);
+void serrOut(StatFrame **sts_frm, char *msg) {
+    fprintf(stderr, "[ Error Code: %d ]\n", (*sts_frm)->err_code);
+    fprintf(stderr, "< %d >\n", (*sts_frm)->modr);
 
-    if ((*sts_frm)->act_id == GBYE){
-        fprintf(stderr,"Shutting down\n");
+    if ((*sts_frm)->act_id == GBYE) {
+        fprintf(stderr, "Shutting down\n");
         (*sts_frm)->status = SHTDN;
     }
     if (msg != NULL) {
-        fprintf(stdout,"---------\n\t%s\n---------\n", msg);
+        fprintf(stdout, "---------\n\t%s\n---------\n", msg);
     }
 }
 
 
-   /* * * * * * * * * *
-  *  Response CMDS  *
- * * * * * * * * **/
+/* * * * * * * * * *
+*  Response CMDS  *
+* * * * * * * * **/
 
-/* *
- * Travel Ops
- * */
+void rsp_err(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc, uniArr *buf) {}
 
-  /**
- * Response: Current working directory
- * */
-void rsp_cwnd(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, uniArr* buf){
+void rsp_nfo(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc, uniArr *buf) {}
 
-//    unsigned char* dn_hash;
-//    HashBridge* hbrg;
-//    yield_dnhsh(&((*dchns)->vessel), &dn_hash);
-//    hbrg = yield_bridge(*hltc, dn_hash,crypto_shorthash_KEYBYTES,((*dchns)->vessel));
-//
-    buf->carr = (unsigned char*) ((*dchns)->vessel)->diname;
-    printf("\nRESPONSE>> %s\n",buf->carr);
+void rsp_sts(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc, uniArr *buf) {}
 
-    setSts(sts_frm,RESPN,OBJNM);
-}
+void rsp_fiid(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc, uniArr *buf) {}
 
-/**
-* Response: Go to node
-* */
-void rsp_gotond(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, uniArr* buf){
+void rsp_diid(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc, uniArr *buf) {}
 
-    unsigned long long* dest_id = (unsigned long long*) malloc(sizeof(unsigned long long));
+void rsp_frdn(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc, uniArr *buf) {}
 
-    memcpy(dest_id, (*inf_frm)->cmdSeq->arr->carr, sizeof(unsigned long long));
-    unsigned int stepcnt;
-    stepcnt = gotonode(*dest_id,*dchns);
+void rsp_gond(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc, uniArr *buf) {}
 
-    setSts(sts_frm,TRVLD,stepcnt); //Modr set to step count
-    buf = (uniArr*) &((*dchns)->vessel->diname);
-}
+void rsp_und(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc, uniArr *buf) {}
 
-/* *
- * DirNode ops
- * */
+void rsp_fyld(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc, uniArr *buf) {}
+
+void rsp_jjjj(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc, uniArr *buf) {}
+
+void rsp_dsch(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc, uniArr *buf) {}
+
+void rsp_iiii(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc, uniArr *buf) {}
+
+void rsp_dcls(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc, uniArr *buf) {}
+
+void rsp_gohd(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc, uniArr *buf) {}
+
+void rsp_dnls(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc, uniArr *buf) {}
+
+void rsp_vvvv(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc, uniArr *buf) {}
+
+/* * * * * * * * * * * **
+*  Response processing  *
+* * * * * * * * * * * * */
 
 /**
-* Response: List contents of current DirNode
+ * \ResponseAction
+ *    Initialize and return ResponseMap struct.
+ * <br>
+ *        Call fucntions with:
+ * <br><br>
+ * <code>
+ *        (*funarr[cmd])(sts_frm, inf_frm, dchns, hltc, buf);
 * */
-void rsp_listnd(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, uniArr* buf){
-}
-
-/* *
- * Info ops
- * */
-
-/**
-* Response: Current status frame
-* */
-void rsp_status(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, uniArr* buf){
-
-    for(int i = 0; i < 16; i+= 4){
-        if ((unsigned int) *buf->carr+i){
-            stsReset(sts_frm);
-            setErr(sts_frm,ILMMOP,0);
-            serrOut(sts_frm,"Response processing failed.\nBuffer not empty.");
-            return;
-        }
-        memcpy((buf->carr+i),*(sts_frm+i),UISiZ);
-    }
-
-    printf("\nRESPONSE>> %s\n",buf->carr);
-
-}
-
-/* *
- * File ops
- * */
-
-/**
-* Response: Return file ID given a filename
-* */
-void rsp_fiid(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, uniArr* buf){
-}
-
-
-    /* * * * * * * * * * * **
-   *  Response processing  *
- * * * * * * * * * * * * */
-
-  /**
-   * \ResponseAction
-   *    Initialize and return ResponseMap struct.
-   * <br>
-   *        Call fucntions with:
-   * <br><br>
-   * <code>
-   *        (*funarr[cmd])(sts_frm, inf_frm, dchns, hltc, buf);
-  * */
-RspFunc* rsp_act(
-              RspMap rsp_map,
-              StatFrame** sts_frm,
-              InfoFrame** inf_frm,
-              RspFunc* funarr)
+RspFunc *rsp_act(
+        RspMap rsp_map,
+        StatFrame **sts_frm,
+        InfoFrame **inf_frm,
+        RspFunc *funarr){
 // VER. A
 //              {RspFunc* rsp_act(int cnfg_fd,
 //              RspMap rsp_map,
@@ -847,30 +891,68 @@ RspFunc* rsp_act(
 //              Lattice* hltc,
 //              uniArr* buf,
 //              RspFunc* funarr)
-{
-    // {LattReply,Mod,actIdx}
-    *(*rsp_map) = 0;     *((*rsp_map)+1) = 0;   *((*rsp_map)+2) = STATS;
-    *(*(rsp_map+1)) = 1; *(*(rsp_map+1)+1) = 0; *((*rsp_map+2)+1) = CWDIR;
-    *((*rsp_map+2)) = 2; *((*rsp_map+1)+2) = 0; *((*rsp_map+2)+2) = FILID;
-    *((*rsp_map+3)) = 3; *((*rsp_map+1)+3) = 0; *((*rsp_map+2)+3) = DNLST;
-    *((*rsp_map+4)) = 4; *((*rsp_map+1)+4) = 0; *((*rsp_map+2)+4) = OBJNM;
 
-    void (*cwdn)(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, uniArr* buf); // return CWD
-    cwdn = &rsp_cwnd;
-    void (*gond)(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, uniArr* buf); // Goto dirndode
-    gond = &rsp_gotond;
-    void (*lsnd)(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, uniArr* buf); // list dirnode contents
-    lsnd = &rsp_listnd;
-    void (*stts)(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, uniArr* buf); // return status
-    stts = &rsp_status;
-    void (*fiid)(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, uniArr* buf); // return fiid for given filename
+//Info
+    void (*und)(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc, uniArr *buf);
+    void (*err)(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc, uniArr *buf);
+    void (*nfo)(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc, uniArr *buf);
+    void (*sts)(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc, uniArr *buf);
+//Travel
+    void (*fiid)(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc, uniArr *buf);
+    void (*diid)(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc, uniArr *buf);
+    void (*frdn)(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc, uniArr *buf);
+    void (*gond)(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc, uniArr *buf);
+//Dir
+    void (*fyld)(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc, uniArr *buf);
+    void (*jjjj)(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc, uniArr *buf);
+    void (*dsch)(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc, uniArr *buf);
+    void (*iiii)(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc, uniArr *buf);
+//File
+    void (*dcls)(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc, uniArr *buf);
+    void (*gohd)(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc, uniArr *buf);
+    void (*dnls)(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc, uniArr *buf);
+    void (*vvvv)(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc, uniArr *buf);
+
+    und = &rsp_und;
+    err = &rsp_err;
+    nfo = &rsp_nfo;
+    sts = &rsp_sts;
     fiid = &rsp_fiid;
-                        // LattReply's:
-    (*funarr)[0] = stts; // STATS 1
-    (*funarr)[1] = gond; // CWDIR 2
-    (*funarr)[2] = fiid; // FILID 3
-    (*funarr)[3] = lsnd; // DNLST 4
-    (*funarr)[4] = cwdn; // OBJNM 5
+    diid = &rsp_diid;
+    frdn = &rsp_frdn;
+    gond = &rsp_gond;
+    fyld = &rsp_fyld;
+    jjjj = &rsp_jjjj;
+    dsch = &rsp_dsch;
+    iiii = &rsp_iiii;
+    dcls = &rsp_dcls;
+    gohd = &rsp_gohd;
+    dnls = &rsp_dnls;
+    vvvv = &rsp_vvvv;
+
+/* Info ops*/
+    (*funarr)[0] = fiid; // File id
+    (*funarr)[1] = diid; // DirNode id
+    (*funarr)[2] = frdn; // Return resident dn of given
+    (*funarr)[3] = gond; // Go to: given dirnode.
+    (*funarr)[4] = fyld; // Yeild object
+    (*funarr)[5] = jjjj; // Empty
+    (*funarr)[6] = und;  // Undefined
+    (*funarr)[7] = dsch; // Search for resident dir of given
+    (*funarr)[8] = iiii; // Empty
+    (*funarr)[9] = dcls; // List dirchains nodes
+    (*funarr)[10] = err; // LattErr error code
+    (*funarr)[11] = gohd; // Go to: head node or switch base
+    (*funarr)[12] = nfo; // Info string for given
+    (*funarr)[13] = dnls; // List dn contents
+    (*funarr)[14] = sts; // current status frame
+    (*funarr)[15] = vvvv; //
+
+/* Goto resident location of a given ffile */
+
+/* DirNode ops */
+
+/* File ops */
 
     return funarr;
 }
@@ -879,52 +961,60 @@ RspFunc* rsp_act(
  * Init response table
  * */
 void init_rsptbl(int cnfg_fd,
-                 Resp_Tbl** rsp_tbl,
-                 StatFrame** sts_frm,
-                 InfoFrame** inf_frm,
-                 DChains* dchns,
-                 Lattice* hltc,
-                 uniArr* buf){
+                 Resp_Tbl **rsp_tbl,
+                 StatFrame **sts_frm,
+                 InfoFrame **inf_frm,
+                 DChains *dchns,
+                 Lattice *hltc,
+                 uniArr *buf) {
 
-    unsigned int* rsp_map;
+    unsigned int *rsp_map;
     unsigned int fcnt = RSPARR;
-    RspFunc* rsp_func;
+    RspFunc *rsp_func;
 
-    rsp_map = (unsigned int*) sodium_malloc(sizeof(unsigned int)*(fcnt*3*3));
-    *rsp_tbl = (Resp_Tbl*) sodium_malloc(sizeof(Resp_Tbl));
-    rsp_func = (RspFunc*) sodium_malloc(sizeof(RspFunc));
+    //rsp_map = (unsigned int *) sodium_malloc(sizeof(unsigned int) * (fcnt * 3 * 3));
+    *rsp_tbl = (Resp_Tbl *) sodium_malloc(sizeof(Resp_Tbl));
+    rsp_func = (RspFunc *) sodium_malloc(sizeof(RspFunc));
 
 //VER. A
 //    (*rsp_tbl)->rsp_funcarr = rsp_act(cnfg_fd,&rsp_map,sts_frm,inf_frm,dchns,hltc,buf,rsp_func);
-    (*rsp_tbl)->rsp_funcarr = rsp_act(&rsp_map,sts_frm,inf_frm,rsp_func);
-    (*rsp_tbl)->rsp_map = (RspMap*) &rsp_map;
+    (*rsp_tbl)->rsp_funcarr = rsp_act(&rsp_map, sts_frm, inf_frm, rsp_func);
+    (*rsp_tbl)->rsp_map = (RspMap *) &rsp_map;
     (*rsp_tbl)->fcnt = fcnt;
 }
 
-LattReply dtrm_rsp(StatFrame** sts_frm,
-              InfoFrame** inf_frm,
-              DChains* dchns,
-              Lattice* hltc,
-              uniArr* buf) {
+LattReply dtrm_rsp(StatFrame **sts_frm,
+                   InfoFrame **inf_frm) {
 
-    unsigned int genrsp = 0;
-
-    unsigned int itm_rsp;
     unsigned int i;
+    unsigned int ping = 0;
+    unsigned char msk = 0; //Mask applied to determine response avenues
+    unsigned int sys = 0; //Request is a system op
+    unsigned int flg_sffx = 0;
 
-    for (i = 1; i < 4; i++){
-        if((*inf_frm)->trfidi[i-1]){
-            genrsp = 1;
-            break;
+    unsigned int req_cat; //0 = sys/info, 1 = travel , 2 = fi, 3 = dir
+    unsigned int modf; //0 = sys/info, 1 = travel , 2 = fi, 3 = dir
+
+
+    if ((*inf_frm)->trfidi[0]) {
+        msk = DIRID | DNODE;  //Travel op -> masked w/ DNODE qualifier and bit #1 : 0011
+
+    } else {
+        if ((*inf_frm)->trfidi[2]) {
+            msk = DIRID;    //Dir Op -> masked with bit #1 : 0001
+        } else {
+            if (!(*inf_frm)->trfidi[1]) {    //Not a file op.
+                if ((*inf_frm)->sys_op) {
+                    msk = OINFO;    // Info op -> masked with bits #3 and #4 : 1100
+                } else {
+                    sys = 1;    // System op -> unique handling. : 0110/1010
+                }
+            }   // File op, bit #1 stays False, and no more than 1 bit set True : 0000
         }
     }
-     if(genrsp)
-    {
+    flg_sffx = (*inf_frm)->cat_sffx;
 
-
-
-    }
-
+    printf("gen'd mask: %u\n", msk);
 
 
 }
@@ -932,13 +1022,13 @@ LattReply dtrm_rsp(StatFrame** sts_frm,
 /**
  * \ProcessResponse
  */
-unsigned char* proc_rsp(Resp_Tbl* rsp_tbl,
+unsigned char *proc_rsp(Resp_Tbl *rsp_tbl,
                         LattReply rsp,
-                        StatFrame** sts_frm,
-                        InfoFrame** inf_frm,
-                        DChains* dchns,
-                        Lattice* hltc,
-                        uniArr* buf) {
+                        StatFrame **sts_frm,
+                        InfoFrame **inf_frm,
+                        DChains *dchns,
+                        Lattice *hltc,
+                        uniArr *buf) {
 
     if (rsp > rsp_tbl->fcnt) {
         setErr(sts_frm, MISCLC, rsp);
@@ -946,54 +1036,10 @@ unsigned char* proc_rsp(Resp_Tbl* rsp_tbl,
         return NULL;
     }
 
-    Cmd_Seq *rsp_frm;
-    init_cmdseq(&rsp_frm, (*inf_frm)->arr_len, RSP);
+//    Cmd_Seq *rsp_frm;
+//    init_cmdseq(&rsp_frm, (*inf_frm)->arr_len, RSP);
 
     (*(rsp_tbl->rsp_funcarr[rsp]))(sts_frm, inf_frm, dchns, hltc, buf);
 
     setSts(sts_frm, RESPN, 0);
 }
-
-
-//
-//    /* *
-//     * LOGIC
-//     * */
-//    //- No response
-//    SILNT = 0,
-//            //- Requested operation completed
-//    SCCSS = 1,
-//
-//            /* *
-//             * INFO
-//             * */
-//            //-  Error code
-//    ERRCD = 2,
-//            //-  Info string for a given object
-//    OINFO = 3,
-//            //- Current status frame
-//    STATS = 4,
-//
-//            /* *
-//             * DIR
-//             * */
-//            //- ID of a given dir node
-//    DIRID = 5,
-//            //-  ID of current working dirnode
-//    CWDIR = 6,
-//            //-   Nodes currently present in the dirchains
-//    DCHNS = 7,
-//            //-   Array of contents for a given dirnode
-//    DNLST = 8,
-//
-//            /* *
-//             * FILE
-//             * */
-//            //-   ID of a given file
-//    FILID = 9,
-//            //-   Resident dirnode for a given file
-//    DNODE = 10,
-//            //-   Yield file
-//    OBYLD = 11,
-//            //-   Filename for a given ID
-//    OBJNM = 12,
