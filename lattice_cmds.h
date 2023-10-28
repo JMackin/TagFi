@@ -562,7 +562,7 @@ typedef struct Cmd_Seq {
  *<br> | sys_op   |  qual    |  arr type  |   arr len | CmdSeq ptr ]
  */
 typedef struct InfoFrame{
-    unsigned int cat_sffx;
+    unsigned int cat_pfx;
     unsigned int rsp_size;
     unsigned int req_size;
     unsigned int trfidi[3];
@@ -577,10 +577,11 @@ typedef struct InfoFrame{
 
 InfoFrame* init_info_frm(InfoFrame** info_frm);
 
-InfoFrame * parse_req(const unsigned char* req,
-                      Cmd_Seq** cmd_seq,
-                      InfoFrame* rinfo,
-                      StatFrame** sts_frm,
+InfoFrame * parse_req(const unsigned char* fullreqbuf,
+                      Cmd_Seq** cmdseq,
+                      InfoFrame* infofrm,
+                      StatFrame** stsfrm,
+                      LttcFlags rqflgsbuf,
                       unsigned char** carr_buf);
 //VER B.
 //InfoFrame * parse_req(const unsigned char* req,
@@ -613,7 +614,7 @@ typedef struct Seq_Tbl{
 
 typedef unsigned int** RspMap;
 
-typedef void (*RspFunc[RSPARR])(StatFrame**, InfoFrame* *, DChains*, Lattice*, uniArr*);
+typedef void (*RspFunc[RSPARR])(StatFrame**, InfoFrame**, DChains*, Lattice*, uniArr**);
 
 typedef struct Resp_Tbl{
     unsigned int fcnt;
@@ -628,7 +629,9 @@ void init_lttccmd();
 
 void destroy_lttccmd();
 
-Cmd_Seq* init_cmdseq(Cmd_Seq** cmdSeq, unsigned int arrsize, unsigned int type);
+Cmd_Seq* init_cmdseq(Cmd_Seq** cmdSeq, uniArr** arr, unsigned int type);
+
+Cmd_Seq *reset_cmdseq(Cmd_Seq **cmdSeq, unsigned int type);
 
 unsigned int init_seqtbl(Seq_Tbl** seq_tbl, unsigned long mx_sz);
 
@@ -636,12 +639,8 @@ unsigned int build_lead(const unsigned int* cmd_flags, unsigned int flg_cnt);
 
 unsigned long save_seq(Cmd_Seq* cmd_seq, Seq_Tbl** seq_tbl, int cnfdir_fd);
 
-void destroy_cmdstructures(unsigned char* buffer,
-                           unsigned char* respbuffer,
-                           unsigned char* carr,
-                           unsigned int* iarr,
-                           Resp_Tbl * rsp_tbl,
-                           Seq_Tbl* sqTbl);
+void destroy_cmdstructures(unsigned char *buffer, unsigned char *respbuffer, unsigned char *carr, unsigned int *iarr,
+                           Resp_Tbl *rsp_tbl, Seq_Tbl *sqTbl);
 
 unsigned int serial_seq(unsigned char* seq_out,
                         Cmd_Seq** cmd_seq);
@@ -677,35 +676,40 @@ void init_rsptbl(int cnfg_fd,
                  InfoFrame** inf_frm,
                  DChains* dchns,
                  Lattice* hltc,
-                 uniArr* buf);
+                 uniArr** buf);
 
 LattReply dtrm_rsp(StatFrame** sts_frm,
                    InfoFrame** inf_frm);
 
+unsigned int respond(Resp_Tbl *rsp_tbl,
+                     StatFrame **sts_frm,
+                     InfoFrame **inf_frm,
+                     DChains *dchns,
+                     Lattice *hltc,
+                     uniArr **resp_buf);
+
 /** Response actions */
 /** Info ops */
-void rsp_sts(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, uniArr* buf);
-void rsp_nfo(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, uniArr* buf);
-void rsp_err(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, uniArr* buf);
-void rsp_UND(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, uniArr* buf);
-
+void rsp_sts(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, uniArr* *buf);
+void rsp_nfo(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, uniArr* *buf);
+void rsp_err(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, uniArr* *buf);
+void rsp_und(StatFrame** sts_frm, InfoFrame **inf_frm, DChains* dchns, Lattice* hltc, uniArr* *buf);
 /** Travel ops */
-void rsp_gond(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, uniArr* buf);
-void rsp_gohd(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, uniArr* buf);
-void rsp_gobs(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, uniArr* buf);
-void rsp_gofi(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, uniArr* buf);
-
+void rsp_gond(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, uniArr** buf);
+void rsp_gohd(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, uniArr** buf);
+void rsp_dsch(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, uniArr** buf);
+void rsp_vvvv(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, uniArr** buf);
 /** Dir ops */
-void rsp_diid(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, uniArr* buf);
-void rsp_dxxx(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, uniArr* buf);
-void rsp_dcls(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, uniArr* buf);
-void rsp_dnls(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, uniArr* buf);
+void rsp_diid(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, uniArr** buf);
+void rsp_jjjj(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, uniArr** buf);
+void rsp_dcls(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, uniArr** buf);
+void rsp_dnls(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, uniArr** buf);
 
 /** File ops */
-void rsp_fiid(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, uniArr* buf);
-void rsp_frdn(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, uniArr* buf);
-void rsp_finm(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, uniArr* buf);
-void rsp_fyld(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, uniArr* buf);
+void rsp_fiid(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, uniArr** buf);
+void rsp_frdn(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, uniArr** buf);
+void rsp_iiii(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, uniArr** buf);
+void rsp_fyld(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, uniArr** buf);
 
 /** Sys ops */
 

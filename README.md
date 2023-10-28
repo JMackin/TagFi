@@ -123,27 +123,27 @@ Exchange Flow:
     S/I: 6,10,12,14       S: ['UNDEF:06:'0b0110' | ERRCD:10:'0b1010' | OINFO:12:'0b1100' | STATS:14:'0b1110']
 
 
-    Corresponding Request Flags and returned bits.
+    Corresponding Request Flags and returned bits.  
 
-    Travel:
+    Travel: 3 
      GOTO = 128  - 1   : DIRIDQ - 3   : 0b0011
      SRCH = 256  - 2   : DSRCHQ - 7   : 0b0111
      HEAD = 512  - 4   : DCHNSQ - 11  : 0b1011
      VVVV = 1024 - 8   : VVVVVV - 15  : 0b1111 (Empty)
     
-    File:
+    File: 0 
      FIID = 2048  - 1   : FILID - 0   : 0b0000
      FRES = 4096  - 2   : DNODE - 2   : 0b0010
      YILD = 8192  - 4   : OBYLD - 4   : 0b0100
-     IIII = 16384 - 8   : IIIII - 8   : 0b1000 (Empty)
+     IIII = 16384 - 8   : IIIII - 8   : 0b1000 (Empty) 
   
-    Dir:
+    Dir: 1
      DCWD = 32768  - 1   : DIRID - 1  : 0b0001
      JJJJ = 65536  - 2   : JJJJJ - 5  : 0b0101 (Empty)
      LDCH = 131072 - 4   : DCHNS - 9  : 0b1001
      LIST = 262144 - 8   : DNLST - 13 : 0b1101
 
-    Sys/Info:
+    Sys/Info: 2 (not reflected in mask)
      INFO = 524288  - 1  : OINFO - 12 / STATS - 14 : 0b1100 / 0b1110
      SAVE = 1048576 - 2  : UNDEF - 6 : 0b0110
      EXIT = 2097152 - 4  : UNDEF - 6 : 0b0110
