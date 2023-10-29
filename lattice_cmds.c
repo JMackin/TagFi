@@ -662,28 +662,71 @@ unsigned int rsp_err(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *chns, La
     LattTyps xx = (LattTyps) LTTC;
     size_t bcnt = prpbuf(buf);
     size_t arrlen = 0;
-    int i;
-
+    LattObj i;
     LattObj objs[19] = {NADA, LTTC, BRDG, DIRN, FTBL, FIMP, LFLG, SFRM, IFRM,
                         SEQT, CMSQ, ICAR, VSSL, FIOB, IDID, NMNM, FIDE, DCHN,NADA};
 
-    //TESTING
-    LattObj objeid = 0;
-    objeid = xx.obj;
-//    memcpy(&objeid,*buf+ltyp_s,ltyp_s);
-     //END TESTING
+    // Extract the desired subject of information which should be the sole item in the request array.
+    // Fail if no code found
+    LattObj objeid;
+    memcpy(&objeid,(*inf_frm)->arr,(*inf_frm)->arr_len);
 
-    for (i =0; i < 19; i++){
-        if (objs[i] == objeid){
+    for (i = LTTC; i != BUFF; i<<=1){
+        if (i == objeid){
             break;
         }
     }
 
-     memset(*buf,0,UISiZ);
-    if (i==18){
+    if (i>FIDE){
         setErr(sts_frm,MALREQ,objeid);
         serrOut(sts_frm,"Invalid object ID provided.");
         return rsp_err(sts_frm, inf_frm, dchns, hltc, buf);
+    }
+
+    switch(objeid) {
+       case NADA:
+
+            break;
+
+       case LTTC:
+           break;
+
+       case BRDG:
+           break;
+
+       case DIRN:
+           break;
+
+       case FTBL:
+           break;
+       case FIMP:
+           break;
+       case LFLG:
+           break;
+       case SFRM:
+           break;
+       case IFRM:
+           break;
+       case SEQT:
+           break;
+       case CMSQ:
+           break;
+       case ICAR:
+           break;
+       case VSSL:
+           break;
+       case FIOB:
+           break;
+       case IDID:
+           break;
+       case NMNM:
+           break;
+       case FIDE:
+           break;
+       case DCHN:
+           break;
+        default:
+            break;
     }
 
 
@@ -911,20 +954,29 @@ unsigned int proc_rsp(Resp_Tbl *rsp_tbl,
                         unsigned char **buf) {
     unsigned int rspsz;
     unsigned int rsparrsz;
+    // Update status and return 1 on failure
+    // if the value of reply object is > the
+    // num of function in the array.
     if (rsp > rsp_tbl->fcnt) {
         setErr(sts_frm, MISCLC, rsp);
         serrOut(sts_frm, "LattReply for response processing outside defined functionality.");
         return 1;
     }
-    memset(*buf,0,ltyp_s);
+
+    // Insert reply object into buffer at +sizeof(LattTyp) offset
     memcpy(*buf+ltyp_s,&rsp,sizeof(LattReply));
 
+    // Call function at index 'rsp' (the reply object value) from function array.
     rspsz = (*rsp_tbl->rsp_funcarr)[rsp](sts_frm, inf_frm, dchns, hltc, buf);
+
+    // Get array len from response sequence
     rsparrsz = rspsz - (3*ltyp_s)-(UCSiZ);
 
+    // Update InfoFrame
     (*inf_frm)->arr_len = rspsz;
     (*inf_frm)->rsp_size = rsparrsz;
 
+    // Update status and return 0 on success
     setSts(sts_frm, RESPN, 0);
     return 0;
 }
@@ -936,11 +988,14 @@ InfoFrame* respond(Resp_Tbl *rsp_tbl,
                       Lattice *hltc,
                       unsigned char **resp_buf) {
 
-    //LattReply rsp = ;
-    LattReply rsp = dtrm_rsp(sts_frm,inf_frm);
-    bzero(*resp_buf,ARRSIZE-1);
-    memcpy(*resp_buf,&rsp,sizeof(LattReply));
+    //TODO: Reset infoframe, implement and include.
 
+    /** Determine response avenue and return a reply object */
+    LattReply rsp = dtrm_rsp(sts_frm,inf_frm);  // Reply object returned from 'determine response'
+    bzero(*resp_buf,ARRSIZE-1);                 // Zero response buffer
+
+
+    /** Process response; build response sequence based on results of determination process */
     if (proc_rsp(rsp_tbl,rsp,sts_frm,inf_frm,dchns,hltc,resp_buf)){
         int iern = errno;
         setErr(sts_frm,NOINFO,rsp);

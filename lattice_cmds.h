@@ -477,8 +477,8 @@ typedef enum LattObj{
     SFRM = 64,
     // Info frame
     IFRM = 128,
-    // Buffers
-    BUFF = 256,
+    // Dir Chains
+    DCHN = 256,
     // Stored seq table
     SEQT = 512,
     // Cmd sequence (response or request)
@@ -493,14 +493,15 @@ typedef enum LattObj{
     IDID = 16384,
     // Name for an object
     NMNM = 32768,
-    // Cmd frame lead
-    FRLD = 65536,
     // File desc or socket
-    FIDE = 131072,
+    FIDE = 65536,
+    // Buffers
+    BUFF = 131072,
     // Hash key
     HSKY = 262144,
-    // Dir Chains
-    DCHN = 524288
+    // Cmd frame lead
+    FRLD = 524288
+
 } LattObj;
 
 typedef unsigned char* cmdKey;
