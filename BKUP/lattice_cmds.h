@@ -10,13 +10,6 @@
 typedef reqFlag reqArr;
 typedef rspFlag rspArr;
 
-typedef struct LatticeCommand {
-    rspArr* lttcrsps;
-    reqArr* lttcreqs;
-    int n_rsp;
-    int n_req;
-} latticeCmd;
-
 typedef union LatticeStatement {
     rspArr* lttcrsps;
     reqArr* lttcreqs;

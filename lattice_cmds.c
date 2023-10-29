@@ -1,6 +1,7 @@
 //
 // Created by ujlm on 10/12/23.
 //
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -23,7 +24,9 @@
 #define SELFRESET 2147483647
 #define CMDCNT 16
 #define ARRSIZE 256
+#define CLOSEONFAIL 333
 
+typedef struct Seq_Tbl Seq_Tbl;
 int is_init = 0;
 //latticeCmd* lttccmd;
 //reqFlag reqsarr[13] = {FFF,TTT,DFLT,NARR,GCSQ,VESL,GOTO,LIST,FIID,FINM,INFO,LEAD,END};
@@ -32,13 +35,17 @@ int is_init = 0;
 enum ReqFlag reqFlag;
 enum RspFlag rspFlag;
 
-unsigned long UISiZ = sizeof(unsigned int);
-unsigned long UCSiZ = sizeof(unsigned char);
+const unsigned long UISiZ = sizeof(unsigned int);
+const unsigned long UCSiZ = sizeof(unsigned char);
+const unsigned long LTYPsz = sizeof(LattTyps)+sizeof(unsigned int);
+const unsigned long ltyp_s = sizeof(LattTyps);
+const unsigned int rspszb = sizeof(unsigned int)+sizeof(unsigned int)+sizeof(LattTyps);
+const unsigned int rspsz_b = sizeof(LattTyps)+sizeof(LattTyps);
+const unsigned int arr_b = sizeof(LattTyps)+sizeof(LattTyps)+sizeof(unsigned int);
 
 Cmd_Seq *init_cmdseq(Cmd_Seq **cmdSeq, uniArr** arr, unsigned int type) {
     *cmdSeq = malloc(sizeof(Cmd_Seq));
     (*cmdSeq)->arr = *arr;
-    //(*cmdSeq)->flags = (LttcFlags *) calloc(sizeof(LttcFlags), sizeof(UISiZ));
     (*cmdSeq)->arr_len = 0;
     (*cmdSeq)->seq_id = 0;
     (*cmdSeq)->flg_cnt = 0;
@@ -46,9 +53,7 @@ Cmd_Seq *init_cmdseq(Cmd_Seq **cmdSeq, uniArr** arr, unsigned int type) {
     return *cmdSeq;
 
 }Cmd_Seq *reset_cmdseq(Cmd_Seq **cmdSeq, unsigned int type) {
-//    *cmdSeq = malloc(sizeof(Cmd_Seq));
-//    (*cmdSeq)->arr = (uniArr *) calloc(arrsize, sizeof(uniArr));
-    //(*cmdSeq)->flags = (LttcFlags *) calloc(sizeof(LttcFlags), sizeof(UISiZ));
+
     bzero((*cmdSeq)->flags, ((*cmdSeq)->flg_cnt));
     bzero((*cmdSeq)->arr, ((*cmdSeq)->arr_len));
     (*cmdSeq)->arr_len = 0;
@@ -69,62 +74,7 @@ Cmd_Seq *destroy_cmdseq(StatFrame **sts_frm, Cmd_Seq **cmdSeq) {
     return *cmdSeq;
 }
 
-/** Set flip to 0 when using.*/
-Cmd_Seq *copy_cmdseq(unsigned int flip, Cmd_Seq **cmdSeq, Cmd_Seq **copy, StatFrame **sts_frm) {
 
-    if (*cmdSeq != NULL) {
-        if (*copy != NULL) {
-            if (!flip) {
-                *copy = destroy_cmdseq(sts_frm, copy);
-                copy_cmdseq(1, cmdSeq, copy, sts_frm);
-            } else {
-                setErr(sts_frm, ADFAIL, flip);
-                serrOut(sts_frm, "Recursion failed in copyCmdSeq");
-                return NULL;
-            }
-        } else {
-            size_t arrsize = (*cmdSeq)->type == 8 ? (*cmdSeq)->arr_len * UCSiZ : (*cmdSeq)->arr_len * UISiZ;
-           // *copy = init_cmdseq(copy, (*cmdSeq)->arr_len, (*cmdSeq)->type);
-            memcpy((*copy)->arr, (*cmdSeq)->arr, arrsize);
-            ((*copy)->flags) = (*cmdSeq)->flags;
-            //memcpy((*copy)->flags, (*cmdSeq)->flags, (*cmdSeq)->flg_cnt * UISiZ);
-            (*copy)->arr_len = (*cmdSeq)->arr_len;
-            (*copy)->flg_cnt = (*cmdSeq)->flg_cnt;
-            (*copy)->seq_id = (*cmdSeq)->seq_id;
-
-            return *copy;
-        }
-    } else {
-        setErr(sts_frm, ILMMOP, 0);
-        serrOut(sts_frm, "CMD struct to be copied points to NULL");
-        return NULL;
-    }
-    return *copy;
-}
-
-//
-//void init_lttccmd(){
-//    if (is_init){
-//        return;
-//    }
-//    lttccmd = (latticeCmd*) malloc(sizeof(latticeCmd));
-//    lttccmd->rsps = malloc(sizeof(rspsarr));
-//    lttccmd->reqs = malloc(sizeof(reqsarr));
-//    lttccmd->rsps = rspsarr;
-//    lttccmd->reqs = reqsarr;
-//    lttccmd->n_req = 12;
-//    is_init = 1;
-//}
-//
-//void destroy_lttccmd(){
-//
-//    if (!is_init && lttccmd != NULL) {
-//        free(lttccmd->reqs);
-//        free(lttccmd->rsps);
-//        free(lttccmd);
-//    }
-//    is_init = 0;
-//}
 
 void destroy_cmdstructures(unsigned char *buffer, unsigned char *respbuffer, unsigned char *carr, unsigned int *iarr,
                            Resp_Tbl *rsp_tbl, Seq_Tbl *seqTbl) {
@@ -149,122 +99,6 @@ void destroy_cmdstructures(unsigned char *buffer, unsigned char *respbuffer, uns
     free(((rsp_tbl)->rsp_funcarr));
     free(rsp_tbl);
 }
-
-/*
- * Iterate through cmds, an array of cmd sequences, for each sequence unmask the leading 4-bytes
- * to parse info about the given command(s).
- * Split cmds into an array of sequence heads, cmds, char arrays, info codes and item counts
- * Cmds can be max of 8 counts of 32 bytes
- */
-/*
-int unmask_cmds(unsigned int** cmds,
-                unsigned int** leads,
-                unsigned int** lens,
-                unsigned char*** seqs,
-                unsigned char*** arrs,
-                int cmdcnt){
-
-    int i = 0;
-//        *(leads+i) = (unsigned int*) calloc(6, sizeof(unsigned int));
-//        *(lens+i) = (unsigned int*) calloc(5, sizeof(unsigned int));
-//        *(*seqs+i) = (unsigned char*) calloc(32, sizeof(unsigned char));
-//        *(*arrs+i) = (unsigned char*) calloc(32, sizeof(unsigned char));
-
-    int k = 0; // Corr ID
-    int cl = 0; //Tracks positions of count cmds following NARR or GCSQ
-    int len_flag = 0; // Flag to prevent repeat len marks. 1 for set 2 for NARR, 4 for GCSQ, 6 for both.
-    int dir_flag = 0; // Flag to indicate directory cmds were issued;
-    int fiop_flag = 0; // Flag if file cmds are issued
-    int info_flag = 0; // Flag to indicate info code request in next byte
-    int arr_flag[2] = {0};  // Flag to indicate an array follows. 1 = set, 2 = singular value, >2 = lengths. Precendence: Lens->CMD->Arr
-    int chk_default = 0; // Flag to indicate the next bits meaning given a following zero byte. 1 = to be checked, 2 = verified.
-    int yield_flag = 0; //set when FIID is set to switch FINM from yeilding a file to returning a filename when given a fiid
-    //int masked = MASK; //Bit to signal a masked byte, or to end seq if no other bytes
-
-
-    // Every cmd sequence must have a corresponding masked-byte cmd, even if empty (i.e. == DFLT)
-    for (i = 0; i < cmdcnt; i++) {
-        len_flag = 0; dir_flag = 0; info_flag = 0; fiop_flag = 0; yield_flag=0;
-        if (chk_default > 12){
-            chk_default = 0;
-        }
-
-        k = 0; cl = 0;
-//        //next cmd
-//        (*leads+i)[0] = MASK;
-
-        // Handle masked cmds
-        do{
-            if (((*(*cmds+i)+k) & DFLT)){
-                if (chk_default){
-                    (*leads+i)[2] = chk_default;
-                    chk_default<<3;
-                }
-            }
-
-            // Mark cmd position if a length bit is set
-            // 4 = precedes array len param, 2 = precedes cmd seq param, 6 = both
-            if (((*(*cmds+i)+k) & NARR)) {
-                len_flag = len_flag | 4;
-                arr_flag[1] = 1;
-            }
-            if (((*(*cmds+i)+k) & GCSQ)) {
-                len_flag = len_flag | 2;
-                arr_flag[0] = 1;
-            }
-            if (len_flag) {
-                (*lens + cl)[0] = k;
-                (*leads+i)[4] = len_flag > 0 ? 1 : 0;
-                (*lens + cl)[1] = len_flag;
-            }
-            // Set flag if directory cmds are masked
-            // 1 = Print_CWD, 2 = goto node, next seq is filepath, 4 = list dir contents
-            if (((*(*cmds+i)+k) & LIST)){
-                dir_flag = dir_flag | 4;
-                chk_default = chk_default | 4;
-            }
-            if (((*(*cmds+i)+k) & GOTO)){
-                dir_flag = dir_flag | 2;
-                chk_default = chk_default | 2;
-            }
-            if (((*(*cmds+i)+k) & VESL)){
-                dir_flag = dir_flag | 1;
-                chk_default = chk_default ? 1 : chk_default;
-            }
-
-            // Set flag if file cmds are masked
-            //  1 = get file id, 2 = proffer file, 4 both
-            if (((*(*cmds+i)+k) & FIID)) {
-                fiop_flag = fiop_flag | 2;
-                chk_default = chk_default ? chk_default : 8;
-                yield_flag = 1;
-            }
-            if (((*(*cmds+i)+k) & FINM)) {
-                fiop_flag = fiop_flag | 1;
-                yield_flag = yield_flag ? 2 : 0;
-            }
-            if (((*(*cmds+i)+k) & INFO)){
-                if (!len_flag){
-                    info_flag = 1;
-                }
-            }
-
-            (*leads+i)[2] = fiop_flag ? fiop_flag : dir_flag;
-
-//            *(*outp+i) = *(*outp+i) | *(*(*cmds+i)+k);
-//            printf(">> %d",*(*(*cmds+i)+k));
-//            (*(*(*cmds+i)+k) =
-
-            printf(">>%d\n",(*(*cmds+i)+k));
-            k++;
-
-        }while(!((*(*cmds+i)+k)^((*(*cmds+i)+k) & END)) && k < 16);
-
-
-//        sodium_bin2hex(*outp,32,(cmds+i),(cmdcnt*sizeof(int)));
-    }
-}
-*/
 
 unsigned int build_lead(const unsigned int *cmd_flags, unsigned int flg_cnt) {
 
@@ -640,6 +474,7 @@ InfoFrame *parse_req(const unsigned char *fullreqbuf,
                      InfoFrame *infofrm,
                      StatFrame **stsfrm,
                      LttcFlags rqflgsbuf,
+                     unsigned int** tmparrbuf,
                      unsigned char **carr_buf) {
 
 
@@ -652,7 +487,6 @@ InfoFrame *parse_req(const unsigned char *fullreqbuf,
 
     //VER B
     // unsigned char* carr_buf;
-    unsigned int *iarr_buf;
 
     /**
      * Parse request sequence-lead and init CMD struct
@@ -710,11 +544,10 @@ InfoFrame *parse_req(const unsigned char *fullreqbuf,
         /**
          * Alloc and populate int buffer with the cmd sequence
          * */
-        iarr_buf = (unsigned int *) calloc(infofrm->arr_len, UISiZ);
-        memcpy(iarr_buf, fullreqbuf + (UISiZ * 2), (UISiZ * infofrm->arr_len));
-        (*cmdseq)->arr->iarr = iarr_buf;
+        memcpy(*tmparrbuf, fullreqbuf + (UISiZ * 2), (UISiZ * infofrm->arr_len));
+        (*cmdseq)->arr->iarr = *tmparrbuf;
 
-        exit_flg = *iarr_buf == SHTDN ? (exit_flg << 1) : 1;    //  EXIT trigger 3
+        exit_flg = **tmparrbuf == SHTDN ? (exit_flg << 1) : 1;    //  EXIT trigger 3
 
         /**
          * Exit for shutdown upon receiving three shutdown triggers
@@ -782,6 +615,47 @@ void setSts(StatFrame **sts_frm, LattStts ltcst, unsigned int modr) {
     }
 }
 
+long stsErno(StatFrame** sts_frm, LattErr ltcerr, char* msg, char* function, int erno, long misc){
+    if (erno == EWOULDBLOCK){
+        return 0;
+    }
+    (*sts_frm)->err_code = ltcerr;
+
+    fprintf(stderr, "Error:"
+                    "\t[ lttc_err: %d ]\n", (*sts_frm)->err_code);
+    fprintf(stderr, "\t[ errno: %d ]\n", (*sts_frm)->status);
+    fprintf(stderr, "\n- last status > %d\n", (*sts_frm)->status);
+    if ((*sts_frm)->modr){
+        fprintf(stderr, "- last modr > %d\n", (*sts_frm)->modr);
+    }
+    if (function != NULL){
+        fprintf(stderr,"- erring function > %s\n", function);
+    }
+    if (misc){
+        fprintf(stderr,"- misc > %ld\n", misc);
+    }
+    if (msg != NULL) {
+        fprintf(stdout, "---------\n\t%s\n---------\n", msg);
+    }
+
+    (*sts_frm)->status = STERR;
+    (*sts_frm)->modr = erno;
+
+    if ((*sts_frm)->act_id == GBYE) {
+        (*sts_frm)->status = SHTDN;
+        return 1;
+    }
+    else if (misc == 333)
+    {
+        (*sts_frm)->act_id = GBYE;
+        (*sts_frm)->status = SHTDN;
+        fprintf(stderr,"%d",erno);
+        sleep(1);
+        exit(EXIT_FAILURE);
+    }
+
+}
+
 /** Set action id*/
 void setAct(StatFrame **sts_frm, LattAct lttact, LattStts ltsts, unsigned int modr) {
     (*sts_frm)->act_id = lttact;
@@ -814,7 +688,12 @@ void stsReset(StatFrame **sts_frm) {
 
 /** Output current StatusFrame */
 void stsOut(StatFrame **sts_frm) {
-    printf("Status:%d\n", (*sts_frm)->status);
+    printf("\n--------------\n");
+    printf("[ Status: %d ]\n", (*sts_frm)->status);
+    if ((*sts_frm)->status == SHTDN) {
+        fprintf(stdout, "\n<< GoodBye >>\n");
+
+    }
 }
 
 /** Output error code
@@ -824,7 +703,7 @@ void stsOut(StatFrame **sts_frm) {
  *  - A message string can be passed in for display or pass in NULL
  *  for none;
  * */
-void serrOut(StatFrame **sts_frm, char *msg) {
+void serrOut(StatFrame **sts_frm, char *msg){
     fprintf(stderr, "[ Error Code: %d ]\n", (*sts_frm)->err_code);
     fprintf(stderr, "< %d >\n", (*sts_frm)->modr);
 
@@ -842,66 +721,250 @@ void serrOut(StatFrame **sts_frm, char *msg) {
 *  Response CMDS  *
 * * * * * * * * **/
 
-void rsp_err(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *chns, Lattice*hltc, uniArr **buf) {
-    printf("Response: Error frame");
+
+
+unsigned int serialz(unsigned char **buf, LattTyps itm, unsigned int offst){
+    unsigned char sz = sizeof(itm);
+    memcpy((*buf),&itm,sz);
+    return offst+sz;
+
+}
+
+unsigned int prpbuf(unsigned char **buf){
+    printf("%s\n: ",(*buf));
+    LattTyps lead = (LattTyps) LEAD;
+    memcpy(*buf,&lead.flg,ltyp_s);
+
+    return ltyp_s;
+}
+
+unsigned int insz(unsigned char **buf,unsigned int sz){
+    unsigned int osz;
+    unsigned int nsz;
+    memcpy(&osz,buf+rspsz_b,UISiZ);
+    nsz = osz+sz;
+    memcpy(*buf+rspsz_b,&nsz,UISiZ);
+    return osz+sz;
+}
+
+unsigned int incnt(void* itm, unsigned int cnt, unsigned int mlti){
+    return mlti ? ((mlti*sizeof(*itm))+cnt) : sizeof(*itm)+cnt;
+}
+
+unsigned int setsz(unsigned int sz, unsigned char **buf){
+    memcpy(*buf+rspsz_b,&sz,UISiZ);
+    return sz;
+}
+
+unsigned int msgmk(unsigned char **buf, unsigned char* msg, unsigned int len, unsigned int offst, StatFrame **sts_frm){
+
+    offst += arr_b;
+    if (len+offst > 256 || len < 1){
+        setErr(sts_frm,MALREQ,len+offst);
+        serrOut(sts_frm,"invalid msg length");
+        return 0;
+    }
+    memcpy(*buf+offst,msg,UCSiZ*len);
+
+    return ((UCSiZ*len)+offst);
+}
+
+unsigned int adddone(unsigned char **buf, unsigned int bcnt){
+
+    LattTyps dneflg = (LattTyps) DONE;
+
+    memcpy(*buf+bcnt,&(dneflg.flg),ltyp_s);
+
+    return bcnt+ltyp_s;
+}
+
+unsigned int outarr(unsigned char **buf, unsigned int arrlen){
+
+    for (uint i = arr_b; i < arrlen+arr_b; i++ ){
+
+        if (putchar(*(*buf + i) < 0)){
+            return errno;
+        }
+    }
+    return 0;
+}
+
+    // lead | item | arrsz | arr | DONE
+
+/**
+ * <verbatim><code>
+ *<br>
+ *<br> ltyp_s = sizeof(LattTyps)
+ *<br> rspsz_b = 2*sizeof(LattTyps)
+ *<br> uint_s = sizeof(unsigned int)
+ *<br> uchar_s = sizeof(unsigned char)
+ *<br> arr_b = (2*sizeof(LattTyps))+sizeof(uint)
+ *<br>
+ *<br> >Response string element positions:
+ *<br>
+ *<br> bytes start - end
+ *<br> -----------------
+ *<br> lead: 0 - ltyp_s
+ *<br> item: ltyp_s - rspsz_b
+ *<br> arrsz: rspsz_b - (rspsz_b)+uint_s
+ *<br> arr: (rspsz_b)+uint_s - (rspsz_b)+uint_s+(arr_len*uchar_s)
+ *<br> DONE: (rspsz_b)+uint_s+(arr_len*uchar_s) - rspsz_b+ltyp_s+uint_s+(arr_len*uchar_s)
+ */
+
+unsigned int rsp_err(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *chns, Lattice* hltc, unsigned char **buf) {
+
+    unsigned int ercode = (*sts_frm)->err_code;
+    memcpy(buf,&ercode,sizeof(LattErr));
+
+    return sizeof(LattErr);
  }
 
- void rsp_nfo(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice * hltc, uniArr **buf) {
+ unsigned int rsp_nfo(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice * hltc, unsigned char **buf) {
     printf("Response: info");
+    LattTyps xx = (LattTyps) LTTC;
+    size_t bcnt = prpbuf(buf);
+    size_t arrlen = 0;
+    int i;
+
+    LattObj objs[19] = {NADA, LTTC, BRDG, DIRN, FTBL, FIMP, LFLG, SFRM, IFRM,
+                        SEQT, CMSQ, ICAR, VSSL, FIOB, IDID, NMNM, FIDE, DCHN,NADA};
+
+    //TESTING
+    LattObj objeid = 0;
+    objeid = xx.obj;
+//    memcpy(&objeid,*buf+ltyp_s,ltyp_s);
+     //END TESTING
+
+    for (i =0; i < 19; i++){
+        if (objs[i] == objeid){
+            break;
+        }
+    }
+
+     memset(*buf,0,UISiZ);
+    if (i==18){
+        setErr(sts_frm,MALREQ,objeid);
+        serrOut(sts_frm,"Invalid object ID provided.");
+        return rsp_err(sts_frm, inf_frm, dchns, hltc, buf);
+    }
+
+
+//     switch (objeid) {
+//        case (NADA):
+//            return 1;
+//             break;
+//        case (LTTC): {
+//            ulong count = (*hltc)->count;
+//            ulong max = (*hltc)->max;
+//
+//            bcnt = incnt(&max,bcnt,2);
+//            arrlen += msgmk(buf,"HashLattice",11,0,sts_frm);
+//            bcnt += arrlen;
+//            bcnt = setsz(bcnt,buf);
+//            break;
+
+//        case (NADA):
+//            break;
+//        case (LTTC):
+//            break;
+//        case (BRDG):
+//            break;
+//        case (DIRN):
+//            break;
+//        case (FTBL):
+//            break;
+//        case (FIMP):
+//            break;
+//        case (LFLG):
+//            break;
+//        case (SFRM):
+//            break;
+//        case (IFRM):
+//            break;
+//        case (SEQT):
+//            break;
+//        case (CMSQ):
+//            break;
+//        case (ICAR):
+//            break;
+//        case (VSSL):
+//            break;
+//        case (FIOB):
+//            break;
+//        case (IDID):
+//            break;
+//        case (NMNM):
+//            break;
+//        case (FIDE):
+//            break;
+//        case (DCHN):
+//            break;
+//        case (NADA):
+//               break;
+//        default:
+//            break;
+//        }
+//     }
+
+     if (outarr(buf,arrlen)) {
+         perror("arrout: ");
+     }
+    return bcnt;
  }
 
- void rsp_sts(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice * hltc, uniArr **buf) {
+ unsigned int rsp_sts(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice * hltc, unsigned char **buf) {
     printf("Response: Status frame");
+
  }
 
- void rsp_und(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice * hltc, uniArr **buf) {
+ unsigned int rsp_und(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice * hltc, unsigned char **buf) {
     printf("Response: Undefined");
  }
 
- void rsp_fiid(StatFrame **sts_frm, InfoFrame **inf_frm, DChains*dchns, Lattice* hltc, uniArr **buf) {
+ unsigned int rsp_fiid(StatFrame **sts_frm, InfoFrame **inf_frm, DChains*dchns, Lattice* hltc, unsigned char **buf) {
     printf("Response: File ID");
  }
 
- void rsp_diid(StatFrame **sts_frm, InfoFrame **inf_frm, DChains*dchns, Lattice* hltc, uniArr **buf) {
+ unsigned int rsp_diid(StatFrame **sts_frm, InfoFrame **inf_frm, DChains*dchns, Lattice* hltc, unsigned char **buf) {
     printf("Response: Dir ID");
  }
 
- void rsp_frdn(StatFrame **sts_frm, InfoFrame **inf_frm, DChains*dchns, Lattice* hltc, uniArr **buf) {
+ unsigned int rsp_frdn(StatFrame **sts_frm, InfoFrame **inf_frm, DChains*dchns, Lattice* hltc, unsigned char **buf) {
     printf("Response: Resident Dir");
  }
 
- void rsp_gond(StatFrame **sts_frm, InfoFrame **inf_frm, DChains*dchns, Lattice* hltc, uniArr **buf) {
+ unsigned int rsp_gond(StatFrame **sts_frm, InfoFrame **inf_frm, DChains*dchns, Lattice* hltc, unsigned char **buf) {
     printf("Response: Goto node");
  }
 
- void rsp_fyld(StatFrame **sts_frm, InfoFrame **inf_frm, DChains*dchns, Lattice* hltc, uniArr **buf) {
+ unsigned int rsp_fyld(StatFrame **sts_frm, InfoFrame **inf_frm, DChains*dchns, Lattice* hltc, unsigned char **buf) {
     printf("Response: Yield object");}
 
- void rsp_jjjj(StatFrame **sts_frm, InfoFrame **inf_frm, DChains*dchns, Lattice* hltc, uniArr **buf) {
+ unsigned int rsp_jjjj(StatFrame **sts_frm, InfoFrame **inf_frm, DChains*dchns, Lattice* hltc, unsigned char **buf) {
     printf("Response: Empty");
  }
 
- void rsp_dsch(StatFrame **sts_frm, InfoFrame **inf_frm, DChains*dchns, Lattice* hltc, uniArr **buf) {
+ unsigned int rsp_dsch(StatFrame **sts_frm, InfoFrame **inf_frm, DChains*dchns, Lattice* hltc, unsigned char **buf) {
     printf("Response: Search for object");
  }
 
- void rsp_iiii(StatFrame **sts_frm, InfoFrame **inf_frm, DChains*dchns, Lattice* hltc, uniArr **buf) {
+ unsigned int rsp_iiii(StatFrame **sts_frm, InfoFrame **inf_frm, DChains*dchns, Lattice* hltc, unsigned char **buf) {
     printf("Response: Empty");
  }
 
- void rsp_dcls(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc, uniArr **buf) {
+ unsigned int rsp_dcls(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc, unsigned char **buf) {
     printf("Response: List chain nodes");
  }
 
- void rsp_gohd(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc, uniArr **buf) {
+ unsigned int rsp_gohd(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc, unsigned char **buf) {
     printf("Response: Go to chain head");
  }
 
- void rsp_dnls(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc, uniArr **buf) {
+ unsigned int rsp_dnls(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc, unsigned char **buf) {
     printf("Response: List dir ");
  }
 
- void rsp_vvvv(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc, uniArr **buf) {
+ unsigned int rsp_vvvv(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc, unsigned char **buf) {
     printf("Response: Empty");
 }
 
@@ -930,29 +993,29 @@ RspFunc *rsp_act(
 //              InfoFrame** inf_frm,
 //              DChains* dchns,
 //              Lattice* hltc,
-//              uniArr* buf,
+//              unsigned char* buf,
 //              RspFunc* funarr)
 
 //Info
-    void (*und)(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc, uniArr **buf);
-    void (*err)(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc, uniArr **buf);
-    void (*nfo)(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc, uniArr **buf);
-    void (*sts)(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc, uniArr **buf);
-//Travel
-    void (*fiid)(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc, uniArr* *buf);
-    void (*diid)(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc, uniArr* *buf);
-    void (*frdn)(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc, uniArr* *buf);
-    void (*gond)(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc, uniArr* *buf);
-//Dir
-    void (*fyld)(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc, uniArr* *buf);
-    void (*jjjj)(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc, uniArr* *buf);
-    void (*dsch)(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc, uniArr* *buf);
-    void (*iiii)(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc, uniArr* *buf);
-//File
-    void (*dcls)(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc, uniArr* *buf);
-    void (*gohd)(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc, uniArr* *buf);
-    void (*dnls)(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc, uniArr* *buf);
-    void (*vvvv)(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc, uniArr* *buf);
+    unsigned int  (*und)(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc, unsigned char **buf);
+    unsigned int (*err)(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc, unsigned char **buf);
+    unsigned int (*nfo)(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc, unsigned char **buf);
+    unsigned int (*sts)(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc, unsigned char **buf);
+//Travel*
+    unsigned int (*fiid)(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc, unsigned char **buf);
+    unsigned int (*diid)(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc, unsigned char **buf);
+    unsigned int (*frdn)(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc, unsigned char **buf);
+    unsigned int (*gond)(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc, unsigned char **buf);
+//Dir*
+    unsigned int (*fyld)(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc, unsigned char **buf);
+    unsigned int (*jjjj)(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc, unsigned char **buf);
+    unsigned int (*dsch)(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc, unsigned char **buf);
+    unsigned int (*iiii)(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc, unsigned char **buf);
+//File*
+    unsigned int (*dcls)(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc, unsigned char **buf);
+    unsigned int (*gohd)(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc, unsigned char **buf);
+    unsigned int (*dnls)(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc, unsigned char **buf);
+    unsigned int (*vvvv)(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc, unsigned char **buf);
 
     und = &rsp_und;
     err = &rsp_err;
@@ -1007,7 +1070,7 @@ void init_rsptbl(int cnfg_fd,
                  InfoFrame **inf_frm,
                  DChains *dchns,
                  Lattice *hltc,
-                 uniArr **buf) {
+                 unsigned char *buf) {
 
     unsigned int *rsp_map;
     unsigned int fcnt = RSPARR;
@@ -1059,7 +1122,6 @@ LattReply dtrm_rsp(StatFrame **sts_frm,
         serrOut(sts_frm,"Response determination failed.");
         return ERRCD;
     }
-
     printf("Action: %d\n", reply);
     return reply;
 }
@@ -1073,33 +1135,47 @@ unsigned int proc_rsp(Resp_Tbl *rsp_tbl,
                         InfoFrame **inf_frm,
                         DChains *dchns,
                         Lattice *hltc,
-                        uniArr **buf) {
-
+                        unsigned char **buf) {
+    unsigned int rspsz;
+    unsigned int rsparrsz;
     if (rsp > rsp_tbl->fcnt) {
         setErr(sts_frm, MISCLC, rsp);
         serrOut(sts_frm, "LattReply for response processing outside defined functionality.");
-        return 0;
+        return 1;
     }
+    memset(*buf,0,ltyp_s);
+    memcpy(*buf+ltyp_s,&rsp,sizeof(LattReply));
 
-    (*rsp_tbl->rsp_funcarr)[rsp](sts_frm, inf_frm, dchns, hltc, buf);
+    rspsz = (*rsp_tbl->rsp_funcarr)[rsp](sts_frm, inf_frm, dchns, hltc, buf);
+    rsparrsz = rspsz - (3*ltyp_s)-(UCSiZ);
+
+    (*inf_frm)->arr_len = rspsz;
+    (*inf_frm)->rsp_size = rsparrsz;
 
     setSts(sts_frm, RESPN, 0);
-
-    return 1;
+    return 0;
 }
 
-unsigned int respond(Resp_Tbl *rsp_tbl,
+InfoFrame* respond(Resp_Tbl *rsp_tbl,
                       StatFrame **sts_frm,
                       InfoFrame **inf_frm,
                       DChains *dchns,
                       Lattice *hltc,
-                      uniArr **resp_buf) {
+                      unsigned char **resp_buf) {
 
-
+    //LattReply rsp = ;
     LattReply rsp = dtrm_rsp(sts_frm,inf_frm);
+    bzero(*resp_buf,ARRSIZE-1);
+    memcpy(*resp_buf,&rsp,sizeof(LattReply));
 
-    unsigned int res =  proc_rsp(rsp_tbl,rsp,sts_frm,inf_frm,dchns,hltc,resp_buf);
+    if (proc_rsp(rsp_tbl,rsp,sts_frm,inf_frm,dchns,hltc,resp_buf)){
+        int iern = errno;
+        setErr(sts_frm,NOINFO,rsp);
+        serrOut(sts_frm,"Resp processing failed");
+        (*inf_frm)->qual = iern;
+        return *inf_frm;
+    }
 
-    return res;
-
+    fprintf(stdout,"\nres:%u\n",rsp);
+    return *inf_frm;
 }

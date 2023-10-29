@@ -190,7 +190,9 @@ typedef enum LattErr{
     // EPOLL error
     EPOLLE = 65536,
     // Conf error
-    BADCNF = 131072
+    BADCNF = 131072,
+    // Response failure
+    MISSPK = 262144
 } LattErr;
 
 /**
@@ -300,24 +302,24 @@ typedef struct StatFrame{
  * <li> AAAA = 64 - Empty
  \TravelOps
  *  <li> ~
- *  <li> GOTO = 128  - Goto dirNode of following id, goto resdir of given file if DFLT
- *  <li> SRCH = 256  - Search for resident dir for given fiid
+ *  <li> GOTO = 128  > Goto dirNode of following id, goto resdir of given file if DFLT
+ *  <li> SRCH = 256  > Search for resident dir for given fiid
  *  <li> HEAD = 512  - Goto head node, switch bases if default
  *  <li> VVVV = 1024 - Empty
  \FileOps
  *  <li> ~
- *  <li> FIID = 2048  - Return file filename for id. fid for filename if DFLT
- *  <li> FRES = 4096  - Return resident dir node for given file.
- *  <li> YILD = 8192 - Yield file of following filename , yield resident file table if DFLT
+ *  <li> FIID = 2048 > Return file filename for id. fid for filename if DFLT
+ *  <li> FRES = 4096 > Return resident dir node for given file.
+ *  <li> YILD = 8192 > Yield file of following filename , yield resident file table if DFLT
  *  <li> IIII = 16384 - Empty
  \DirNodeOps
  *  <li> ~
- *  <li> DCWD = 32768  - Return ID for given dirnode, current vessel location
+ *  <li> DCWD = 32768  > Return ID for given dirnode, current vessel location
  *  <li> JJJJ = 65536  - Empty
- *  <li> LDCH = 131072 - Return list of DirChain node ids. Return list under current base if DFLT.
- *  <li> LIST = 262144 - List dirnode contents of following dID. Current dir if DFLT
+ *  <li> LDCH = 131072 > Return list of DirChain node ids. Return list under current base if DFLT.
+ *  <li> LIST = 262144 > List dirnode contents of following dID. Current dir if DFLT
  \SystemOps
- *  <li> INFO = 524288  - Produce info assoc. with the following ID code. StatusFrame if defaults
+ *  <li> INFO = 524288  > Produce info assoc. with the following ID code. StatusFrame if defaults
  *  <li> SAVE = 1048576 - Save this sequence
  *  <li> EXIT = 2097152 - Reset/Sleep/Shutdown
  *  <li> UUUU = 4194304 - Empty
@@ -327,7 +329,7 @@ typedef struct StatFrame{
  *
  * <note>NOTE
  * <br>
- *  <note> Op groups marked with a '~' are mutually exclusive in that only one can be processed per command sequence.
+ *  <note> -Op groups marked with a '~' are mutually exclusive in that only one can be processed per command sequence.
  *  <br>
  *  <note> They can be combined with flags not marked as such however
  *
@@ -582,6 +584,7 @@ InfoFrame * parse_req(const unsigned char* fullreqbuf,
                       InfoFrame* infofrm,
                       StatFrame** stsfrm,
                       LttcFlags rqflgsbuf,
+                      unsigned int** tmparrbuf,
                       unsigned char** carr_buf);
 //VER B.
 //InfoFrame * parse_req(const unsigned char* req,
@@ -614,7 +617,7 @@ typedef struct Seq_Tbl{
 
 typedef unsigned int** RspMap;
 
-typedef void (*RspFunc[RSPARR])(StatFrame**, InfoFrame**, DChains*, Lattice*, uniArr**);
+typedef unsigned int (*RspFunc[RSPARR])(StatFrame**, InfoFrame**, DChains*, Lattice*, unsigned char**);
 
 typedef struct Resp_Tbl{
     unsigned int fcnt;
@@ -629,7 +632,7 @@ void init_lttccmd();
 
 void destroy_lttccmd();
 
-Cmd_Seq* init_cmdseq(Cmd_Seq** cmdSeq, uniArr** arr, unsigned int type);
+Cmd_Seq* init_cmdseq(Cmd_Seq** cmdSeq, uniArr ** arr, unsigned int type);
 
 Cmd_Seq *reset_cmdseq(Cmd_Seq **cmdSeq, unsigned int type);
 
@@ -676,43 +679,64 @@ void init_rsptbl(int cnfg_fd,
                  InfoFrame** inf_frm,
                  DChains* dchns,
                  Lattice* hltc,
-                 uniArr** buf);
+                 unsigned char* buf);
 
 LattReply dtrm_rsp(StatFrame** sts_frm,
                    InfoFrame** inf_frm);
 
-unsigned int respond(Resp_Tbl *rsp_tbl,
+
+InfoFrame* respond(Resp_Tbl *rsp_tbl,
                      StatFrame **sts_frm,
                      InfoFrame **inf_frm,
                      DChains *dchns,
                      Lattice *hltc,
-                     uniArr **resp_buf);
+                     unsigned char **resp_buf);
+
+typedef union LattTyps{
+    LattErr err;
+    LattReply rpl;
+    LattAct act;
+    LattObj obj;
+    LattStts sts;
+    LttFlg flg;
+    int ni;
+    unsigned int nui;
+    unsigned char nuc;
+}LattTyps;
+
+/**<br> >Response string element positions:
+*<br>
+*<br> bytes start - end
+*<br> -----------------
+*<br> lead: 0 - ltyp_s
+*<br> item: ltyp_s - rspsz_b
+*<br> arrsz: rspsz_b - (rspsz_b)+uint_s
+*<br> arr: (rspsz_b)+uint_s - (rspsz_b)+uint_s+(arr_len*uchar_s)
+*<br> DONE: (rspsz_b)+uint_s+(arr_len*uchar_s) - rspsz_b+ltyp_s+uint_s+(arr_len*uchar_s)
+*/
+
 
 /** Response actions */
-/** Info ops */
-void rsp_sts(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, uniArr* *buf);
-void rsp_nfo(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, uniArr* *buf);
-void rsp_err(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, uniArr* *buf);
-void rsp_und(StatFrame** sts_frm, InfoFrame **inf_frm, DChains* dchns, Lattice* hltc, uniArr* *buf);
-/** Travel ops */
-void rsp_gond(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, uniArr** buf);
-void rsp_gohd(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, uniArr** buf);
-void rsp_dsch(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, uniArr** buf);
-void rsp_vvvv(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, uniArr** buf);
-/** Dir ops */
-void rsp_diid(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, uniArr** buf);
-void rsp_jjjj(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, uniArr** buf);
-void rsp_dcls(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, uniArr** buf);
-void rsp_dnls(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, uniArr** buf);
 
-/** File ops */
-void rsp_fiid(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, uniArr** buf);
-void rsp_frdn(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, uniArr** buf);
-void rsp_iiii(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, uniArr** buf);
-void rsp_fyld(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, uniArr** buf);
+unsigned int  rsp_sts(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, unsigned char **buf);
+unsigned int  rsp_nfo(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, unsigned char **buf);
+unsigned int  rsp_err(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, unsigned char **buf);
+unsigned int  rsp_und(StatFrame** sts_frm, InfoFrame **inf_frm, DChains* dchns, Lattice* hltc, unsigned char **buf);
 
-/** Sys ops */
+unsigned int  rsp_gond(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, unsigned char **buf);
+unsigned int  rsp_gohd(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, unsigned char **buf);
+unsigned int  rsp_dsch(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, unsigned char **buf);
+unsigned int  rsp_vvvv(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, unsigned char **buf);
 
+unsigned int  rsp_diid(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, unsigned char **buf);
+unsigned int  rsp_jjjj(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, unsigned char **buf);
+unsigned int  rsp_dcls(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, unsigned char **buf);
+unsigned int  rsp_dnls(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, unsigned char **buf);
+
+unsigned int rsp_fiid(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, unsigned char **buf);
+unsigned int rsp_frdn(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, unsigned char **buf);
+unsigned int rsp_iiii(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, unsigned char **buf);
+unsigned int rsp_fyld(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, unsigned char **buf);
 
 
 /** Status ops **/
@@ -732,6 +756,8 @@ void stsReset(StatFrame** sts_frm);
 void stsOut(StatFrame** sts_frm);
 
 void serrOut(StatFrame** sts_frm, char* msg);
+
+long stsErno(StatFrame** sts_frm, LattErr ltcerr, char* msg, char* function, int erno, long misc);
 
 #endif //TAGFI_LATTICE_CMDS_H
 

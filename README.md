@@ -63,14 +63,14 @@ Exchange Flow:
     >> Request is divided into it component parts; a lead and an array.
     >> The lead is parsed into an array of flags via recursive bitmasking
     >> Two structs are generated from the process, 
-        one (InfoFrame) pointing to the other (Cmd_Seq)
-    >> InfoFrame holds info on the request for response determination
+        one (ExchFrame) pointing to the other (Cmd_Seq)
+    >> ExchFrame holds info on the request for response determination
         Cmd_Seq points to the request array and the array of parsed flags,
         and holds the unparsed lead plus some metadata.
 
     Output:
 
-          [InfoFrame] -> *[CMD_Seq struct]
+          [ExchFrame] -> *[CMD_Seq struct]
                /             \
     - Request Meta    - MetaData (flag-count, array length, id)
     - Sequence size   - Request Lead (OR'd flags as single int)
@@ -82,7 +82,7 @@ Exchange Flow:
     Response determination
 
     Input:
-        InfoFrame -> Mapped operation triggers, an array of 4 integers: 
+        ExchFrame -> Mapped operation triggers, an array of 4 integers: 
 
         { Travel Op, File op, Dir op, System ops, Qualifiers } 
 

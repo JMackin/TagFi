@@ -85,7 +85,6 @@ typedef enum FiFormId {
 		pdf = 73,
 		gpg = 74,
 		props = 75,
-		HEAD = 76,
 		abap = 77,
 		qrc = 78,
 		f = 79,

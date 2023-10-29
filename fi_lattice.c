@@ -13,6 +13,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <sys/epoll.h>
+#include <errno.h>
 #include "chkmk_didmap.h"
 #include "lattice_cmds.h"
 #include "jlm_random.h"
@@ -29,7 +30,7 @@
 //}
 unsigned long UISZ = sizeof(unsigned int);
 unsigned long UCSZ = sizeof(unsigned char);
-
+StatFrame* statusFrame;
 
 StatFrame* init_stat_frm(StatFrame** status_frm)
 {
@@ -79,16 +80,12 @@ void cleanup(HashLattice* hashlattice,
 }
 
 
-void destroy_metastructures(StatFrame* statFrame,
-                            InfoFrame* infoFrame,
-                            uniArr* cmdseqarr,
-                            LttcFlags reqflg_arr){
-    free(statFrame);
+void destroy_metastructures(InfoFrame *infoFrame, uniArr *cmdseqarr, LttcFlags reqflg_arr, unsigned int *tmparrbuf) {
     free(infoFrame);
     free(cmdseqarr);
     free(reqflg_arr);
+    free(tmparrbuf);
 }
-
 
 size_t read_conf(unsigned char** dnconf_addr, int cnfdir_fd){
     struct stat sb;
@@ -107,7 +104,7 @@ size_t read_conf(unsigned char** dnconf_addr, int cnfdir_fd){
 
     *dnconf_addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, dnconf_fd, 0);
     if (*dnconf_addr == MAP_FAILED) {
-        perror("Error with mmap\n");
+        stsErno(&statusFrame,EPOLLE,"Issue detected by EPOLLE","epoll_wait",errno,EPOLLERR);
         return -1;
     }
 
@@ -159,9 +156,10 @@ int extract_name(const unsigned char* path, int length) {
 
 
 
-StatFrame * spin_up(unsigned int **iarr, unsigned char **req_arr_buf, unsigned char **fullreqbuf, unsigned char **respbuffer,
-                    StatFrame **stsfrm, InfoFrame **infofrm, Seq_Tbl **seq_tbl, Resp_Tbl **rsp_tbl, HashLattice **hashlattice,
-                    Dir_Chains **dirchains, LttcFlags *flgsbuf, const int *cnfdir_fd, uniArr **cmdseqarr) {
+StatFrame *
+spin_up(unsigned int **iarr, unsigned char **req_arr_buf, unsigned char **fullreqbuf, unsigned char **respbuffer,
+        StatFrame **stsfrm, InfoFrame **infofrm, Seq_Tbl **seq_tbl, Resp_Tbl **rsp_tbl, HashLattice **hashlattice,
+        Dir_Chains **dirchains, LttcFlags *flgsbuf, const int *cnfdir_fd, unsigned int **tmparrbuf, uniArr **cmdseqarr) {
 
     /**
      * INFO AND STATUS VARS
@@ -176,9 +174,10 @@ StatFrame * spin_up(unsigned int **iarr, unsigned char **req_arr_buf, unsigned c
 
     int exit_flag = 0;
     int i = 0;
-    int k;
+    int k, res;
     unsigned int j;
     ssize_t ret;
+
     int resp_len = 0;
 
     /**
@@ -236,10 +235,24 @@ StatFrame * spin_up(unsigned int **iarr, unsigned char **req_arr_buf, unsigned c
         setErr(stsfrm, EPOLLE, 'C');
         return *stsfrm;
     }
-    struct epoll_event *epevent;
-    epevent = malloc(sizeof(struct epoll_event) * 3);
-    epevent->events = EPOLLIN | EPOLLOUT;
+     struct epoll_event *epINevent;
+     struct epoll_event *epOUTevent;
+     epINevent = malloc(sizeof(struct epoll_event));
+     epOUTevent = malloc(sizeof(struct epoll_event));
+     epINevent->events = EPOLLIN;
+     epOUTevent->events = EPOLLOUT;
 
+
+    /**
+    * LISTEN ON A SOCKET
+    * */
+    ret = listen(connection_socket, 10);    // LISTEN 'L'
+    if (ret == -1) {
+        perror("listen: ");
+        setErr(stsfrm, BADCON, 'L'); // 76 = L -> listen step
+        setAct(stsfrm, GBYE, 0, 0);
+        return *stsfrm;
+    }
 
       /* * * * * * * * *
      *   MAIN START   *
@@ -248,22 +261,12 @@ StatFrame * spin_up(unsigned int **iarr, unsigned char **req_arr_buf, unsigned c
         i = 0;
         stsReset(stsfrm);
 
-        /**
-         * LISTEN ON A SOCKET
-         * */
-        ret = listen(connection_socket, 20);    // LISTEN 'L'
-        if (ret == -1) {
-            perror("listen: ");
-            setErr(stsfrm, BADCON, 'L'); // 76 = L -> listen step
-            setAct(stsfrm, GBYE, 0, 0);
-            return *stsfrm;
-        }
 
         /**
          * ATTACH EPOLL
          * */
         setSts(stsfrm, LISTN, 0);
-        epoll_ctl(efd, EPOLL_CTL_ADD, data_socket, epevent);
+        epoll_ctl(efd, EPOLL_CTL_ADD, data_socket, epINevent);
         clock_t clka = clock();
         /**
          * RECIEVE
@@ -282,32 +285,21 @@ StatFrame * spin_up(unsigned int **iarr, unsigned char **req_arr_buf, unsigned c
         /**
          * EPOLL MONITOR DATA CONN
          * */
-        k = 0;
-        if (epoll_wait(efd, epevent, 2, 1000) > 0) {
-            do {
-                if ((epevent->events & EPOLLERR) == EPOLLERR) {
-                    perror("Epoll at read\n");
-                    fprintf(stderr, "> %d\n", (epevent->events));
-                    setErr(stsfrm, EPOLLE, k++);
-                    if ((*stsfrm)->err_code == EPOLLE && k > 2) {
-                        setErr(stsfrm, EPOLLE, EPOLLERR);
-                        setAct(stsfrm, GBYE, 0, 0);
-                        exit_flag = 1;
-                        break;
-                    }
-                }
-                break;
-            } while ((epevent->events & EPOLLIN) != EPOLLIN);
+        if (epoll_wait(efd,epINevent,1,500) > 0){
+            if ((epINevent->events&EPOLLIN) != EPOLLIN) {
+                stsErno(stsfrm, EPOLLE, "Issue detected by EPOLLE", "epoll_wait - in", errno, epINevent->events);
+                goto Errorjump;
+            }
         }
         clock_t clkc = clock();
+        epoll_ctl(efd, EPOLL_CTL_MOD, data_socket, epOUTevent);
 
         /**
          * READ REQUEST INTO BUFFER
          * */
         ret = read(data_socket, *fullreqbuf, buf_len);  // READ 'R'
         if (ret == -1) {
-            perror("read: ");
-            setErr(stsfrm, BADSOK, 'R');
+            stsErno(stsfrm,BADSOK,"Issue reading from data socket","read",errno,0);
             return *stsfrm;
         }
         (*stsfrm)->status <<= 1;
@@ -316,19 +308,55 @@ StatFrame * spin_up(unsigned int **iarr, unsigned char **req_arr_buf, unsigned c
         /**
          * CMD RECEIVED
          * */
-        *infofrm = parse_req(*fullreqbuf, &cmd_seq, *infofrm, stsfrm, *flgsbuf, req_arr_buf); // PARSE
+
+        /**
+         * PARSE REQUEST
+         * */
+        *infofrm = parse_req(*fullreqbuf,
+                             &cmd_seq,
+                             *infofrm,
+                             stsfrm,
+                             *flgsbuf,
+                             tmparrbuf,
+                             req_arr_buf); // PARSE
 
         clock_t clke = clock();
-
         if ((*stsfrm)->err_code) {
-            fprintf(stderr, "Error processing request: %d\n", (*stsfrm)->err_code);
+            setErr(stsfrm,MALREQ,0);
+            serrOut(stsfrm,"Failed to process request.");
             fprintf(stderr, "lead: %d\nfullreqbuf: %s", (*cmd_seq).lead, *fullreqbuf);
+            goto Errorjump; // TODO: replace w/ better option.
         }
 
-        /** Determine response */
+        /** DETERMINE RESPONSE */
+        *infofrm = respond(*rsp_tbl,
+                     stsfrm,
+                     infofrm,
+                     dirchains,
+                     hashlattice,
+                     respbuffer); //TODO: replace init w/ uniArr type.
+       if (infofrm==NULL){
+            setErr(stsfrm,MISSPK,0);
+            serrOut(stsfrm,"Failed to stage a response");
+            goto Errorjump; // TODO: replace w/ better option.
+        }
 
-        //LattReply resp_ave = dtrm_rsp(stsfrm,infofrm);
-        j = respond(*rsp_tbl, stsfrm, infofrm, dirchains, hashlattice, (uniArr**) respbuffer);
+        setSts(stsfrm,RESPN,0);
+        printf("Response: %s\n", *respbuffer+16);
+        epoll_ctl(efd, EPOLL_CTL_MOD, data_socket, epOUTevent);
+
+
+        /** WRITEOUT REPLY */
+         if (epoll_wait(efd,epOUTevent,1,1000) > 0){
+             if ((epINevent->events&EPOLLOUT) != EPOLLOUT) {
+                 stsErno(stsfrm, EPOLLE, "Issue detected by EPOLLE", "epoll_wait - out", errno, epINevent->events);
+                 goto Errorjump;
+             }
+         }
+
+         if (write(data_socket, *respbuffer, (*infofrm)->rsp_size) == -1){
+             stsErno(stsfrm,MISSPK,"Response write to socket failed","write",errno,(*infofrm)->rsp_size);
+         }
 
 
         /**
@@ -339,19 +367,6 @@ StatFrame * spin_up(unsigned int **iarr, unsigned char **req_arr_buf, unsigned c
             save_seq(cmd_seq, seq_tbl, *cnfdir_fd);
         }
 
-        /**
-         * ACTION:
-         * prepare response
-         * */
-        if ((*stsfrm)->act_id == FRSP) {
-
-            ret = write(data_socket, respbuffer, resp_len);
-            if (ret == -1) {
-                setErr(stsfrm, BADSOK, 'W'); // W = write op
-                perror("write");
-                return *stsfrm;
-            }
-        }
         /**
          * ACTION:
          *  shutdown
@@ -368,15 +383,18 @@ StatFrame * spin_up(unsigned int **iarr, unsigned char **req_arr_buf, unsigned c
 
         /** Save cmd seq **/
 
-
-        bzero(*fullreqbuf, buf_len);
+        Errorjump:// TODO: replace w/ better option.
+        
+        bzero(*fullreqbuf, buf_len-1);
         bzero(*flgsbuf,FLGSCNT);
-        bzero(*respbuffer, buf_len);
-        bzero(*iarr, arrbuf_len);
-        bzero(*cmdseqarr, arrbuf_len);
+        bzero(*respbuffer, buf_len-1);
+        bzero(*iarr, arrbuf_len-1);
+        bzero(*cmdseqarr, arrbuf_len-1);
+        bzero(*tmparrbuf,arrbuf_len-1);
         //prev_seq = copy_cmdseq(0,&cmd_seq,&prev_seq,stsfrm);
         //cmd_seq = destroy_cmdseq(stsfrm,&cmd_seq);
         cmd_seq = reset_cmdseq(&cmd_seq,2);
+
         close(data_socket);
 
 
@@ -398,8 +416,10 @@ StatFrame * spin_up(unsigned int **iarr, unsigned char **req_arr_buf, unsigned c
 
     }// END WHILE !EXITFLAG
 
+    epoll_ctl(efd, EPOLL_CTL_DEL, data_socket, epOUTevent);
     close(connection_socket);
-    free(epevent);
+    free(epINevent);
+    free(epOUTevent);
     cmd_seq = destroy_cmdseq(stsfrm, &cmd_seq);
     //destroy_cmdseq(stsfrm,&prev_seq);
 
@@ -414,17 +434,22 @@ StatFrame * spin_up(unsigned int **iarr, unsigned char **req_arr_buf, unsigned c
 void summon_lattice() {
 
     /**
+     * INIT GLOBAL STATFRAME
+     */
+    statusFrame = init_stat_frm(&statusFrame);
+
+    /**
      * START SODIUM
      * */
     int naclinit = sodium_init();
     if (naclinit != 0) {
-        fprintf(stderr, "Sodium init failed: %d", naclinit);
+        setAct(&statusFrame,GBYE,NOTHN,0);
+        stsErno(&statusFrame,SODIUM,"Sodium init failed","summon_lattice",errno,naclinit);
     }
 
     /**
      * DECLARATIONS
      * */
-    int res = 0;
     int i = 0;
     unsigned int arrbuf_len = 256;
     unsigned int seqtbl_sz;  // Sequence Table size
@@ -443,6 +468,7 @@ void summon_lattice() {
 
     LttcFlags reqflg_arr = (LttcFlags) calloc(CMDCNT, sizeof(LttFlg));
     uniArr* cmdseqarr = (uniArr*) calloc(arrbuf_len, sizeof(uniArr));
+    unsigned int* tmparrbuf = (unsigned int*) calloc(arrbuf_len,sizeof(unsigned int));
 
 
     InfoFrame *info_frm;    // Frame for storing request info
@@ -471,8 +497,8 @@ void summon_lattice() {
         int cnfdir_fd = openat(AT_FDCWD, CNFIGPTH, O_RDONLY | O_DIRECTORY);
         if (cnfdir_fd == -1) {
             perror("Error in fd: cnfdir_fd: %d");
-            setErr(&status_frm, FIFAIL, 'd'); // 'd' = confid directory
-            setAct(&status_frm, GBYE, 0, 0);
+            setAct(&statusFrame,GBYE,NOTHN,0);
+            stsErno(&statusFrame,FIFAIL,"Failed opening configdir fd.",NULL,errno,0);
             cleanup(hashlattice, dirchains, NULL,
                     NULL, 0, NULL, 0,
                     NULL, NULL, 0, 0);
@@ -485,13 +511,11 @@ void summon_lattice() {
          * */
         size_t dn_size = read_conf(&dn_conf, cnfdir_fd);
         if (dn_size == -1) {
-            perror("Error dn_conf: ");
-            setErr(&status_frm, BADCNF, 0); // 11 = dirnode conf
-            setAct(&status_frm, GBYE, 0, 0);
+            stsErno(&statusFrame,BADCNF,"Failed reading config",NULL,errno,333);
+
             cleanup(hashlattice, dirchains, NULL,
                     dn_conf, dn_size, NULL, 0,
                     NULL, NULL, 0, cnfdir_fd);
-            serrOut(&status_frm,NULL);
             break;
         }
         //    if (sq_size == -1 ) {
@@ -524,13 +548,10 @@ void summon_lattice() {
                         dirchains,
                         hashlattice,
                         &(tbl_list[i])) < 0) {
+                stsErno(&statusFrame,MISMAP,"Big fail","map_dir",errno,333);
                 cleanup(hashlattice, dirchains, tbl_list, dn_conf, dn_size, NULL, 0, lengths, paths, dn_cnt, cnfdir_fd);
-                perror("DirNode mapping failed\n");
-                setErr(&status_frm, MISMAP, 0);
-                setAct(&status_frm, GBYE, 0, 0);
-                serrOut(&status_frm,NULL);
                 destroy_cmdstructures(buffer, respbuffer, carr_buf, iarr_buf, NULL, seqTbl);
-                destroy_metastructures(status_frm, info_frm,&cmdseqarr,&reqflg_arr);
+                destroy_metastructures(info_frm, cmdseqarr, reqflg_arr, NULL);
                 return;
             }
         }
@@ -538,15 +559,14 @@ void summon_lattice() {
           *  INIT FUNC ARRAY
           * */
          Resp_Tbl* rsp_tbl;
-
-         init_rsptbl(cnfdir_fd, &rsp_tbl, &status_frm, &info_frm, &dirchains, &hashlattice, (uniArr**) &respbuffer);
+         init_rsptbl(cnfdir_fd, &rsp_tbl, &status_frm, &info_frm, &dirchains, &hashlattice, respbuffer);
 
 
            /* * * * * * * * * * *
           *   EXECUTE SERVER   *
          ** * * * * * * * * **/
          status_frm = spin_up(&iarr_buf, &carr_buf, &buffer, &respbuffer, &status_frm, &info_frm, &seqTbl, &rsp_tbl,
-                              &hashlattice, &dirchains, &reqflg_arr, &cnfdir_fd, &cmdseqarr);
+                              &hashlattice, &dirchains, &reqflg_arr, &cnfdir_fd, &tmparrbuf, &cmdseqarr);
 
 
          if (status_frm->err_code) {
@@ -554,18 +574,36 @@ void summon_lattice() {
                              "\nCode: %d"
                              "\nAct id: %d"
                              "\nModr: %c\n", status_frm->status, status_frm->act_id, status_frm->modr);
+             stsErno(&statusFrame,BADCNF,"Failed starting server","spin_up",errno,333);
          }
 
          /**
           * CLEANUP
           * */
-        destroy_cmdstructures(buffer, respbuffer, carr_buf, iarr_buf, rsp_tbl, seqTbl);
-         cleanup(hashlattice, dirchains, tbl_list, dn_conf, dn_size, NULL, 0, lengths, paths, dn_cnt, cnfdir_fd);
+        destroy_cmdstructures(buffer,
+                              respbuffer,
+                              carr_buf,
+                              iarr_buf,
+                              rsp_tbl,
+                              seqTbl);
+        cleanup(hashlattice,
+                dirchains,
+                tbl_list,
+                dn_conf,
+                dn_size,
+                NULL,
+                0,
+                lengths,
+                paths,
+                dn_cnt,
+                cnfdir_fd);
 
     }while (status_frm->status != SHTDN);
     /* * * * * * *
        *   EXIT   *
          * * * * * **/
+    destroy_metastructures(info_frm, cmdseqarr, reqflg_arr, tmparrbuf);
 
-    destroy_metastructures(status_frm, info_frm,cmdseqarr,reqflg_arr);
+    stsOut(&status_frm);
+    free(status_frm);
 }
