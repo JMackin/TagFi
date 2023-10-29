@@ -218,35 +218,6 @@ typedef struct InfoFrame {
 InfoFrame *init_info_frm(InfoFrame **info_frm, uniArr **seqArr);
 
 
-// VER F
-//typedef struct InfoFrame {
-//    unsigned int cat_pfx;
-//    unsigned int rsp_size;
-//    unsigned int req_size;
-//    unsigned int trfidi[3];
-//    unsigned int sys_op;
-//    unsigned int qual;
-//    unsigned int arr_type; //0: none, 1: char, 2: int
-//    unsigned int arr_len;
-//    Cmd_Seq *cmdSeq;
-//} InfoFrame;
-
-//VER B.
-//InfoFrame * parse_req(const unsigned char* req,
-//                      Cmd_Seq** cmd_seq,
-//                      InfoFrame* rinfo,
-//VER E:
-//typedef struct SeqMap{
-//    unsigned long seq_id;
-//    Cmd_Seq** cmd_seq;
-// VER. E
-//typedef struct Seq_Tbl{
-//    unsigned long mx_sz;
-//    unsigned int cnt;
-//    cmdKey cmd_key;
-//typedef struct Seq_Tbl Seq_Tbl;
-
-
 /**
  *  <h4><code>
  * \Status
@@ -556,11 +527,6 @@ typedef struct LatticeCommand {
  */
 
 
-
-//                      StatFrame** sts_frm,
-
-//}SeqMap;
-
 /**
  * \SequenceTable
  *<h4><code>
@@ -572,9 +538,6 @@ typedef struct LatticeCommand {
  * to compare against or pull from.
  * */
 
-//} Seq_Tbl;
-
-// VER. E
 
 /**
  *
@@ -714,15 +677,7 @@ RspFunc* rsp_act(
               StatFrame** sts_frm,
               InfoFrame** inf_frm,
               RspFunc* (funarr));
-// VER. A
-//RspFunc* rsp_act(int cnfg_fd,
-//              RspMap rspMap,
-//              StatFrame** sts_frm,
-//              InfoFrame** inf_frm,
-//              DChains* dchns,
-//              Lattice* hltc,
-//              uniArr* buf,
-//              RspFunc* (funarr));
+
 
 void init_rsptbl(int cnfg_fd,
                  Resp_Tbl** rsp_tbl,

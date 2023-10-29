@@ -153,10 +153,7 @@ int extract_name(const unsigned char* path, int length) {
     return fs_pos + 1;
 }
 
-//VER F.
-//StatFrame * spin_up(unsigned int **iarr, unsigned char **req_arr_buf, unsigned char **fullreqbuf, unsigned char **respbuffer,
-//                    StatFrame **stsfrm, InfoFrame **infofrm, Seq_Tbl **seq_tbl, Resp_Tbl **rsp_tbl, HashLattice **hashlattice,
-//                    Dir_Chains **dirchains, LttcFlags *flgsbuf, const int *cnfdir_fd, unsigned int **tmparrbuf, uniArr **cmdseqarr)
+
 
 StatFrame * spin_up(unsigned int **iarr, unsigned char **req_arr_buf, unsigned char **fullreqbuf, unsigned char **respbuffer,
         StatFrame **stsfrm, InfoFrame **infofrm, Resp_Tbl **rsp_tbl, HashLattice **hashlattice,
@@ -166,10 +163,7 @@ StatFrame * spin_up(unsigned int **iarr, unsigned char **req_arr_buf, unsigned c
      * INFO AND STATUS VARS
      * */
 
-// VER F
-//    Cmd_Seq *cmd_seq = NULL;
-//    cmd_seq = init_cmdseq(&cmd_seq,cmdseqarr,2);           // Request and Response Frame
-    //Cmd_Seq *prev_seq = NULL;          // Keep last request frame.
+
 
     *infofrm = init_info_frm(infofrm,cmdseqarr); // Request/Response Info Frame
 
@@ -396,10 +390,7 @@ StatFrame * spin_up(unsigned int **iarr, unsigned char **req_arr_buf, unsigned c
         bzero(*iarr, arrbuf_len-1);
         bzero(*cmdseqarr, arrbuf_len-1);
         bzero(*tmparrbuf,arrbuf_len-1);
-        //prev_seq = copy_cmdseq(0,&cmd_seq,&prev_seq,stsfrm);
-        //cmd_seq = destroy_cmdseq(stsfrm,&cmd_seq);
-//        cmd_seq = reset_cmdseq(&cmd_seq,2);
-// VER. F
+
         close(data_socket);
 
 
@@ -523,22 +514,12 @@ void summon_lattice() {
                     NULL, NULL, 0, cnfdir_fd);
             break;
         }
-        //    if (sq_size == -1 ) {
-        //        perror("Error seqstr_addr: ");
-        //        close(cnfdir_fd);
-        //        cleanup(hashlattice, dirchains, NULL,
-        //                dn_conf, dn_size, seqstr_addr, sq_size,
-        //                NULL, NULL, 0);
-        //        exit(-1);
-        //    }    //  Number of DirNodes
 
         dn_cnt = nodepaths(dn_conf, &lengths, &paths);
         // Array of FileTables connected to DirNodes
         Fi_Tbl **tbl_list = (Fi_Tbl **) calloc(dn_cnt, sizeof(Fi_Tbl *));
 
-//        Seq_Tbl *seqTbl;
-//        init_seqtbl(&seqTbl, 32);
-//VER. F
+
 
            /* * * * * * * * * *
           *  BUILD LATTICE  *
