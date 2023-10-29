@@ -687,62 +687,6 @@ unsigned int rsp_err(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *chns, La
     }
 
 
-//     switch (objeid) {
-//        case (NADA):
-//            return 1;
-//             break;
-//        case (LTTC): {
-//            ulong count = (*hltc)->count;
-//            ulong max = (*hltc)->max;
-//
-//            bcnt = incnt(&max,bcnt,2);
-//            arrlen += msgmk(buf,"HashLattice",11,0,sts_frm);
-//            bcnt += arrlen;
-//            bcnt = setsz(bcnt,buf);
-//            break;
-
-//        case (NADA):
-//            break;
-//        case (LTTC):
-//            break;
-//        case (BRDG):
-//            break;
-//        case (DIRN):
-//            break;
-//        case (FTBL):
-//            break;
-//        case (FIMP):
-//            break;
-//        case (LFLG):
-//            break;
-//        case (SFRM):
-//            break;
-//        case (IFRM):
-//            break;
-//        case (SEQT):
-//            break;
-//        case (CMSQ):
-//            break;
-//        case (ICAR):
-//            break;
-//        case (VSSL):
-//            break;
-//        case (FIOB):
-//            break;
-//        case (IDID):
-//            break;
-//        case (NMNM):
-//            break;
-//        case (FIDE):
-//            break;
-//        case (DCHN):
-//            break;
-//        case (NADA):
-//               break;
-//        default:
-//            break;
-//        }
-//     }
 
      if (outarr(buf,arrlen)) {
          perror("arrout: ");
