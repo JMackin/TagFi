@@ -153,24 +153,25 @@ int extract_name(const unsigned char* path, int length) {
     return fs_pos + 1;
 }
 
+//VER F.
+//StatFrame * spin_up(unsigned int **iarr, unsigned char **req_arr_buf, unsigned char **fullreqbuf, unsigned char **respbuffer,
+//                    StatFrame **stsfrm, InfoFrame **infofrm, Seq_Tbl **seq_tbl, Resp_Tbl **rsp_tbl, HashLattice **hashlattice,
+//                    Dir_Chains **dirchains, LttcFlags *flgsbuf, const int *cnfdir_fd, unsigned int **tmparrbuf, uniArr **cmdseqarr)
 
-
-
-StatFrame *
-spin_up(unsigned int **iarr, unsigned char **req_arr_buf, unsigned char **fullreqbuf, unsigned char **respbuffer,
-        StatFrame **stsfrm, InfoFrame **infofrm, Seq_Tbl **seq_tbl, Resp_Tbl **rsp_tbl, HashLattice **hashlattice,
+StatFrame * spin_up(unsigned int **iarr, unsigned char **req_arr_buf, unsigned char **fullreqbuf, unsigned char **respbuffer,
+        StatFrame **stsfrm, InfoFrame **infofrm, Resp_Tbl **rsp_tbl, HashLattice **hashlattice,
         Dir_Chains **dirchains, LttcFlags *flgsbuf, const int *cnfdir_fd, unsigned int **tmparrbuf, uniArr **cmdseqarr) {
 
     /**
      * INFO AND STATUS VARS
      * */
 
-    Cmd_Seq *cmd_seq = NULL;
-    cmd_seq = init_cmdseq(&cmd_seq,cmdseqarr,2);           // Request and Response Frame
-
+// VER F
+//    Cmd_Seq *cmd_seq = NULL;
+//    cmd_seq = init_cmdseq(&cmd_seq,cmdseqarr,2);           // Request and Response Frame
     //Cmd_Seq *prev_seq = NULL;          // Keep last request frame.
 
-    *infofrm = init_info_frm(infofrm); // Request/Response Info Frame
+    *infofrm = init_info_frm(infofrm,cmdseqarr); // Request/Response Info Frame
 
     int exit_flag = 0;
     int i = 0;
@@ -179,6 +180,7 @@ spin_up(unsigned int **iarr, unsigned char **req_arr_buf, unsigned char **fullre
     ssize_t ret;
 
     int resp_len = 0;
+
 
     /**
      * BUFFERS INIT
@@ -237,8 +239,8 @@ spin_up(unsigned int **iarr, unsigned char **req_arr_buf, unsigned char **fullre
     }
      struct epoll_event *epINevent;
      struct epoll_event *epOUTevent;
-     epINevent = malloc(sizeof(struct epoll_event));
-     epOUTevent = malloc(sizeof(struct epoll_event));
+     epINevent = (struct epoll_event*) malloc(sizeof(struct epoll_event)*3);
+     epOUTevent = (struct epoll_event*) malloc(sizeof(struct epoll_event)*3);
      epINevent->events = EPOLLIN;
      epOUTevent->events = EPOLLOUT;
 
@@ -285,7 +287,7 @@ spin_up(unsigned int **iarr, unsigned char **req_arr_buf, unsigned char **fullre
         /**
          * EPOLL MONITOR DATA CONN
          * */
-        if (epoll_wait(efd,epINevent,1,500) > 0){
+        if (epoll_wait(efd,epINevent,3,500) > 0){
             if ((epINevent->events&EPOLLIN) != EPOLLIN) {
                 stsErno(stsfrm, EPOLLE, "Issue detected by EPOLLE", "epoll_wait - in", errno, epINevent->events);
                 goto Errorjump;
@@ -313,8 +315,7 @@ spin_up(unsigned int **iarr, unsigned char **req_arr_buf, unsigned char **fullre
          * PARSE REQUEST
          * */
         *infofrm = parse_req(*fullreqbuf,
-                             &cmd_seq,
-                             *infofrm,
+                             infofrm,
                              stsfrm,
                              *flgsbuf,
                              tmparrbuf,
@@ -324,7 +325,7 @@ spin_up(unsigned int **iarr, unsigned char **req_arr_buf, unsigned char **fullre
         if ((*stsfrm)->err_code) {
             setErr(stsfrm,MALREQ,0);
             serrOut(stsfrm,"Failed to process request.");
-            fprintf(stderr, "lead: %d\nfullreqbuf: %s", (*cmd_seq).lead, *fullreqbuf);
+//            fprintf(stderr, "lead: %d\nfullreqbuf: %s", (*cmd_seq).lead, *fullreqbuf);
             goto Errorjump; // TODO: replace w/ better option.
         }
 
@@ -346,26 +347,6 @@ spin_up(unsigned int **iarr, unsigned char **req_arr_buf, unsigned char **fullre
         epoll_ctl(efd, EPOLL_CTL_MOD, data_socket, epOUTevent);
 
 
-        /** WRITEOUT REPLY */
-         if (epoll_wait(efd,epOUTevent,1,1000) > 0){
-             if ((epINevent->events&EPOLLOUT) != EPOLLOUT) {
-                 stsErno(stsfrm, EPOLLE, "Issue detected by EPOLLE", "epoll_wait - out", errno, epINevent->events);
-                 goto Errorjump;
-             }
-         }
-
-         if (write(data_socket, *respbuffer, (*infofrm)->rsp_size) == -1){
-             stsErno(stsfrm,MISSPK,"Response write to socket failed","write",errno,(*infofrm)->rsp_size);
-         }
-
-
-        /**
-         * ACTION:
-         *  save received sequence
-         * */
-        if ((*stsfrm)->act_id == SVSQ) {
-            save_seq(cmd_seq, seq_tbl, *cnfdir_fd);
-        }
 
         /**
          * ACTION:
@@ -374,7 +355,31 @@ spin_up(unsigned int **iarr, unsigned char **req_arr_buf, unsigned char **fullre
         if ((*stsfrm)->act_id == GBYE) {
             setSts(stsfrm, SHTDN, 0);
             exit_flag = 1;
+        }else {
+
+            /** WRITEOUT REPLY */
+            if (epoll_wait(efd, epOUTevent, 3, 1000) > 0) {
+                if ((epINevent->events & EPOLLOUT) != EPOLLOUT) {
+                    stsErno(stsfrm, EPOLLE, "Issue detected by EPOLLE", "epoll_wait - out", errno, epINevent->events);
+                    goto Errorjump;
+                }
+            }
+            if (write(data_socket, *respbuffer, (*infofrm)->rsp_size) == -1) {
+                stsErno(stsfrm, MISSPK, "Response write to socket failed", "write", errno, (*infofrm)->rsp_size);
+            }
         }
+
+
+        /**
+         * ACTION:
+         *  save received sequence
+         * */
+//        if ((*stsfrm)->act_id == SVSQ) {
+//            save_seq(cmd_seq, *cnfdir_fd);
+//        }
+// VER F
+
+
         i++;
 
         /**
@@ -393,8 +398,8 @@ spin_up(unsigned int **iarr, unsigned char **req_arr_buf, unsigned char **fullre
         bzero(*tmparrbuf,arrbuf_len-1);
         //prev_seq = copy_cmdseq(0,&cmd_seq,&prev_seq,stsfrm);
         //cmd_seq = destroy_cmdseq(stsfrm,&cmd_seq);
-        cmd_seq = reset_cmdseq(&cmd_seq,2);
-
+//        cmd_seq = reset_cmdseq(&cmd_seq,2);
+// VER. F
         close(data_socket);
 
 
@@ -420,7 +425,7 @@ spin_up(unsigned int **iarr, unsigned char **req_arr_buf, unsigned char **fullre
     close(connection_socket);
     free(epINevent);
     free(epOUTevent);
-    cmd_seq = destroy_cmdseq(stsfrm, &cmd_seq);
+//    cmd_seq = destroy_cmdseq(stsfrm, &cmd_seq);
     //destroy_cmdseq(stsfrm,&prev_seq);
 
     unlink(SOCKET_NAME);
@@ -512,7 +517,7 @@ void summon_lattice() {
         size_t dn_size = read_conf(&dn_conf, cnfdir_fd);
         if (dn_size == -1) {
             stsErno(&statusFrame,BADCNF,"Failed reading config",NULL,errno,333);
-
+            destroy_metastructures(info_frm, cmdseqarr, reqflg_arr, tmparrbuf);
             cleanup(hashlattice, dirchains, NULL,
                     dn_conf, dn_size, NULL, 0,
                     NULL, NULL, 0, cnfdir_fd);
@@ -531,9 +536,9 @@ void summon_lattice() {
         // Array of FileTables connected to DirNodes
         Fi_Tbl **tbl_list = (Fi_Tbl **) calloc(dn_cnt, sizeof(Fi_Tbl *));
 
-        Seq_Tbl *seqTbl;
-        init_seqtbl(&seqTbl, 32);
-
+//        Seq_Tbl *seqTbl;
+//        init_seqtbl(&seqTbl, 32);
+//VER. F
 
            /* * * * * * * * * *
           *  BUILD LATTICE  *
@@ -550,8 +555,8 @@ void summon_lattice() {
                         &(tbl_list[i])) < 0) {
                 stsErno(&statusFrame,MISMAP,"Big fail","map_dir",errno,333);
                 cleanup(hashlattice, dirchains, tbl_list, dn_conf, dn_size, NULL, 0, lengths, paths, dn_cnt, cnfdir_fd);
-                destroy_cmdstructures(buffer, respbuffer, carr_buf, iarr_buf, NULL, seqTbl);
-                destroy_metastructures(info_frm, cmdseqarr, reqflg_arr, NULL);
+                destroy_cmdstructures(buffer, respbuffer, carr_buf, iarr_buf, NULL);
+                destroy_metastructures(info_frm, cmdseqarr, reqflg_arr, tmparrbuf);
                 return;
             }
         }
@@ -565,7 +570,7 @@ void summon_lattice() {
            /* * * * * * * * * * *
           *   EXECUTE SERVER   *
          ** * * * * * * * * **/
-         status_frm = spin_up(&iarr_buf, &carr_buf, &buffer, &respbuffer, &status_frm, &info_frm, &seqTbl, &rsp_tbl,
+         status_frm = spin_up(&iarr_buf, &carr_buf, &buffer, &respbuffer, &status_frm, &info_frm,&rsp_tbl,
                               &hashlattice, &dirchains, &reqflg_arr, &cnfdir_fd, &tmparrbuf, &cmdseqarr);
 
 
@@ -584,8 +589,7 @@ void summon_lattice() {
                               respbuffer,
                               carr_buf,
                               iarr_buf,
-                              rsp_tbl,
-                              seqTbl);
+                              rsp_tbl);
         cleanup(hashlattice,
                 dirchains,
                 tbl_list,
@@ -603,7 +607,6 @@ void summon_lattice() {
        *   EXIT   *
          * * * * * **/
     destroy_metastructures(info_frm, cmdseqarr, reqflg_arr, tmparrbuf);
-
     stsOut(&status_frm);
     free(status_frm);
 }

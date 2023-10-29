@@ -26,7 +26,7 @@
 #define ARRSIZE 256
 #define CLOSEONFAIL 333
 
-typedef struct Seq_Tbl Seq_Tbl;
+
 int is_init = 0;
 //latticeCmd* lttccmd;
 //reqFlag reqsarr[13] = {FFF,TTT,DFLT,NARR,GCSQ,VESL,GOTO,LIST,FIID,FINM,INFO,LEAD,END};
@@ -43,57 +43,58 @@ const unsigned int rspszb = sizeof(unsigned int)+sizeof(unsigned int)+sizeof(Lat
 const unsigned int rspsz_b = sizeof(LattTyps)+sizeof(LattTyps);
 const unsigned int arr_b = sizeof(LattTyps)+sizeof(LattTyps)+sizeof(unsigned int);
 
-Cmd_Seq *init_cmdseq(Cmd_Seq **cmdSeq, uniArr** arr, unsigned int type) {
-    *cmdSeq = malloc(sizeof(Cmd_Seq));
-    (*cmdSeq)->arr = *arr;
-    (*cmdSeq)->arr_len = 0;
-    (*cmdSeq)->seq_id = 0;
-    (*cmdSeq)->flg_cnt = 0;
-    (*cmdSeq)->type = type;
-    return *cmdSeq;
 
-}Cmd_Seq *reset_cmdseq(Cmd_Seq **cmdSeq, unsigned int type) {
+//Cmd_Seq *init_cmdseq(Cmd_Seq **cmdSeq, uniArr** arr, unsigned int type) {
+//    *cmdSeq = malloc(sizeof(Cmd_Seq));
+//    (*cmdSeq)->arr = *arr;
+//    (*cmdSeq)->arr_len = 0;
+//    (*cmdSeq)->seq_id = 0;
+//    (*cmdSeq)->flg_cnt = 0;
+//    (*cmdSeq)->type = type;
+//    return *cmdSeq;
 
-    bzero((*cmdSeq)->flags, ((*cmdSeq)->flg_cnt));
-    bzero((*cmdSeq)->arr, ((*cmdSeq)->arr_len));
-    (*cmdSeq)->arr_len = 0;
-    (*cmdSeq)->seq_id = 0;
-    (*cmdSeq)->flg_cnt = 0;
-    (*cmdSeq)->type = type;
-    return *cmdSeq;
-}
+//}Cmd_Seq *reset_cmdseq(Cmd_Seq **cmdSeq, unsigned int type) {
+//
+//    bzero((*cmdSeq)->flags, ((*cmdSeq)->flg_cnt));
+//    bzero((*cmdSeq)->arr, ((*cmdSeq)->arr_len));
+//    (*cmdSeq)->arr_len = 0;
+//    (*cmdSeq)->seq_id = 0;
+//    (*cmdSeq)->flg_cnt = 0;
+//    (*cmdSeq)->type = type;
+//    return *cmdSeq;
+//}
+//
+//// Secure zero and destroy CMD struct. Returns pointer to NULL.
+//Cmd_Seq *destroy_cmdseq(StatFrame **sts_frm, Cmd_Seq **cmdSeq) {
+//
+//    (*cmdSeq)->arr_len = 0;
+//    (*cmdSeq)->seq_id = 0;
+//    (*cmdSeq)->flg_cnt = 0;
+//    free(*cmdSeq);
+//    *cmdSeq = NULL;
+//    return *cmdSeq;
+//}
 
-// Secure zero and destroy CMD struct. Returns pointer to NULL.
-Cmd_Seq *destroy_cmdseq(StatFrame **sts_frm, Cmd_Seq **cmdSeq) {
-
-    (*cmdSeq)->arr_len = 0;
-    (*cmdSeq)->seq_id = 0;
-    (*cmdSeq)->flg_cnt = 0;
-    free(*cmdSeq);
-    *cmdSeq = NULL;
-    return *cmdSeq;
-}
+//VER. E
 
 
-
-void destroy_cmdstructures(unsigned char *buffer, unsigned char *respbuffer, unsigned char *carr, unsigned int *iarr,
-                           Resp_Tbl *rsp_tbl, Seq_Tbl *seqTbl) {
+void destroy_cmdstructures(unsigned char *buffer, unsigned char *respbuffer, unsigned char *carr, unsigned int *iarr, Resp_Tbl *rsp_tbl) {
 
     free(buffer);
     free(respbuffer);
     free(carr);
     free(iarr);
-    for (int i = 0; i < seqTbl->cnt; i++) {
-        free((*(seqTbl)->seq_map->cmd_seq + i)->arr);
-        free((*seqTbl->seq_map->cmd_seq + i)->flags);
-        free(*seqTbl->seq_map->cmd_seq + i);
-        free((seqTbl)->seq_map + i);
-
-    }
-    free(seqTbl->seq_map);
-    free(seqTbl->cmd_key);
-
-    free(seqTbl);
+    //VER F
+//    for (int i = 0; i < seqTbl->cnt; i++) {
+//        free((*(seqTbl)->seq_map->cmd_seq + i)->arr);
+//        free((*seqTbl->seq_map->cmd_seq + i)->flags);
+//        free(*seqTbl->seq_map->cmd_seq + i);
+//        free((seqTbl)->seq_map + i);
+//
+//    }
+//    free(seqTbl->seq_map);
+//    free(seqTbl->cmd_key);
+//    free(seqTbl);
 
     // free(((rsp_tbl)->rsp_map));
     free(((rsp_tbl)->rsp_funcarr));
@@ -115,42 +116,24 @@ unsigned int build_lead(const unsigned int *cmd_flags, unsigned int flg_cnt) {
  *<br>
  * -    For empty array set arr to NULL and arr_len to 0
  * */
-unsigned int serial_seq(unsigned char *seq_out,
-                        Cmd_Seq **cmd_seq) {
 
-    unsigned int flgcnt = ((*cmd_seq)->flg_cnt);
-    unsigned int flg;
-    unsigned int byte_cnt;
-
-    byte_cnt = (UISiZ * 3) + (UCSiZ * ((*cmd_seq)->arr_len));
-
-    flg = build_lead(((unsigned int *) (*cmd_seq)->flags), flgcnt);
-
-    memcpy((seq_out), &flg, UISiZ);
-    memcpy((seq_out + UISiZ), &((*cmd_seq)->arr_len), UCSiZ);
-
-    if (((*cmd_seq)->arr_len) && ((*cmd_seq)->arr) != NULL) {
-        memcpy(seq_out + (2 * UISiZ), ((*cmd_seq)->arr), ((*cmd_seq)->arr_len) * UCSiZ);
-    }
-
-    flg = END;
-    memcpy(seq_out + (2 * UISiZ) + (UCSiZ * ((*cmd_seq)->arr_len)), &flg, UISiZ);
-    free(*cmd_seq);
-
-    return byte_cnt;
-}
+//VER. E
+//unsigned int serial_seq(unsigned char *seq_out,
+//                        Cmd_Seq **cmd_seq) {
 
 
-unsigned int init_seqtbl(Seq_Tbl **seq_tbl, unsigned long mx_sz) {
-    *seq_tbl = (Seq_Tbl *) malloc(sizeof(Seq_Tbl));
-    ((*seq_tbl)->seq_map) = (SeqMap *) calloc(mx_sz, sizeof(SeqMap));
-    ((*seq_tbl)->cmd_key) = (unsigned char *) malloc(crypto_shorthash_KEYBYTES);
-    (*seq_tbl)->mx_sz = mx_sz;
-    (*seq_tbl)->cnt = 0;
-    mk_little_hash_key(&(*seq_tbl)->cmd_key);
 
-    return sizeof(seq_tbl);
-}
+// VER. F
+//unsigned int (Seq_Tbl **seq_tbl, unsigned long mx_sz) {
+//    *seq_tbl = (Seq_Tbl *) malloc(sizeof(Seq_Tbl));
+//    ((*seq_tbl)->seq_map) = (SeqMap *) calloc(mx_sz, sizeof(SeqMap));
+//    ((*seq_tbl).cmd_key) = (unsigned char *) malloc(crypto_shorthash_KEYBYTES);
+//    (*seq_tbl).mx_sz = mx_sz;
+//    (*seq_tbl).cnt = 0;
+//    mk_little_hash_key(&(*seq_tbl)->cmd_key);
+//
+//    return sizeof(seq_tbl);
+//}
 
 
 unsigned long cnvrt_iarr_to_carr(unsigned int *intin, unsigned int iarr_len, unsigned char **char_buf) {
@@ -173,80 +156,84 @@ unsigned long cnvrt_iarr_to_carr(unsigned int *intin, unsigned int iarr_len, uns
  *<br>
  *  -   Seq hash generated from flags, arr len, and first arr element
  * */
-unsigned long mk_seq_hash(Cmd_Seq **cmdSeq, Seq_Tbl **seqTbl) {
-
-    unsigned int posi = 0;
-    unsigned int posi_tmp = 0;
-    unsigned long long seq_idx = 0;
-
-    unsigned int sb_len = (2 * UISiZ) + ((*cmdSeq)->flg_cnt * UISiZ);
-
-    unsigned char *seq_buf = (unsigned char *) calloc(sb_len, UCSiZ);
-
-    bzero(seq_buf, sb_len);
-
-    posi_tmp = cnvrt_iarr_to_carr(&(*cmdSeq)->arr_len, 1, &seq_buf);
-    if (posi_tmp == 0) {
-        free(seq_buf);
-        return 0;
-    } else {
-        posi += posi_tmp;
-    }
-    posi_tmp = cnvrt_iarr_to_carr((unsigned int *) &(*cmdSeq)->arr[0], 1, &seq_buf);
-    if (posi_tmp == 0) {
-        free(seq_buf);
-        return 0;
-    } else {
-        posi += posi_tmp;
-    }
-    posi_tmp = cnvrt_iarr_to_carr((unsigned int *) &(*cmdSeq)->flags + posi, (*cmdSeq)->flg_cnt, &seq_buf);
-    if (posi_tmp == 0) {
-        free(seq_buf);
-        return 0;
-    } else {
-        posi += posi_tmp;
-    }
-
-    if (sb_len != posi) {
-        fprintf(stderr, "Final seq convert length mismatch: \ncalcd: %d\n actual: %d\n", sb_len, posi);
-        return 0;
-    }
-
-    seq_idx = little_hsh_llidx((*seqTbl)->cmd_key, seq_buf, sb_len, 0);
-    if (seq_idx == 1 || seq_idx == 0) {
-        fprintf(stderr, "cmd_seq indexing failed");
-        return 0;
-    } else {
-        bzero(seq_buf, sb_len);
-        return seq_idx;
-    }
-}
+ //VER F
+//
+//unsigned long mk_seq_hash(Cmd_Seq **cmdSeq, Seq_Tbl **seqTbl) {
+//
+//    unsigned int posi = 0;
+//    unsigned int posi_tmp = 0;
+//    unsigned long long seq_idx = 0;
+//
+//    unsigned int sb_len = (2 * UISiZ) + ((*cmdSeq)->flg_cnt * UISiZ);
+//
+//    unsigned char *seq_buf = (unsigned char *) calloc(sb_len, UCSiZ);
+//
+//    bzero(seq_buf, sb_len);
+//
+//    posi_tmp = cnvrt_iarr_to_carr(&(*cmdSeq)->arr_len, 1, &seq_buf);
+//    if (posi_tmp == 0) {
+//        free(seq_buf);
+//        return 0;
+//    } else {
+//        posi += posi_tmp;
+//    }
+//    posi_tmp = cnvrt_iarr_to_carr((unsigned int *) &(*cmdSeq)->arr[0], 1, &seq_buf);
+//    if (posi_tmp == 0) {
+//        free(seq_buf);
+//        return 0;
+//    } else {
+//        posi += posi_tmp;
+//    }
+//    posi_tmp = cnvrt_iarr_to_carr((unsigned int *) &(*cmdSeq)->flags + posi, (*cmdSeq)->flg_cnt, &seq_buf);
+//    if (posi_tmp == 0) {
+//        free(seq_buf);
+//        return 0;
+//    } else {
+//        posi += posi_tmp;
+//    }
+//
+//    if (sb_len != posi) {
+//        fprintf(stderr, "Final seq convert length mismatch: \ncalcd: %d\n actual: %d\n", sb_len, posi);
+//        return 0;
+//    }
+//
+//    seq_idx = little_hsh_llidx((*seqTbl)->cmd_key, seq_buf, sb_len, 0);
+//    if (seq_idx == 1 || seq_idx == 0) {
+//        fprintf(stderr, "cmd_seq indexing failed");
+//        return 0;
+//    } else {
+//        bzero(seq_buf, sb_len);
+//        return seq_idx;
+//    }
+//}
 
 
 //FREE seq_buf
-unsigned long save_seq(Cmd_Seq *cmd_seq, Seq_Tbl **seq_tbl, int cnfdir_fd) {
 
-    int seqstr_fd = openat(cnfdir_fd, SEQSTORE, O_APPEND | O_RDWR);
-    if (seqstr_fd == -1) {
-        perror("Error opening sequence store\n");
-        return -1;
-    }
-
-    unsigned int smapcnt = (*seq_tbl)->cnt;
-
-    cmd_seq->seq_id = mk_seq_hash(&cmd_seq, seq_tbl);
-    (((*seq_tbl)->seq_map + smapcnt)->seq_id) = cmd_seq->seq_id;
-    ((*seq_tbl)->seq_map + smapcnt)->cmd_seq = &cmd_seq;
-    (*seq_tbl)->cnt++;
-
-    printf("%lu: seq_tbl\n", (unsigned long) (((*seq_tbl)->seq_map + smapcnt)->seq_id));
-    printf("%lu: cmd_seq\n", (unsigned long) (*((*seq_tbl)->seq_map + smapcnt)->cmd_seq)->seq_id);
-
-    close(seqstr_fd);
-
-    return cmd_seq->seq_id;
-
-}
+//VER E.
+//unsigned long save_seq(Cmd_Seq *cmd_seq, Seq_Tbl **seq_tbl, int cnfdir_fd) {
+//
+//    int seqstr_fd = openat(cnfdir_fd, SEQSTORE, O_APPEND | O_RDWR);
+//    if (seqstr_fd == -1) {
+//        perror("Error opening sequence store\n");
+//        return -1;
+//    }
+//
+//    unsigned int smapcnt = (*seq_tbl)->cnt;
+//
+//    cmd_seq->seq_id = mk_seq_hash(&cmd_seq, seq_tbl);
+//    (((*seq_tbl)->seq_map + smapcnt)->seq_id) = cmd_seq->seq_id;
+//    ((*seq_tbl)->seq_map + smapcnt)->cmd_seq = &cmd_seq;
+//    (*seq_tbl)->cnt++;
+//
+//    printf("%lu: seq_tbl\n", (unsigned long) (((*seq_tbl)->seq_map + smapcnt)->seq_id));
+//    printf("%lu: cmd_seq\n", (unsigned long) (*((*seq_tbl)->seq_map + smapcnt)->cmd_seq)->seq_id);
+//
+//    close(seqstr_fd);
+//
+//    return cmd_seq->seq_id;
+//
+//}
 
 size_t read_seqs(unsigned char **seq_arr, int cnfdir_fd) {
     struct stat sb;
@@ -274,7 +261,7 @@ size_t read_seqs(unsigned char **seq_arr, int cnfdir_fd) {
 
 
 /** Initialize InfoFrame */
-InfoFrame *init_info_frm(InfoFrame **info_frm) {
+InfoFrame *init_info_frm(InfoFrame **info_frm, uniArr **seqArr) {
     *info_frm = (InfoFrame *) malloc(sizeof(InfoFrame));
     unsigned int cat_sffx = 0;
     (*info_frm)->req_size = 0;
@@ -286,7 +273,8 @@ InfoFrame *init_info_frm(InfoFrame **info_frm) {
     (*info_frm)->qual = 0;
     (*info_frm)->arr_type = 0;
     (*info_frm)->arr_len = 0;
-    (*info_frm)->cmdSeq = NULL;
+    (*info_frm)->arr = *seqArr;
+    //    (*info_frm)->cmdSeq = NULL;   VER. E
 
     return *info_frm;
 
@@ -303,7 +291,7 @@ void err_info_frm(InfoFrame *info_frm, StatFrame **stats_frm, LattErr errcode, u
     info_frm->arr_len = 0;
     info_frm->req_size = 0;
     info_frm->arr_type = 0;
-    info_frm->cmdSeq = NULL;
+//    info_frm->cmdSeq = NULL;      VER. E
 }
 
 /**
@@ -320,7 +308,7 @@ void info_frm_rst(InfoFrame **info_frm) {
     (*info_frm)->qual = 0;
     (*info_frm)->arr_type = 0;
     (*info_frm)->arr_len = 0;
-    (*info_frm)->cmdSeq = NULL;
+//    (*info_frm)->cmdSeq = NULL;  VER. E
 };
 
 
@@ -463,20 +451,31 @@ unsigned int parse_lead(const unsigned int lead,
     return flgcnt;
 }
 
+//VER F
+//
+//InfoFrame *parse_req(const unsigned char *fullreqbuf,
+//                     Cmd_Seq **cmdseq,
+//                     InfoFrame *infofrm,
+//                     StatFrame **stsfrm,
+//                     LttcFlags rqflgsbuf,
+//                     unsigned int** tmparrbuf,
+//                     unsigned char **carr_buf) {
+
+
 /**
  *\ParseRequest
  *  Convert char buffer with a request to a CMD Sequence struct
  *  and return an InfoFrame with request metadata
  *  and a pointer to the CMD structure.
  */
-InfoFrame *parse_req(const unsigned char *fullreqbuf,
-                     Cmd_Seq **cmdseq,
-                     InfoFrame *infofrm,
-                     StatFrame **stsfrm,
-                     LttcFlags rqflgsbuf,
-                     unsigned int** tmparrbuf,
-                     unsigned char **carr_buf) {
 
+
+InfoFrame *parse_req(const unsigned char *fullreqbuf,
+    InfoFrame **infofrm,
+    StatFrame **stsfrm,
+    LttcFlags rqflgsbuf,
+    unsigned int** tmparrbuf,
+    unsigned char **carr_buf) {
 
     unsigned int exit_flg = 1;
     int k = 0;
@@ -493,20 +492,20 @@ InfoFrame *parse_req(const unsigned char *fullreqbuf,
      * */
     memcpy(&flag, fullreqbuf, UISiZ);
 
-    flgcnt = parse_lead(flag, &rqflgsbuf, stsfrm, &infofrm);
+    flgcnt = parse_lead(flag, &rqflgsbuf, stsfrm, infofrm);
 
     if (!flgcnt) {
         fprintf(stderr, "Malformed request: Error parsing lead.\n");
-        err_info_frm(infofrm, stsfrm, MALREQ, 'l'); // l = parsing lead
-        return infofrm;
+        err_info_frm(*infofrm, stsfrm, MALREQ, 'l'); // l = parsing lead
+        return *infofrm;
     }
 
     /**
      * Build CMD struct
      * */
-    ((*cmdseq)->flags) = (&rqflgsbuf); //Note: *((*cmdseq)->flags)+X to access flags
-    (*cmdseq)->lead = flag;
-    (*cmdseq)->flg_cnt = flgcnt;
+    ((*infofrm)->flags) = (&rqflgsbuf); //Note: *((*cmdseq)->flags)+X to access flags
+    (*infofrm)->lead = flag;
+    (*infofrm)->flg_cnt = flgcnt;
 
 
     /**
@@ -514,29 +513,29 @@ InfoFrame *parse_req(const unsigned char *fullreqbuf,
      * */
     if (flag >> 29 != 1) {
         fprintf(stderr, "Malformed request>\n> %d\n", flag);
-        err_info_frm(infofrm, stsfrm, MALREQ, 'l'); //
-        return infofrm;
+        err_info_frm(*infofrm, stsfrm, MALREQ, 'l'); //
+        return *infofrm;
     }
 
     /**
      * Check for Int arr
      * */
-    if (infofrm->arr_type == INTARR) {
-        memcpy(&(infofrm->arr_len), (fullreqbuf + UISiZ), UISiZ); // Set InfoFrame -> arr length
-        (*cmdseq)->arr_len = infofrm->arr_len; // Set CMD -> arr length
-        memcpy(&end, (fullreqbuf + (UISiZ * 2) + (UISiZ * infofrm->arr_len)), UISiZ);  // Calc request endpoint
+    if ((*infofrm)->arr_type == INTARR) {
+        memcpy(&((*infofrm)->arr_len), (fullreqbuf + UISiZ), UISiZ); // Set InfoFrame -> arr length
 
-        exit_flg = infofrm->arr_len == 1 ? (exit_flg << 1) : 1; // EXIT trigger 1
+        memcpy(&end, (fullreqbuf + (UISiZ * 2) + (UISiZ * (*infofrm)->arr_len)), UISiZ);  // Calc request endpoint
 
-        infofrm->req_size = (UISiZ * 3) + (UISiZ * infofrm->arr_len); // Set InfoFrame -> request size
+        exit_flg = (*infofrm)->arr_len == 1 ? (exit_flg << 1) : 1; // EXIT trigger 1
+
+        (*infofrm)->req_size = (UISiZ * 3) + (UISiZ * (*infofrm)->arr_len); // Set InfoFrame -> request size
 
         /**
          * Check tail byte
          * */
         if (end != END) {
-            fprintf(stderr, "Malformed request>\n> %d\n> %d\n> %d\n", flag, end, infofrm->arr_len);
-            err_info_frm(infofrm, stsfrm, MALREQ, 't'); // 't' = tail
-            return infofrm;
+            fprintf(stderr, "Malformed request>\n> %d\n> %d\n> %d\n", flag, end, (*infofrm)->arr_len);
+            err_info_frm((*infofrm), stsfrm, MALREQ, 't'); // 't' = tail
+            return (*infofrm);
         }
 
         exit_flg = flag == ENDBYTES ? (exit_flg << 1) : 1; //   EXIT trigger 2
@@ -544,8 +543,8 @@ InfoFrame *parse_req(const unsigned char *fullreqbuf,
         /**
          * Alloc and populate int buffer with the cmd sequence
          * */
-        memcpy(*tmparrbuf, fullreqbuf + (UISiZ * 2), (UISiZ * infofrm->arr_len));
-        (*cmdseq)->arr->iarr = *tmparrbuf;
+        memcpy(*tmparrbuf, fullreqbuf + (UISiZ * 2), (UISiZ * (*infofrm)->arr_len));
+        (*infofrm)->arr->iarr = *tmparrbuf;
 
         exit_flg = **tmparrbuf == SHTDN ? (exit_flg << 1) : 1;    //  EXIT trigger 3
 
@@ -554,40 +553,42 @@ InfoFrame *parse_req(const unsigned char *fullreqbuf,
          * */
         if (exit_flg == 8) {
             setAct(stsfrm, GBYE, SHTDN, SELFRESET);
-            return infofrm;
+            return (*infofrm);
         }
     }
         /**
          * Check for char arr
          * */
-    else if (infofrm->arr_type == CHRARR) {
-        memcpy(&(infofrm->arr_len), (fullreqbuf + UISiZ), UISiZ);
-        (*cmdseq)->arr_len = infofrm->arr_len;
-        memcpy(&end, (fullreqbuf + (UISiZ * 2) + (UCSiZ * infofrm->arr_len)), UISiZ); //Calc request endpoint
+    else if ((*infofrm)->arr_type == CHRARR) {
+        memcpy(&((*infofrm)->arr_len), (fullreqbuf + UISiZ), UISiZ);
+        (*infofrm)->arr_len = (*infofrm)->arr_len;
+        memcpy(&end, (fullreqbuf + (UISiZ * 2) + (UCSiZ * (*infofrm)->arr_len)), UISiZ); //Calc request endpoint
 
 
-        infofrm->req_size = (UISiZ * 3) + (UISiZ * infofrm->arr_len); // Set InfoFrame -> fullreqbuf size
+        (*infofrm)->req_size = (UISiZ * 3) + (UISiZ * (*infofrm)->arr_len); // Set InfoFrame -> fullreqbuf size
 
         if (end != END) {
             fprintf(stderr, "Malformed request>\n> %d\n> %d\n> %d\n", flag, end,
-                    infofrm->arr_len); // Init int arr buffer if iarr follows
-            err_info_frm(infofrm, stsfrm, MALREQ, 0);
-            return infofrm;
+                    (*infofrm)->arr_len); // Init int arr buffer if iarr follows
+            err_info_frm((*infofrm), stsfrm, MALREQ, 0);
+            return (*infofrm);
         }
 
 //VER B
 //        carr_buf = (unsigned char*) calloc(infofrm->arr_len,UCSiZ); // Init char arr buffer if carr follows
 
-        memcpy(carr_buf, fullreqbuf + (UISiZ * 2), (UCSiZ * infofrm->arr_len));
-        (*cmdseq)->arr->carr = *carr_buf;
+        memcpy(carr_buf, fullreqbuf + (UISiZ * 2), (UCSiZ * (*infofrm)->arr_len));
+        (*infofrm)->arr->carr = *carr_buf;
 //VER B
 //        (*cmdseq)->arr->carr = carr_buf;
     }
 
-    (infofrm->cmdSeq) = *cmdseq;
+//VER F
+//    (infofrm->cmdSeq) = *cmdseq;
+
     (*stsfrm)->status <<= 1;
 
-    return infofrm;
+    return (*infofrm);
 }
 
 
@@ -616,9 +617,7 @@ void setSts(StatFrame **sts_frm, LattStts ltcst, unsigned int modr) {
 }
 
 long stsErno(StatFrame** sts_frm, LattErr ltcerr, char* msg, char* function, int erno, long misc){
-    if (erno == EWOULDBLOCK){
-        return 0;
-    }
+
     (*sts_frm)->err_code = ltcerr;
 
     fprintf(stderr, "Error:"
@@ -641,18 +640,14 @@ long stsErno(StatFrame** sts_frm, LattErr ltcerr, char* msg, char* function, int
     (*sts_frm)->status = STERR;
     (*sts_frm)->modr = erno;
 
-    if ((*sts_frm)->act_id == GBYE) {
+    if ((*sts_frm)->act_id == GBYE || (misc == 333)) {
         (*sts_frm)->status = SHTDN;
         return 1;
-    }
-    else if (misc == 333)
+    }else
     {
-        (*sts_frm)->act_id = GBYE;
-        (*sts_frm)->status = SHTDN;
-        fprintf(stderr,"%d",erno);
-        sleep(1);
-        exit(EXIT_FAILURE);
+        return 0;
     }
+
 
 }
 
