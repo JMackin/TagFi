@@ -4,8 +4,8 @@
 #define TAGFI_LATTICE_CMDS_H
 
 #define ENDBYTES 538968075
-#define RSPARR 16
-
+#define RSPARRLEN 16
+#define INFARRLEN 19
 #include "chkmk_didmap.h"
 
 //    SeqMap* seq_map;
@@ -500,7 +500,9 @@ typedef enum LattObj{
     // Hash key
     HSKY = 262144,
     // Cmd frame lead
-    FRLD = 524288
+    FRLD = 524288,
+    // Ping reply.
+    HERE = 1048575
 
 } LattObj;
 
@@ -627,7 +629,9 @@ InfoFrame * parse_req(const unsigned char* fullreqbuf,
 
 typedef unsigned int** RspMap;
 
-typedef unsigned int (*RspFunc[RSPARR])(StatFrame**, InfoFrame**, DChains*, Lattice*, unsigned char**);
+typedef unsigned int (*RspFunc[RSPARRLEN])(StatFrame**, InfoFrame**, DChains*, Lattice*, unsigned char**);
+
+typedef unsigned int (*InfoFunc[INFARRLEN])(unsigned char **buf);
 
 
 typedef struct Resp_Tbl{
@@ -653,7 +657,7 @@ unsigned long save_seq(Cmd_Seq *cmd_seq, int cnfdir_fd);
 //unsigned long save_seq(Cmd_Seq* cmd_seq, Seq_Tbl** seq_tbl, int cnfdir_fd);
 
 
-void destroy_cmdstructures(unsigned char *buffer, unsigned char *respbuffer, unsigned char *carr, unsigned int *iarr, Resp_Tbl *rsp_tbl);
+void destroy_cmdstructures(unsigned char *buffer, unsigned int *respbuffer, unsigned char *carr, unsigned int *iarr, Resp_Tbl *rsp_tbl);
 
 //VER F
 //void destroy_cmdstructures(unsigned char *buffer, unsigned char *respbuffer, unsigned char *carr, unsigned int *iarr,
@@ -693,11 +697,11 @@ LattReply dtrm_rsp(StatFrame** sts_frm,
 
 
 InfoFrame* respond(Resp_Tbl *rsp_tbl,
-                     StatFrame **sts_frm,
-                     InfoFrame **inf_frm,
-                     DChains *dchns,
-                     Lattice *hltc,
-                     unsigned char **resp_buf);
+                   StatFrame **sts_frm,
+                   InfoFrame **inf_frm,
+                   DChains *dchns,
+                   Lattice *hltc,
+                   unsigned int **resp_buf);
 
 typedef union LattTyps{
     LattErr err;
@@ -766,7 +770,7 @@ void stsOut(StatFrame** sts_frm);
 
 void serrOut(StatFrame** sts_frm, char* msg);
 
-long stsErno(StatFrame** sts_frm, LattErr ltcerr, char* msg, char* function, int erno, long misc);
+long stsErno(LattErr ltcerr, StatFrame **sts_frm, int erno, long misc, char *msg, char *function, char *miscdesc);
 
 #endif //TAGFI_LATTICE_CMDS_H
 

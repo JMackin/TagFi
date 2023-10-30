@@ -30,6 +30,7 @@
 //}
 unsigned long UISZ = sizeof(unsigned int);
 unsigned long UCSZ = sizeof(unsigned char);
+int erno;
 StatFrame* statusFrame;
 
 StatFrame* init_stat_frm(StatFrame** status_frm)
@@ -104,7 +105,7 @@ size_t read_conf(unsigned char** dnconf_addr, int cnfdir_fd){
 
     *dnconf_addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, dnconf_fd, 0);
     if (*dnconf_addr == MAP_FAILED) {
-        stsErno(&statusFrame,EPOLLE,"Issue detected by EPOLLE","epoll_wait",errno,EPOLLERR);
+        stsErno(EPOLLE, &statusFrame, errno, EPOLLERR, "Issue detected by EPOLLE", "epoll_wait", 0);
         return -1;
     }
 
@@ -163,8 +164,6 @@ StatFrame * spin_up(unsigned int **iarr, unsigned char **req_arr_buf, unsigned c
      * INFO AND STATUS VARS
      * */
 
-
-
     *infofrm = init_info_frm(infofrm,cmdseqarr); // Request/Response Info Frame
 
     int exit_flag = 0;
@@ -181,7 +180,7 @@ StatFrame * spin_up(unsigned int **iarr, unsigned char **req_arr_buf, unsigned c
      * */
     const int buf_len = 256;
     const int arrbuf_len = 128;
-    *respbuffer = (unsigned char *) calloc((buf_len), sizeof(unsigned char));
+    *respbuffer = (unsigned int *) calloc((buf_len), sizeof(unsigned int));
     *fullreqbuf = (unsigned char *) calloc(buf_len, sizeof(unsigned char));
     *iarr = (unsigned int *) calloc(arrbuf_len, sizeof(unsigned int));
     *req_arr_buf = (unsigned char *) calloc(arrbuf_len, sizeof(unsigned char));
@@ -283,7 +282,7 @@ StatFrame * spin_up(unsigned int **iarr, unsigned char **req_arr_buf, unsigned c
          * */
         if (epoll_wait(efd,epINevent,3,500) > 0){
             if ((epINevent->events&EPOLLIN) != EPOLLIN) {
-                stsErno(stsfrm, EPOLLE, "Issue detected by EPOLLE", "epoll_wait - in", errno, epINevent->events);
+                stsErno(EPOLLE, stsfrm, errno, epINevent->events, "Issue detected by EPOLLE", "epoll_wait - in", 0);
                 goto Errorjump;
             }
         }
@@ -295,7 +294,7 @@ StatFrame * spin_up(unsigned int **iarr, unsigned char **req_arr_buf, unsigned c
          * */
         ret = read(data_socket, *fullreqbuf, buf_len);  // READ 'R'
         if (ret == -1) {
-            stsErno(stsfrm,BADSOK,"Issue reading from data socket","read",errno,0);
+            stsErno(BADSOK, stsfrm, errno, 0, "Issue reading from data socket", "read", 0);
             return *stsfrm;
         }
         (*stsfrm)->status <<= 1;
@@ -352,14 +351,15 @@ StatFrame * spin_up(unsigned int **iarr, unsigned char **req_arr_buf, unsigned c
         }else {
 
             /** WRITEOUT REPLY */
-            if (epoll_wait(efd, epOUTevent, 3, 1000) > 0) {
+            if (epoll_wait(efd, epOUTevent, 3, 7000) > 0) {
                 if ((epINevent->events & EPOLLOUT) != EPOLLOUT) {
-                    stsErno(stsfrm, EPOLLE, "Issue detected by EPOLLE", "epoll_wait - out", errno, epINevent->events);
+                    stsErno(EPOLLE, stsfrm, errno, epINevent->events, "Issue detected by EPOLLE", "epoll_wait - out",
+                            0);
                     goto Errorjump;
                 }
             }
-            if (write(data_socket, *respbuffer, (*infofrm)->rsp_size) == -1) {
-                stsErno(stsfrm, MISSPK, "Response write to socket failed", "write", errno, (*infofrm)->rsp_size);
+            if (write(data_socket, *respbuffer, (*infofrm)->arr_len) == -1) {
+                stsErno(MISSPK, stsfrm, errno, (*infofrm)->rsp_size, "Response write to socket failed", "write", 0);
             }
         }
 
@@ -440,7 +440,7 @@ void summon_lattice() {
     int naclinit = sodium_init();
     if (naclinit != 0) {
         setAct(&statusFrame,GBYE,NOTHN,0);
-        stsErno(&statusFrame,SODIUM,"Sodium init failed","summon_lattice",errno,naclinit);
+        stsErno(SODIUM, &statusFrame, errno, naclinit, "Sodium init failed", "summon_lattice", 0);
     }
 
     /**
@@ -460,7 +460,7 @@ void summon_lattice() {
     unsigned char *buffer;       // Incoming commands
     unsigned int *iarr_buf;     // int strings
     unsigned char *carr_buf;     // char strings
-    unsigned char *respbuffer;  // Outgoing responses
+    unsigned int *respbuffer;  // Outgoing responses
 
     LttcFlags reqflg_arr = (LttcFlags) calloc(CMDCNT, sizeof(LttFlg));
     uniArr* cmdseqarr = (uniArr*) calloc(arrbuf_len, sizeof(uniArr));
@@ -494,7 +494,8 @@ void summon_lattice() {
         if (cnfdir_fd == -1) {
             perror("Error in fd: cnfdir_fd: %d");
             setAct(&statusFrame,GBYE,NOTHN,0);
-            stsErno(&statusFrame,FIFAIL,"Failed opening configdir fd.",NULL,errno,0);
+            //stsErno(perror, ltcerr, **sts_frm, erno, misc, *msg, *function, *miscdesc);
+            stsErno(BADCNF, &statusFrame, errno, 333, "Failed reading config", NULL, 0);
             cleanup(hashlattice, dirchains, NULL,
                     NULL, 0, NULL, 0,
                     NULL, NULL, 0, 0);
@@ -507,7 +508,7 @@ void summon_lattice() {
          * */
         size_t dn_size = read_conf(&dn_conf, cnfdir_fd);
         if (dn_size == -1) {
-            stsErno(&statusFrame,BADCNF,"Failed reading config",NULL,errno,333);
+            stsErno(BADCNF, &statusFrame, errno, 333, "Failed reading config", NULL, 0);
             destroy_metastructures(info_frm, cmdseqarr, reqflg_arr, tmparrbuf);
             cleanup(hashlattice, dirchains, NULL,
                     dn_conf, dn_size, NULL, 0,
@@ -534,7 +535,7 @@ void summon_lattice() {
                         dirchains,
                         hashlattice,
                         &(tbl_list[i])) < 0) {
-                stsErno(&statusFrame,MISMAP,"Big fail","map_dir",errno,333);
+                stsErno(MISMAP, &statusFrame, errno, 333, "Big fail", "map_dir", 0);
                 cleanup(hashlattice, dirchains, tbl_list, dn_conf, dn_size, NULL, 0, lengths, paths, dn_cnt, cnfdir_fd);
                 destroy_cmdstructures(buffer, respbuffer, carr_buf, iarr_buf, NULL);
                 destroy_metastructures(info_frm, cmdseqarr, reqflg_arr, tmparrbuf);
@@ -560,7 +561,7 @@ void summon_lattice() {
                              "\nCode: %d"
                              "\nAct id: %d"
                              "\nModr: %c\n", status_frm->status, status_frm->act_id, status_frm->modr);
-             stsErno(&statusFrame,BADCNF,"Failed starting server","spin_up",errno,333);
+             stsErno(BADCNF, &statusFrame, errno, 333, "Failed starting server", "spin_up", 0);
          }
 
          /**

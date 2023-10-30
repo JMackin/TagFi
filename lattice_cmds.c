@@ -28,9 +28,6 @@
 
 
 int is_init = 0;
-//latticeCmd* lttccmd;
-//reqFlag reqsarr[13] = {FFF,TTT,DFLT,NARR,GCSQ,VESL,GOTO,LIST,FIID,FINM,INFO,LEAD,END};
-//rspFlag rspsarr[13] = {FFFF,NRSP,RARR,RLEN,STAS,CODE,CINT,DDDD,EEEE,GGGG,ZERO,ERRR,DONE};
 
 enum ReqFlag reqFlag;
 enum RspFlag rspFlag;
@@ -42,13 +39,14 @@ const unsigned long ltyp_s = sizeof(LattTyps);
 const unsigned int rspszb = sizeof(unsigned int)+sizeof(unsigned int)+sizeof(LattTyps);
 const unsigned int rspsz_b = sizeof(LattTyps)+sizeof(LattTyps);
 const unsigned int arr_b = sizeof(LattTyps)+sizeof(LattTyps)+sizeof(unsigned int);
+const unsigned int sep = 0xdbdbdbdb;
 
 
 //// Secure zero and destroy CMD struct. Returns pointer to NULL.
 
 
 
-void destroy_cmdstructures(unsigned char *buffer, unsigned char *respbuffer, unsigned char *carr, unsigned int *iarr, Resp_Tbl *rsp_tbl) {
+void destroy_cmdstructures(unsigned char *buffer, unsigned int *respbuffer, unsigned char *carr, unsigned int *iarr, Resp_Tbl *rsp_tbl) {
 
     free(buffer);
     free(respbuffer);
@@ -381,9 +379,9 @@ InfoFrame *parse_req(const unsigned char *fullreqbuf,
          * Check tail byte
          * */
         if (end != END) {
-            fprintf(stderr, "Malformed request>\n> %d\n> %d\n> %d\n", flag, end, (*infofrm)->arr_len);
-            err_info_frm((*infofrm), stsfrm, MALREQ, 't'); // 't' = tail
-            return (*infofrm);
+
+            stsErno(MALREQ,stsfrm,errno,end,"Request structure malformed","parse_req","misc - tail byte");
+            return (NULL);
         }
 
         exit_flg = flag == ENDBYTES ? (exit_flg << 1) : 1; //   EXIT trigger 2
@@ -459,26 +457,34 @@ void setSts(StatFrame **sts_frm, LattStts ltcst, unsigned int modr) {
     }
 }
 
-long stsErno(StatFrame** sts_frm, LattErr ltcerr, char* msg, char* function, int erno, long misc){
+long stsErno(LattErr ltcerr, StatFrame **sts_frm, int erno, long misc, char *msg, char *function, char *miscdesc) {
 
+    fprintf(stderr,"\n\t---------- Error ----------\n\t");
     (*sts_frm)->err_code = ltcerr;
+    perror(" ");
+    fprintf(stderr, "\t : %s"
+                    "\n\t\t------------------\n", msg);
+    fprintf(stderr, "\t\t [ LttcErr: %d ]", (*sts_frm)->err_code);
+    fprintf(stderr, "\n\t\t   [ Errno: %d ]", erno);
 
-    fprintf(stderr, "Error:"
-                    "\t[ lttc_err: %d ]\n", (*sts_frm)->err_code);
-    fprintf(stderr, "\t[ errno: %d ]\n", (*sts_frm)->status);
-    fprintf(stderr, "\n- last status > %d\n", (*sts_frm)->status);
+    fprintf(stderr, "\n\t\t------------------");
+
+    fprintf(stderr, "\n\t\\status:\n\t\t\t  [ %d ]\n", (*sts_frm)->status);
+    if (misc){
+        fprintf(stderr,"\t\\note:\n\t\t\t  [ %ld ]\n", misc);
+    }
     if ((*sts_frm)->modr){
-        fprintf(stderr, "- last modr > %d\n", (*sts_frm)->modr);
+        fprintf(stderr, "\t\\modr:\n\t\t\t  [ %d ]\n", (*sts_frm)->modr);
     }
     if (function != NULL){
-        fprintf(stderr,"- erring function > %s\n", function);
+        fprintf(stderr,"\t\\function:\n\t\t> %s", function);
     }
-    if (misc){
-        fprintf(stderr,"- misc > %ld\n", misc);
+    if (miscdesc){
+        fprintf(stderr, "\n\t\t------------------\n");
+        fprintf(stderr,"\t NOTE:  \n\t\t\t%s\n", miscdesc);
     }
-    if (msg != NULL) {
-        fprintf(stdout, "---------\n\t%s\n---------\n", msg);
-    }
+    fprintf(stderr, "\n\t---------------------------\n"
+                    "\t| | | | | | | | | | | | | |\n");
 
     (*sts_frm)->status = STERR;
     (*sts_frm)->modr = erno;
@@ -542,16 +548,8 @@ void stsOut(StatFrame **sts_frm) {
  *  for none;
  * */
 void serrOut(StatFrame **sts_frm, char *msg){
-    fprintf(stderr, "[ Error Code: %d ]\n", (*sts_frm)->err_code);
-    fprintf(stderr, "< %d >\n", (*sts_frm)->modr);
+    stsErno((*sts_frm)->err_code,sts_frm,errno,0,msg,NULL,NULL);
 
-    if ((*sts_frm)->act_id == GBYE) {
-        fprintf(stderr, "Shutting down\n");
-        (*sts_frm)->status = SHTDN;
-    }
-    if (msg != NULL) {
-        fprintf(stdout, "---------\n\t%s\n---------\n", msg);
-    }
 }
 
 
@@ -561,71 +559,41 @@ void serrOut(StatFrame **sts_frm, char *msg){
 
 
 
-unsigned int serialz(unsigned char **buf, LattTyps itm, unsigned int offst){
-    unsigned char sz = sizeof(itm);
-    memcpy((*buf),&itm,sz);
-    return offst+sz;
 
-}
 
 unsigned int prpbuf(unsigned char **buf){
     printf("%s\n: ",(*buf));
     LattTyps lead = (LattTyps) LEAD;
-    memcpy(*buf,&lead.flg,ltyp_s);
-
+    memcpy(*buf,&lead,ltyp_s);
     return ltyp_s;
 }
 
-unsigned int insz(unsigned char **buf,unsigned int sz){
-    unsigned int osz;
-    unsigned int nsz;
-    memcpy(&osz,buf+rspsz_b,UISiZ);
-    nsz = osz+sz;
-    memcpy(*buf+rspsz_b,&nsz,UISiZ);
-    return osz+sz;
-}
-
-unsigned int incnt(void* itm, unsigned int cnt, unsigned int mlti){
+unsigned int rsparr_len_inc(void* itm, unsigned int cnt, unsigned int mlti){
     return mlti ? ((mlti*sizeof(*itm))+cnt) : sizeof(*itm)+cnt;
 }
 
-unsigned int setsz(unsigned int sz, unsigned char **buf){
+unsigned int rsparr_len_set(unsigned int sz, unsigned char **buf){
     memcpy(*buf+rspsz_b,&sz,UISiZ);
     return sz;
 }
 
-unsigned int msgmk(unsigned char **buf, unsigned char* msg, unsigned int len, unsigned int offst, StatFrame **sts_frm){
-
-    offst += arr_b;
-    if (len+offst > 256 || len < 1){
-        setErr(sts_frm,MALREQ,len+offst);
-        serrOut(sts_frm,"invalid msg length");
-        return 0;
-    }
-    memcpy(*buf+offst,msg,UCSiZ*len);
-
-    return ((UCSiZ*len)+offst);
-}
-
-unsigned int adddone(unsigned char **buf, unsigned int bcnt){
-
-    LattTyps dneflg = (LattTyps) DONE;
-
-    memcpy(*buf+bcnt,&(dneflg.flg),ltyp_s);
-
-    return bcnt+ltyp_s;
-}
-
-unsigned int outarr(unsigned char **buf, unsigned int arrlen){
-
-    for (uint i = arr_b; i < arrlen+arr_b; i++ ){
-
-        if (putchar(*(*buf + i) < 0)){
-            return errno;
+void rsparr_out(unsigned char **buf, unsigned int arrlen){
+    uint n = 0;
+    while(putchar_unlocked(*(*buf + n))) {
+        if (n == arrlen) {
+            break;
         }
+        ++n;
     }
-    return 0;
 }
+
+unsigned char* rsparr_pos(unsigned char** buf){return *buf+arr_b;}
+
+unsigned int rsparr_add_lt(LattTyps lt,unsigned char** buf, unsigned int offset)
+    {offset ? memcpy(*buf+offset,&lt,ltyp_s) : memcpy(*buf,&lt,ltyp_s);return ltyp_s;}
+
+unsigned int rsparr_add_msg(unsigned char **buf, unsigned char* msg, unsigned int len, unsigned int offst)
+    {memcpy(*buf+offst,msg,UCSiZ*len); return (len+offst+arr_b > 256) ? 0 : (UCSiZ*len)+offst+arr_b;}
 
     // lead | item | arrsz | arr | DONE
 
@@ -647,7 +615,161 @@ unsigned int outarr(unsigned char **buf, unsigned int arrlen){
  *<br> arrsz: rspsz_b - (rspsz_b)+uint_s
  *<br> arr: (rspsz_b)+uint_s - (rspsz_b)+uint_s+(arr_len*uchar_s)
  *<br> DONE: (rspsz_b)+uint_s+(arr_len*uchar_s) - rspsz_b+ltyp_s+uint_s+(arr_len*uchar_s)
+ *
+ * <br>
+ * \note Items in the sequence array are seperated with 4 bytes '0xdbdbdbdb' (3688618971)
  */
+
+
+unsigned int inf_NADA(unsigned char **buf){
+    LattTyps rplobj;
+    rplobj.obj = HERE;
+    rsparr_add_lt(rplobj,buf,0);
+
+    return 0;
+}
+unsigned int inf_LTTC(unsigned char **buf){
+    LattTyps rplobj;
+    rplobj.obj = HERE;
+    memcpy(rsparr_pos(buf),&rplobj,sizeof(LattTyps));
+
+    return 0;
+}
+unsigned int inf_BRDG(unsigned char **buf){
+   LattTyps rplobj;
+    rplobj.obj = HERE;
+    memcpy(rsparr_pos(buf),&rplobj,sizeof(LattTyps));
+    return 0;
+}
+unsigned int inf_DIRN(unsigned char **buf){
+   LattTyps rplobj;
+    rplobj.obj = HERE;
+    memcpy(rsparr_pos(buf),&rplobj,sizeof(LattTyps));
+    return 0;
+}
+unsigned int inf_FTBL(unsigned char **buf){
+   LattTyps rplobj;
+    rplobj.obj = HERE;
+    memcpy(rsparr_pos(buf),&rplobj,sizeof(LattTyps));
+    return 0;
+}
+unsigned int inf_FIMP(unsigned char **buf){
+   LattTyps rplobj;
+    rplobj.obj = HERE;
+    memcpy(rsparr_pos(buf),&rplobj,sizeof(LattTyps));
+    return 0;
+}
+unsigned int inf_LFLG(unsigned char **buf){
+   LattTyps rplobj;
+    rplobj.obj = HERE;
+    memcpy(rsparr_pos(buf),&rplobj,sizeof(LattTyps));
+    return 0;
+}
+unsigned int inf_SFRM(unsigned char **buf){
+   LattTyps rplobj;
+    rplobj.obj = HERE;
+    memcpy(rsparr_pos(buf),&rplobj,sizeof(LattTyps));
+    return 0;
+}
+unsigned int inf_IFRM(unsigned char **buf){
+   LattTyps rplobj;
+    rplobj.obj = HERE;
+    memcpy(rsparr_pos(buf),&rplobj,sizeof(LattTyps));
+    return 0;
+}
+unsigned int inf_SEQT(unsigned char **buf){
+   LattTyps rplobj;
+    rplobj.obj = HERE;
+    memcpy(rsparr_pos(buf),&rplobj,sizeof(LattTyps));
+    return 0;
+}
+unsigned int inf_CMSQ(unsigned char **buf){
+   LattTyps rplobj;
+    rplobj.obj = HERE;
+    memcpy(rsparr_pos(buf),&rplobj,sizeof(LattTyps));
+    return 0;
+}
+unsigned int inf_ICAR(unsigned char **buf){
+   LattTyps rplobj;
+    rplobj.obj = HERE;
+    memcpy(rsparr_pos(buf),&rplobj,sizeof(LattTyps));
+    return 0;
+}
+unsigned int inf_VSSL(unsigned char **buf){
+   LattTyps rplobj;
+    rplobj.obj = HERE;
+    memcpy(rsparr_pos(buf),&rplobj,sizeof(LattTyps));
+    return 0;
+}
+unsigned int inf_FIOB(unsigned char **buf){
+   LattTyps rplobj;
+    rplobj.obj = HERE;
+    memcpy(rsparr_pos(buf),&rplobj,sizeof(LattTyps));
+    return 0;
+}
+unsigned int inf_IDID(unsigned char **buf){
+   LattTyps rplobj;
+    rplobj.obj = HERE;
+    memcpy(rsparr_pos(buf),&rplobj,sizeof(LattTyps));
+    return 0;
+}
+unsigned int inf_NMNM(unsigned char **buf){
+   LattTyps rplobj;
+    rplobj.obj = HERE;
+    memcpy(rsparr_pos(buf),&rplobj,sizeof(LattTyps));
+    return 0;
+}
+unsigned int inf_FIDE(unsigned char **buf){
+   LattTyps rplobj;
+    rplobj.obj = HERE;
+    memcpy(rsparr_pos(buf),&rplobj,sizeof(LattTyps));
+    return 0;
+}
+unsigned int inf_DCHN(unsigned char **buf){
+   LattTyps rplobj;
+    rplobj.obj = HERE;
+    memcpy(rsparr_pos(buf),&rplobj,sizeof(LattTyps));
+    return 0;
+}
+
+
+InfoFunc* gen_infofunc_arr(){
+
+    InfoFunc* infofuncarr = (InfoFunc*) malloc(sizeof(InfoFunc));
+
+    unsigned int (*nada)(unsigned char **buf); unsigned int (*seqt)(unsigned char **buf);
+    unsigned int (*lttc)(unsigned char **buf); unsigned int (*cmsq)(unsigned char **buf);
+    unsigned int (*brdg)(unsigned char **buf); unsigned int (*icar)(unsigned char **buf);
+    unsigned int (*dirn)(unsigned char **buf); unsigned int (*vssl)(unsigned char **buf);
+    unsigned int (*ftbl)(unsigned char **buf); unsigned int (*fiob)(unsigned char **buf);
+    unsigned int (*fimp)(unsigned char **buf); unsigned int (*idid)(unsigned char **buf);
+    unsigned int (*lflg)(unsigned char **buf); unsigned int (*nmnm)(unsigned char **buf);
+    unsigned int (*sfrm)(unsigned char **buf); unsigned int (*fide)(unsigned char **buf);
+    unsigned int (*ifrm)(unsigned char **buf); unsigned int (*dchn)(unsigned char **buf);
+
+    nada = &inf_NADA; seqt = &inf_SEQT;
+    lttc = &inf_LTTC; cmsq = &inf_CMSQ;
+    brdg = &inf_BRDG; icar = &inf_ICAR;
+    dirn = &inf_DIRN; vssl = &inf_VSSL;
+    ftbl = &inf_FTBL; fiob = &inf_FIOB;
+    fimp = &inf_FIMP; idid = &inf_IDID;
+    lflg = &inf_LFLG; nmnm = &inf_NMNM;
+    sfrm = &inf_SFRM; fide = &inf_FIDE;
+    ifrm = &inf_IFRM; dchn = &inf_DCHN;
+
+    (*infofuncarr)[0] = nada; (*infofuncarr)[10] = seqt;
+    (*infofuncarr)[1] = lttc; (*infofuncarr)[11] = cmsq;
+    (*infofuncarr)[2] = brdg; (*infofuncarr)[12] = icar;
+    (*infofuncarr)[3] = dirn; (*infofuncarr)[13] = vssl;
+    (*infofuncarr)[4] = ftbl; (*infofuncarr)[14] = fiob;
+    (*infofuncarr)[5] = fimp; (*infofuncarr)[15] = idid;
+    (*infofuncarr)[7] = lflg; (*infofuncarr)[16] = nmnm;
+    (*infofuncarr)[8] = sfrm; (*infofuncarr)[17] = fide;
+    (*infofuncarr)[9] = ifrm; (*infofuncarr)[18] = dchn;
+
+    return infofuncarr;
+}
+
 
 unsigned int rsp_err(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *chns, Lattice* hltc, unsigned char **buf) {
 
@@ -657,84 +779,60 @@ unsigned int rsp_err(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *chns, La
     return sizeof(LattErr);
  }
 
+/** Info funcs */
  unsigned int rsp_nfo(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice * hltc, unsigned char **buf) {
     printf("Response: info");
-    LattTyps xx = (LattTyps) LTTC;
+
     size_t bcnt = prpbuf(buf);
     size_t arrlen = 0;
-    LattObj i;
-    LattObj objs[19] = {NADA, LTTC, BRDG, DIRN, FTBL, FIMP, LFLG, SFRM, IFRM,
-                        SEQT, CMSQ, ICAR, VSSL, FIOB, IDID, NMNM, FIDE, DCHN,NADA};
+    uint respsz;
 
-    // Extract the desired subject of information which should be the sole item in the request array.
+    InfoFunc* funarr;
+
+    funarr = gen_infofunc_arr();
+    LattObj objs[19] = {NADA,LTTC,BRDG,DIRN,FTBL,FIMP,LFLG,SFRM,IFRM,SEQT,
+                        CMSQ,ICAR,VSSL,FIOB,IDID,NMNM,FIDE,DCHN,NADA};
+
+
+    // Extract the desired object ID from the first byte of the request array,
+    // and the array content, which can be an ID, etc. depending on the subject.
+    //
     // Fail if no code found
     LattObj objeid;
-    memcpy(&objeid,(*inf_frm)->arr,(*inf_frm)->arr_len);
+    memcpy(&objeid,((*inf_frm)->arr),ltyp_s);
+    //TODO: Fail on malformed request
 
-    for (i = LTTC; i != BUFF; i<<=1){
-        if (i == objeid){
-            break;
+
+
+    if (objeid>FIDE){
+        stsErno(MALREQ,sts_frm,errno,objeid,"Invalid object ID provided.","response::info","object id value");
+        return 1;
+        //TODO: Better error value for failed response processing.
+    }
+
+    // query requested object and return response size in bytes.
+    if (objeid){
+        uint i = objs[(__builtin_ctz(objeid))+1];   // Info Req subject index = count of its values trailing zeros.
+        respsz = (*funarr)[i](buf);
+
+        // return of 0 means the object is there but failed to be queried.
+        // return of 1 means the object is tmissing entirely.
+        if (!respsz){
+            stsErno(MISSNG,sts_frm,errno,0,"Subject of info request couldn't be found.","resp::info",NULL);
+            return 1;
+        }
+        if (respsz == 1) {
+            stsErno(UNKNWN,sts_frm,errno,0,"Info requested for unknown object.","resp::info",NULL);
+            return 1;
         }
     }
-
-    if (i>FIDE){
-        setErr(sts_frm,MALREQ,objeid);
-        serrOut(sts_frm,"Invalid object ID provided.");
-        return rsp_err(sts_frm, inf_frm, dchns, hltc, buf);
+    else{
+        stsErno(MALREQ,sts_frm,errno,0,"ID zero provided.","response::info",NULL);
+        return 1;
     }
 
-    switch(objeid) {
-       case NADA:
+    return respsz;
 
-            break;
-
-       case LTTC:
-           break;
-
-       case BRDG:
-           break;
-
-       case DIRN:
-           break;
-
-       case FTBL:
-           break;
-       case FIMP:
-           break;
-       case LFLG:
-           break;
-       case SFRM:
-           break;
-       case IFRM:
-           break;
-       case SEQT:
-           break;
-       case CMSQ:
-           break;
-       case ICAR:
-           break;
-       case VSSL:
-           break;
-       case FIOB:
-           break;
-       case IDID:
-           break;
-       case NMNM:
-           break;
-       case FIDE:
-           break;
-       case DCHN:
-           break;
-        default:
-            break;
-    }
-
-
-
-     if (outarr(buf,arrlen)) {
-         perror("arrout: ");
-     }
-    return bcnt;
  }
 
  unsigned int rsp_sts(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice * hltc, unsigned char **buf) {
@@ -890,13 +988,11 @@ void init_rsptbl(int cnfg_fd,
                  unsigned char *buf) {
 
     unsigned int *rsp_map;
-    unsigned int fcnt = RSPARR;
+    unsigned int fcnt = RSPARRLEN;
     RspFunc *rsp_func;
-
 
     *rsp_tbl = (Resp_Tbl*) malloc(sizeof(Resp_Tbl));
     rsp_func = (RspFunc*) malloc(sizeof(RspFunc));
-
 
     (*rsp_tbl)->rsp_funcarr = rsp_act(&rsp_map, sts_frm, inf_frm, rsp_func);
     (*rsp_tbl)->rsp_map = (RspMap *) &rsp_map;
@@ -916,7 +1012,6 @@ LattReply dtrm_rsp(StatFrame **sts_frm,
 
     if ((*inf_frm)->trfidi[0]) {
         reply = DIRID | DNODE | (((*inf_frm)->cat_pfx)<<2);  //Travel op -> masked w/ DNODE qualifier and bit #1 : 0011
-
     } else {
         if ((*inf_frm)->trfidi[2]) {
             reply = DIRID | (((*inf_frm)->cat_pfx)<<2);    //Dir Op -> masked with bit #1 : 0001
@@ -982,18 +1077,17 @@ unsigned int proc_rsp(Resp_Tbl *rsp_tbl,
 }
 
 InfoFrame* respond(Resp_Tbl *rsp_tbl,
-                      StatFrame **sts_frm,
-                      InfoFrame **inf_frm,
-                      DChains *dchns,
-                      Lattice *hltc,
-                      unsigned char **resp_buf) {
+                   StatFrame **sts_frm,
+                   InfoFrame **inf_frm,
+                   DChains *dchns,
+                   Lattice *hltc,
+                   unsigned int **resp_buf) {
 
     //TODO: Reset infoframe, implement and include.
 
     /** Determine response avenue and return a reply object */
     LattReply rsp = dtrm_rsp(sts_frm,inf_frm);  // Reply object returned from 'determine response'
     bzero(*resp_buf,ARRSIZE-1);                 // Zero response buffer
-
 
     /** Process response; build response sequence based on results of determination process */
     if (proc_rsp(rsp_tbl,rsp,sts_frm,inf_frm,dchns,hltc,resp_buf)){
