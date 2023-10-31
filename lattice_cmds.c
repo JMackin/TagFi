@@ -43,6 +43,15 @@ const unsigned int sep = 0xdbdbdbdb;
 
 
 //// Secure zero and destroy CMD struct. Returns pointer to NULL.
+//Cmd_Seq *destroy_cmdseq(StatFrame **sts_frm, Cmd_Seq **cmdSeq) {
+//
+//    (*cmdSeq)->arr_len = 0;
+//    (*cmdSeq)->seq_id = 0;
+//    (*cmdSeq)->flg_cnt = 0;
+//    free(*cmdSeq);
+//    *cmdSeq = NULL;
+//    return *cmdSeq;
+//}
 
 
 
@@ -51,6 +60,18 @@ void destroy_cmdstructures(unsigned char *buffer, unsigned char *respbuffer, uns
     free(buffer);
     free(respbuffer);
     free(carr);
+    free(iarr);
+    //VER F
+//    for (int i = 0; i < seqTbl->cnt; i++) {
+//        free((*(seqTbl)->seq_map->cmd_seq + i)->arr);
+//        free((*seqTbl->seq_map->cmd_seq + i)->flags);
+//        free(*seqTbl->seq_map->cmd_seq + i);
+//        free((seqTbl)->seq_map + i);
+//
+//    }
+//    free(seqTbl->seq_map);
+//    free(seqTbl->cmd_key);
+//    free(seqTbl);
 
     free(((rsp_tbl)->rsp_funcarr));
     free(rsp_tbl);
@@ -71,6 +92,24 @@ unsigned int build_lead(const unsigned int *cmd_flags, unsigned int flg_cnt) {
  *<br>
  * -    For empty array set arr to NULL and arr_len to 0
  * */
+
+//VER. E
+//unsigned int serial_seq(unsigned char *seq_out,
+//                        Cmd_Seq **cmd_seq) {
+
+
+
+// VER. F
+//unsigned int (Seq_Tbl **seq_tbl, unsigned long mx_sz) {
+//    *seq_tbl = (Seq_Tbl *) malloc(sizeof(Seq_Tbl));
+//    ((*seq_tbl)->seq_map) = (SeqMap *) calloc(mx_sz, sizeof(SeqMap));
+//    ((*seq_tbl).cmd_key) = (unsigned char *) malloc(crypto_shorthash_KEYBYTES);
+//    (*seq_tbl).mx_sz = mx_sz;
+//    (*seq_tbl).cnt = 0;
+//    mk_little_hash_key(&(*seq_tbl)->cmd_key);
+//
+//    return sizeof(seq_tbl);
+//}
 
 
 unsigned long cnvrt_iarr_to_carr(unsigned int *intin, unsigned int iarr_len, unsigned char **char_buf) {
@@ -93,7 +132,84 @@ unsigned long cnvrt_iarr_to_carr(unsigned int *intin, unsigned int iarr_len, uns
  *<br>
  *  -   Seq hash generated from flags, arr len, and first arr element
  * */
+ //VER F
+//
+//unsigned long mk_seq_hash(Cmd_Seq **cmdSeq, Seq_Tbl **seqTbl) {
+//
+//    unsigned int posi = 0;
+//    unsigned int posi_tmp = 0;
+//    unsigned long long seq_idx = 0;
+//
+//    unsigned int sb_len = (2 * UISiZ) + ((*cmdSeq)->flg_cnt * UISiZ);
+//
+//    unsigned char *seq_buf = (unsigned char *) calloc(sb_len, UCSiZ);
+//
+//    bzero(seq_buf, sb_len);
+//
+//    posi_tmp = cnvrt_iarr_to_carr(&(*cmdSeq)->arr_len, 1, &seq_buf);
+//    if (posi_tmp == 0) {
+//        free(seq_buf);
+//        return 0;
+//    } else {
+//        posi += posi_tmp;
+//    }
+//    posi_tmp = cnvrt_iarr_to_carr((unsigned int *) &(*cmdSeq)->arr[0], 1, &seq_buf);
+//    if (posi_tmp == 0) {
+//        free(seq_buf);
+//        return 0;
+//    } else {
+//        posi += posi_tmp;
+//    }
+//    posi_tmp = cnvrt_iarr_to_carr((unsigned int *) &(*cmdSeq)->flags + posi, (*cmdSeq)->flg_cnt, &seq_buf);
+//    if (posi_tmp == 0) {
+//        free(seq_buf);
+//        return 0;
+//    } else {
+//        posi += posi_tmp;
+//    }
+//
+//    if (sb_len != posi) {
+//        fprintf(stderr, "Final seq convert length mismatch: \ncalcd: %d\n actual: %d\n", sb_len, posi);
+//        return 0;
+//    }
+//
+//    seq_idx = little_hsh_llidx((*seqTbl)->cmd_key, seq_buf, sb_len, 0);
+//    if (seq_idx == 1 || seq_idx == 0) {
+//        fprintf(stderr, "cmd_seq indexing failed");
+//        return 0;
+//    } else {
+//        bzero(seq_buf, sb_len);
+//        return seq_idx;
+//    }
+//}
 
+
+//FREE seq_buf
+
+//VER E.
+//unsigned long save_seq(Cmd_Seq *cmd_seq, Seq_Tbl **seq_tbl, int cnfdir_fd) {
+//
+//    int seqstr_fd = openat(cnfdir_fd, SEQSTORE, O_APPEND | O_RDWR);
+//    if (seqstr_fd == -1) {
+//        perror("Error opening sequence store\n");
+//        return -1;
+//    }
+//
+//    unsigned int smapcnt = (*seq_tbl)->cnt;
+//
+//    cmd_seq->seq_id = mk_seq_hash(&cmd_seq, seq_tbl);
+//    (((*seq_tbl)->seq_map + smapcnt)->seq_id) = cmd_seq->seq_id;
+//    ((*seq_tbl)->seq_map + smapcnt)->cmd_seq = &cmd_seq;
+//    (*seq_tbl)->cnt++;
+//
+//    printf("%lu: seq_tbl\n", (unsigned long) (((*seq_tbl)->seq_map + smapcnt)->seq_id));
+//    printf("%lu: cmd_seq\n", (unsigned long) (*((*seq_tbl)->seq_map + smapcnt)->cmd_seq)->seq_id);
+//
+//    close(seqstr_fd);
+//
+//    return cmd_seq->seq_id;
+//
+//}
 
 size_t read_seqs(unsigned char **seq_arr, int cnfdir_fd) {
     struct stat sb;
@@ -309,6 +425,17 @@ unsigned int parse_lead(const unsigned int lead,
     return flgcnt;
 }
 
+//VER F
+//
+//InfoFrame *parse_req(const unsigned char *fullreqbuf,
+//                     Cmd_Seq **cmdseq,
+//                     InfoFrame *infofrm,
+//                     StatFrame **stsfrm,
+//                     LttcFlags rqflgsbuf,
+//                     unsigned int** tmparrbuf,
+//                     unsigned char **carr_buf) {
+
+
 /**
  *\ParseRequest
  *  Convert char buffer with a request to a CMD Sequence struct
@@ -333,6 +460,8 @@ InfoFrame *parse_req(const unsigned char *fullreqbuf, //<-- same name in spin up
     unsigned int end;
 
 
+    //VER B
+    // unsigned char* carr_buf;
 
     /**
      * Parse request sequence-lead and init CMD struct
@@ -419,12 +548,20 @@ InfoFrame *parse_req(const unsigned char *fullreqbuf, //<-- same name in spin up
             return (*infofrm);
         }
 
+//VER B
+//        carr_buf = (unsigned char*) calloc(infofrm->arr_len,UCSiZ); // Init char arr buffer if carr follows
 
         memcpy(req_arr_buf, fullreqbuf + (UISiZ * 2), (UCSiZ * (*infofrm)->arr_len));
         (*infofrm)->arr = *req_arr_buf;
 
+        memcpy(carr_buf, fullreqbuf + (UISiZ * 2), (UCSiZ * (*infofrm)->arr_len));
+        (*infofrm)->arr->carr = *carr_buf;
+//VER B
+//        (*cmdseq)->arr->carr = carr_buf;
     }
 
+//VER F
+//    (infofrm->cmdSeq) = *cmdseq;
 
     (*stsfrm)->status <<= 1;
 
@@ -912,6 +1049,15 @@ RspFunc *rsp_act(
         InfoFrame **inf_frm,
         RspFunc *funarr){
 
+// VER. A
+//              {RspFunc* rsp_act(int cnfg_fd,
+//              RspMap rsp_map,
+//              StatFrame** sts_frm,
+//              InfoFrame** inf_frm,
+//              DChains* dchns,
+//              Lattice* hltc,
+//              unsigned char* buf,
+//              RspFunc* funarr)
 
 //Info
     unsigned int  (*und)(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc, unsigned char **buf);
@@ -991,6 +1137,8 @@ init_rsptbl(int cnfg_fd, Resp_Tbl **rsp_tbl, StatFrame **sts_frm, InfoFrame **in
     *rsp_tbl = (Resp_Tbl*) malloc(sizeof(Resp_Tbl));
     rsp_func = (RspFunc*) malloc(sizeof(RspFunc));
 
+//VER. A
+//    (*rsp_tbl)->rsp_funcarr = rsp_act(cnfg_fd,&rsp_map,sts_frm,inf_frm,dchns,hltc,buf,rsp_func);
     (*rsp_tbl)->rsp_funcarr = rsp_act(&rsp_map, sts_frm, inf_frm, rsp_func);
     (*rsp_tbl)->rsp_map = (RspMap *) &rsp_map;
     (*rsp_tbl)->fcnt = fcnt;

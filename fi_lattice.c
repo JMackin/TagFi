@@ -154,6 +154,10 @@ int extract_name(const unsigned char* path, int length) {
     return fs_pos + 1;
 }
 
+//VER F.
+//StatFrame * spin_up(unsigned int **iarr, unsigned char **req_arr_buf, unsigned char **fullreqbuf, unsigned char **respbuffer,
+//                    StatFrame **stsfrm, InfoFrame **infofrm, Seq_Tbl **seq_tbl, Resp_Tbl **rsp_tbl, HashLattice **hashlattice,
+//                    Dir_Chains **dirchains, LttcFlags *flgsbuf, const int *cnfdir_fd, unsigned int **tmparrbuf, uniArr **cmdseqarr)
 
 
 StatFrame * spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsigned char **req_buf,
@@ -164,7 +168,12 @@ StatFrame * spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsign
      * INFO AND STATUS VARS
      * */
 
-    *infofrm = init_info_frm(infofrm); // Request/Response Info Frame
+// VER F
+//    Cmd_Seq *cmd_seq = NULL;
+//    cmd_seq = init_cmdseq(&cmd_seq,cmdseqarr,2);           // Request and Response Frame
+    //Cmd_Seq *prev_seq = NULL;          // Keep last request frame.
+
+    *infofrm = init_info_frm(infofrm,cmdseqarr); // Request/Response Info Frame
 
     int exit_flag = 0;
     int i = 0;
@@ -400,7 +409,10 @@ StatFrame * spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsign
         bzero(*flgsbuf,FLGSCNT);
         bzero(*rsp_buf, arrbuf_len-1);
         bzero(*tmparrbuf,arrbuf_len-1);
-
+        //prev_seq = copy_cmdseq(0,&cmd_seq,&prev_seq,stsfrm);
+        //cmd_seq = destroy_cmdseq(stsfrm,&cmd_seq);
+//        cmd_seq = reset_cmdseq(&cmd_seq,2);
+// VER. F
         close(data_socket);
 
 
@@ -530,6 +542,9 @@ void summon_lattice() {
         Fi_Tbl **tbl_list = (Fi_Tbl **) calloc(dn_cnt, sizeof(Fi_Tbl *));
 
 
+//        Seq_Tbl *seqTbl;
+//        init_seqtbl(&seqTbl, 32);
+//VER. F
 
            /* * * * * * * * * *
           *  BUILD LATTICE  *
