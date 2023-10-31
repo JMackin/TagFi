@@ -213,9 +213,9 @@ typedef struct InfoFrame {
     unsigned int arr_len;
     unsigned int flg_cnt;
     LttcFlags *flags;
-    uniArr *arr;
+    unsigned char *arr;
 } InfoFrame;
-InfoFrame *init_info_frm(InfoFrame **info_frm, uniArr **seqArr);
+InfoFrame *init_info_frm(InfoFrame **info_frm);
 
 
 /**
@@ -623,9 +623,9 @@ typedef struct StatFrame{
 InfoFrame * parse_req(const unsigned char* fullreqbuf,
                       InfoFrame **infofrm,
                       StatFrame** stsfrm,
-                      LttcFlags rqflgsbuf,
-                      unsigned int** tmparrbuf,
-                      unsigned char** carr_buf);
+                      LttcFlags* rqflgsbuf,
+                      unsigned char* tmparrbuf,
+                      unsigned char** req_arr_buf);
 
 typedef unsigned int** RspMap;
 
@@ -657,7 +657,7 @@ unsigned long save_seq(Cmd_Seq *cmd_seq, int cnfdir_fd);
 //unsigned long save_seq(Cmd_Seq* cmd_seq, Seq_Tbl** seq_tbl, int cnfdir_fd);
 
 
-void destroy_cmdstructures(unsigned char *buffer, unsigned int *respbuffer, unsigned char *carr, unsigned int *iarr, Resp_Tbl *rsp_tbl);
+void destroy_cmdstructures(unsigned char *buffer, unsigned char *respbuffer, unsigned char *tmparrbuf, Resp_Tbl *rsp_tbl);
 
 //VER F
 //void destroy_cmdstructures(unsigned char *buffer, unsigned char *respbuffer, unsigned char *carr, unsigned int *iarr,
@@ -696,7 +696,7 @@ InfoFrame* respond(Resp_Tbl *rsp_tbl,
                    InfoFrame **inf_frm,
                    DChains *dchns,
                    Lattice *hltc,
-                   unsigned char **resp_buf);
+                   unsigned char *resp_buf);
 
 typedef union LattTyps{
     LattErr err;

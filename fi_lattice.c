@@ -81,7 +81,7 @@ void cleanup(HashLattice* hashlattice,
 }
 
 
-void destroy_metastructures(InfoFrame *infoFrame, uniArr *cmdseqarr, LttcFlags reqflg_arr, unsigned int *tmparrbuf) {
+void destroy_metastructures(InfoFrame *infoFrame, uniArr *cmdseqarr, LttcFlags reqflg_arr, unsigned char *tmparrbuf) {
     free(infoFrame);
     free(cmdseqarr);
     free(reqflg_arr);
@@ -156,15 +156,15 @@ int extract_name(const unsigned char* path, int length) {
 
 
 
-StatFrame * spin_up(unsigned int **iarr, unsigned char **req_arr_buf, unsigned char **fullreqbuf, unsigned int **respbuffer,
+StatFrame * spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsigned char **req_buf,
         StatFrame **stsfrm, InfoFrame **infofrm, Resp_Tbl **rsp_tbl, HashLattice **hashlattice,
-        Dir_Chains **dirchains, LttcFlags *flgsbuf, const int *cnfdir_fd, unsigned int **tmparrbuf, uniArr **cmdseqarr) {
+        Dir_Chains **dirchains, LttcFlags *flgsbuf, const int *cnfdir_fd, unsigned char **tmparrbuf, uniArr **cmdseqarr) {
 
     /**
      * INFO AND STATUS VARS
      * */
 
-    *infofrm = init_info_frm(infofrm,cmdseqarr); // Request/Response Info Frame
+    *infofrm = init_info_frm(infofrm); // Request/Response Info Frame
 
     int exit_flag = 0;
     int i = 0;
@@ -174,16 +174,14 @@ StatFrame * spin_up(unsigned int **iarr, unsigned char **req_arr_buf, unsigned c
 
     int resp_len = 0;
 
-
     /**
      * BUFFERS INIT
      * */
     const int buf_len = 256;
     const int arrbuf_len = 128;
-    *respbuffer = (unsigned int *) calloc((buf_len), sizeof(unsigned int));
-    *fullreqbuf = (unsigned char *) calloc(buf_len, sizeof(unsigned char));
-    *iarr = (unsigned int *) calloc(arrbuf_len, sizeof(unsigned int));
+    *req_buf = (unsigned char *) calloc(buf_len, sizeof(unsigned char));     // client request -> buffer
     *req_arr_buf = (unsigned char *) calloc(arrbuf_len, sizeof(unsigned char));
+    *rsp_buf = (unsigned char *) calloc(arrbuf_len, sizeof(unsigned char));
     *flgsbuf = (LttcFlags) calloc(arrbuf_len, sizeof(LttFlg));
 
     /**
@@ -292,7 +290,7 @@ StatFrame * spin_up(unsigned int **iarr, unsigned char **req_arr_buf, unsigned c
         /**
          * READ REQUEST INTO BUFFER
          * */
-        ret = read(data_socket, *fullreqbuf, buf_len);  // READ 'R'
+        ret = read(data_socket, *req_buf, buf_len);  // READ 'R'
         if (ret == -1) {
             stsErno(BADSOK, stsfrm, errno, 0, "Issue reading from data socket", "read", 0);
             return *stsfrm;
@@ -304,21 +302,35 @@ StatFrame * spin_up(unsigned int **iarr, unsigned char **req_arr_buf, unsigned c
          * CMD RECEIVED
          * */
 
+
+        /**|  |||  |||  |||  |||  |||  |||  |||  |||
+         * <br>
+         * VERSION SPLIT POINT:
+         *<br>
+         * ALTERNATE REQUEST FLOW
+         * <br>
+         *|  |||  |||  |||  |||  |||  |||  |||  |||*/
+
         /**
          * PARSE REQUEST
          * */
-        *infofrm = parse_req(*fullreqbuf,
+
+        /**
+         * re
+         *
+         */
+        *infofrm = parse_req(*req_buf,   // <<< Raw Request
                              infofrm,
                              stsfrm,
-                             *flgsbuf,
-                             tmparrbuf,
-                             req_arr_buf); // PARSE
+                             flgsbuf,
+                             *tmparrbuf,
+                             req_arr_buf); // >>> Extracted array
 
         clock_t clke = clock();
         if ((*stsfrm)->err_code) {
             setErr(stsfrm,MALREQ,0);
             serrOut(stsfrm,"Failed to process request.");
-//            fprintf(stderr, "lead: %d\nfullreqbuf: %s", (*cmd_seq).lead, *fullreqbuf);
+//            fprintf(stderr, "lead: %d\nreq_buf: %s", (*cmd_seq).lead, *req_buf);
             goto Errorjump; // TODO: replace w/ better option.
         }
 
@@ -328,7 +340,7 @@ StatFrame * spin_up(unsigned int **iarr, unsigned char **req_arr_buf, unsigned c
                      infofrm,
                      dirchains,
                      hashlattice,
-                     respbuffer); //TODO: replace init w/ uniArr type.
+                     *rsp_buf); //TODO: replace init w/ uniArr type.
        if (infofrm==NULL){
             setErr(stsfrm,MISSPK,0);
             serrOut(stsfrm,"Failed to stage a response");
@@ -358,7 +370,7 @@ StatFrame * spin_up(unsigned int **iarr, unsigned char **req_arr_buf, unsigned c
                     goto Errorjump;
                 }
             }
-            if (write(data_socket, *respbuffer, (*infofrm)->arr_len) == -1) {
+            if (write(data_socket, rsp_buf, (*infofrm)->arr_len) == -1) {
                 stsErno(MISSPK, stsfrm, errno, (*infofrm)->rsp_size, "Response write to socket failed", "write", 0);
             }
         }
@@ -384,11 +396,9 @@ StatFrame * spin_up(unsigned int **iarr, unsigned char **req_arr_buf, unsigned c
 
         Errorjump:// TODO: replace w/ better option.
         
-        bzero(*fullreqbuf, buf_len-1);
+        bzero(*req_buf, buf_len - 1);
         bzero(*flgsbuf,FLGSCNT);
-        bzero(*respbuffer, buf_len-1);
-        bzero(*iarr, arrbuf_len-1);
-        bzero(*cmdseqarr, arrbuf_len-1);
+        bzero(*rsp_buf, arrbuf_len-1);
         bzero(*tmparrbuf,arrbuf_len-1);
 
         close(data_socket);
@@ -457,14 +467,13 @@ void summon_lattice() {
     int *lengths;           // DirNode filepath lengths
     int nm_len;             // Iterating variable for DirNode name
 
-    unsigned char *buffer;       // Incoming commands
-    unsigned int *iarr_buf;     // int strings
-    unsigned char *carr_buf;     // char strings
-    unsigned int *respbuffer;  // Outgoing responses
+    unsigned char *req_buf;       // Incoming commands
+    unsigned char *tmparrbuf;     // int strings
+    unsigned char *req_arr_buf;     // char strings
+    unsigned char *rsp_buffer;  // Outgoing responses
 
     LttcFlags reqflg_arr = (LttcFlags) calloc(CMDCNT, sizeof(LttFlg));
     uniArr* cmdseqarr = (uniArr*) calloc(arrbuf_len, sizeof(uniArr));
-    unsigned int* tmparrbuf = (unsigned int*) calloc(arrbuf_len,sizeof(unsigned int));
 
 
     InfoFrame *info_frm;    // Frame for storing request info
@@ -537,7 +546,7 @@ void summon_lattice() {
                         &(tbl_list[i])) < 0) {
                 stsErno(MISMAP, &statusFrame, errno, 333, "Big fail", "map_dir", 0);
                 cleanup(hashlattice, dirchains, tbl_list, dn_conf, dn_size, NULL, 0, lengths, paths, dn_cnt, cnfdir_fd);
-                destroy_cmdstructures(buffer, respbuffer, carr_buf, iarr_buf, NULL);
+                destroy_cmdstructures(req_buf, rsp_buffer, req_arr_buf, NULL);
                 destroy_metastructures(info_frm, cmdseqarr, reqflg_arr, tmparrbuf);
                 return;
             }
@@ -552,7 +561,7 @@ void summon_lattice() {
            /* * * * * * * * * * *
           *   EXECUTE SERVER   *
          ** * * * * * * * * **/
-         status_frm = spin_up(&iarr_buf, &carr_buf, &buffer, &respbuffer, &status_frm, &info_frm,&rsp_tbl,
+         status_frm = spin_up(&rsp_buffer, &req_arr_buf, &req_buf, &status_frm, &info_frm, &rsp_tbl,
                               &hashlattice, &dirchains, &reqflg_arr, &cnfdir_fd, &tmparrbuf, &cmdseqarr);
 
 
@@ -567,10 +576,9 @@ void summon_lattice() {
          /**
           * CLEANUP
           * */
-        destroy_cmdstructures(buffer,
-                              respbuffer,
-                              carr_buf,
-                              iarr_buf,
+        destroy_cmdstructures(req_buf,
+                              rsp_buffer,
+                              req_arr_buf,
                               rsp_tbl);
         cleanup(hashlattice,
                 dirchains,

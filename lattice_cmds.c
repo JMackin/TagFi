@@ -46,12 +46,11 @@ const unsigned int sep = 0xdbdbdbdb;
 
 
 
-void destroy_cmdstructures(unsigned char *buffer, unsigned int *respbuffer, unsigned char *carr, unsigned int *iarr, Resp_Tbl *rsp_tbl) {
+void destroy_cmdstructures(unsigned char *buffer, unsigned char *respbuffer, unsigned char *carr, Resp_Tbl *rsp_tbl) {
 
     free(buffer);
     free(respbuffer);
     free(carr);
-    free(iarr);
 
     free(((rsp_tbl)->rsp_funcarr));
     free(rsp_tbl);
@@ -122,7 +121,7 @@ size_t read_seqs(unsigned char **seq_arr, int cnfdir_fd) {
 
 
 /** Initialize InfoFrame */
-InfoFrame *init_info_frm(InfoFrame **info_frm, uniArr **seqArr) {
+InfoFrame *init_info_frm(InfoFrame **info_frm) {
     *info_frm = (InfoFrame *) malloc(sizeof(InfoFrame));
     unsigned int cat_sffx = 0;
     (*info_frm)->req_size = 0;
@@ -134,7 +133,8 @@ InfoFrame *init_info_frm(InfoFrame **info_frm, uniArr **seqArr) {
     (*info_frm)->qual = 0;
     (*info_frm)->arr_type = 0;
     (*info_frm)->arr_len = 0;
-    (*info_frm)->arr = *seqArr;
+    (*info_frm)->arr = NULL;
+    (*info_frm)->flags = NULL;
 
     return *info_frm;
 
@@ -317,12 +317,13 @@ unsigned int parse_lead(const unsigned int lead,
  */
 
 
-InfoFrame *parse_req(const unsigned char *fullreqbuf,
+InfoFrame *parse_req(const unsigned char *fullreqbuf, //<-- same name in spin up
     InfoFrame **infofrm,
     StatFrame **stsfrm,
-    LttcFlags rqflgsbuf,
-    unsigned int** tmparrbuf,
-    unsigned char **carr_buf) {
+    LttcFlags* rqflgsbuf,       //<-- flgsbuf in spin up
+    unsigned char* tmparrbuf,
+    unsigned char **req_arr_buf) //<-- req_arr_buf in spin up
+    {
 
     unsigned int exit_flg = 1;
     int k = 0;
@@ -338,7 +339,7 @@ InfoFrame *parse_req(const unsigned char *fullreqbuf,
      * */
     memcpy(&flag, fullreqbuf, UISiZ);
 
-    flgcnt = parse_lead(flag, &rqflgsbuf, stsfrm, infofrm);
+    flgcnt = parse_lead(flag, rqflgsbuf, stsfrm, infofrm);
 
     if (!flgcnt) {
         fprintf(stderr, "Malformed request: Error parsing lead.\n");
@@ -349,7 +350,7 @@ InfoFrame *parse_req(const unsigned char *fullreqbuf,
     /**
      * Build CMD struct
      * */
-    ((*infofrm)->flags) = (&rqflgsbuf); //Note: *((*cmdseq)->flags)+X to access flags
+    ((*infofrm)->flags) = (rqflgsbuf); //Note: *((*cmdseq)->flags)+X to access flags
     (*infofrm)->lead = flag;
     (*infofrm)->flg_cnt = flgcnt;
 
@@ -389,10 +390,11 @@ InfoFrame *parse_req(const unsigned char *fullreqbuf,
         /**
          * Alloc and populate int buffer with the cmd sequence
          * */
-        memcpy(*tmparrbuf, fullreqbuf + (UISiZ * 2), (UISiZ * (*infofrm)->arr_len));
-        (*infofrm)->arr->iarr = *tmparrbuf;
+//        memcpy(tmparrbuf, fullreqbuf + (UISiZ * 2), (UISiZ * (*infofrm)->arr_len));
+        tmparrbuf = (fullreqbuf + (UISiZ * 2));
+        (*infofrm)->arr = tmparrbuf;
 
-        exit_flg = **tmparrbuf == SHTDN ? (exit_flg << 1) : 1;    //  EXIT trigger 3
+        exit_flg = *tmparrbuf == SHTDN ? (exit_flg << 1) : 1;    //  EXIT trigger 3
 
         /**
          * Exit for shutdown upon receiving three shutdown triggers
@@ -407,22 +409,19 @@ InfoFrame *parse_req(const unsigned char *fullreqbuf,
          * */
     else if ((*infofrm)->arr_type == CHRARR) {
         memcpy(&((*infofrm)->arr_len), (fullreqbuf + UISiZ), UISiZ);
-        (*infofrm)->arr_len = (*infofrm)->arr_len;
         memcpy(&end, (fullreqbuf + (UISiZ * 2) + (UCSiZ * (*infofrm)->arr_len)), UISiZ); //Calc request endpoint
 
 
         (*infofrm)->req_size = (UISiZ * 3) + (UISiZ * (*infofrm)->arr_len); // Set InfoFrame -> fullreqbuf size
 
         if (end != END) {
-            fprintf(stderr, "Malformed request>\n> %d\n> %d\n> %d\n", flag, end,
-                    (*infofrm)->arr_len); // Init int arr buffer if iarr follows
-            err_info_frm((*infofrm), stsfrm, MALREQ, 0);
+            stsErno(MALREQ,stsfrm,errno,end,"Computed position for tail byte doesnt match that of request tail","parse req","calcd end value");
             return (*infofrm);
         }
 
 
-        memcpy(carr_buf, fullreqbuf + (UISiZ * 2), (UCSiZ * (*infofrm)->arr_len));
-        (*infofrm)->arr->carr = *carr_buf;
+        memcpy(req_arr_buf, fullreqbuf + (UISiZ * 2), (UCSiZ * (*infofrm)->arr_len));
+        (*infofrm)->arr = *req_arr_buf;
 
     }
 
@@ -563,8 +562,8 @@ void serrOut(StatFrame **sts_frm, char *msg){
 
 unsigned int prpbuf(unsigned char **buf){
     LattTyps lead = (LattTyps) LEAD;
-    *(*buf) = lead.nui;
-    return 1;
+    memcpy(*buf,&lead,ltyp_s);
+    return ltyp_s;
 }
 
 unsigned int rsparr_len_inc(void* itm, unsigned int cnt, unsigned int mlti){
@@ -782,9 +781,11 @@ unsigned int rsp_err(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *chns, La
  unsigned int rsp_nfo(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice * hltc, unsigned char** buf) {
     printf("Response: info");
 
-    size_t bcnt = prpbuf(buf);
+    size_t bcnt = 4+prpbuf(buf);
     size_t arrlen = 0;
     uint respsz;
+    uint i;
+    LattObj objeid;
 
     InfoFunc* funarr;
 
@@ -797,14 +798,15 @@ unsigned int rsp_err(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *chns, La
     // and the array content, which can be an ID, etc. depending on the subject.
     //
     // Fail if no code found
-    LattObj objeid;
+ //   LattObj objeid = (*(*inf_frm)->arr);
     memcpy(&objeid,((*inf_frm)->arr),ltyp_s);
+
 
     //TODO: Fail on malformed request
 
 
 
-    if (objeid>FIDE){
+    if (objeid>FIDE || (objeid & (objeid-1)) ){
         stsErno(MALREQ,sts_frm,errno,objeid,"Invalid object ID provided.","response::info","object id value");
         return 1;
         //TODO: Better error value for failed response processing.
@@ -812,8 +814,8 @@ unsigned int rsp_err(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *chns, La
 
     // query requested object and return response size in bytes.
     if (objeid){
-        uint i = objs[(__builtin_ctz(objeid))+1];   // Info Req subject index = count of its values trailing zeros.
-        respsz = (*funarr)[i](buf);
+//        i = objs[(__builtin_ctz(objeid))+1];   // Info Req subject index = count of its values trailing zeros.
+        respsz = (*funarr)[objeid](buf);
 
         // return of 0 means the object is there but failed to be queried.
         // return of 1 means the object is tmissing entirely.
@@ -1076,13 +1078,15 @@ InfoFrame* respond(Resp_Tbl *rsp_tbl,
                    InfoFrame **inf_frm,
                    DChains *dchns,
                    Lattice *hltc,
-                   unsigned char **resp_buf) {
+                   unsigned char *rsp_buf) {
 
     //TODO: Reset infoframe, implement and include.
 
     /** Determine response avenue and return a reply object */
     LattReply rsp = dtrm_rsp(sts_frm,inf_frm);  // Reply object returned from 'determine response'
    // bzero(*(*resp_buf),ARRSIZE-1);                 // Zero response buffer
+
+
 
     unsigned int rspsz;
     unsigned int rsparrsz;
@@ -1092,14 +1096,14 @@ InfoFrame* respond(Resp_Tbl *rsp_tbl,
     if (rsp > rsp_tbl->fcnt) {
         setErr(sts_frm, MISCLC, rsp);
         serrOut(sts_frm, "LattReply for response processing outside defined functionality.");
-        return 1;
+        return NULL;
     }
 
     // Insert reply object into buffer at +sizeof(LattTyp) offset
-    //memcpy(*buf,&rsp,sizeof(LattReply));
+    memcpy(rsp_buf+UISiZ,&rsp,sizeof(LattReply));
 
     // Call function at index 'rsp' (the reply object value) from function array.
-    rspsz = (*rsp_tbl->rsp_funcarr)[rsp](sts_frm, inf_frm, dchns, hltc, resp_buf);
+    rspsz = (*rsp_tbl->rsp_funcarr)[rsp](sts_frm, inf_frm, dchns, hltc, &rsp_buf);
 
     // Get array len from response sequence
     rsparrsz = rspsz - (3*ltyp_s)-(UCSiZ);
