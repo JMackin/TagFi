@@ -684,13 +684,8 @@ RspFunc* rsp_act(
               RspFunc* (funarr));
 
 
-void init_rsptbl(int cnfg_fd,
-                 Resp_Tbl** rsp_tbl,
-                 StatFrame** sts_frm,
-                 InfoFrame** inf_frm,
-                 DChains* dchns,
-                 Lattice* hltc,
-                 unsigned char* buf);
+void
+init_rsptbl(int cnfg_fd, Resp_Tbl **rsp_tbl, StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc);
 
 LattReply dtrm_rsp(StatFrame** sts_frm,
                    InfoFrame** inf_frm);
@@ -701,7 +696,7 @@ InfoFrame* respond(Resp_Tbl *rsp_tbl,
                    InfoFrame **inf_frm,
                    DChains *dchns,
                    Lattice *hltc,
-                   unsigned int **resp_buf);
+                   unsigned char **resp_buf);
 
 typedef union LattTyps{
     LattErr err;
@@ -731,10 +726,10 @@ typedef union LattTyps{
 
 /** Response actions */
 
-unsigned int  rsp_sts(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, unsigned char **buf);
-unsigned int  rsp_nfo(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, unsigned char **buf);
-unsigned int  rsp_err(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, unsigned char **buf);
-unsigned int  rsp_und(StatFrame** sts_frm, InfoFrame **inf_frm, DChains* dchns, Lattice* hltc, unsigned char **buf);
+unsigned int  rsp_sts(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, unsigned  char**buf);
+unsigned int  rsp_nfo(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, unsigned  char**buf);
+unsigned int  rsp_err(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, unsigned  char**buf);
+unsigned int  rsp_und(StatFrame** sts_frm, InfoFrame **inf_frm, DChains* dchns, Lattice* hltc, unsigned  char**buf);
 
 unsigned int  rsp_gond(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, unsigned char **buf);
 unsigned int  rsp_gohd(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, unsigned char **buf);
@@ -746,10 +741,10 @@ unsigned int  rsp_jjjj(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns,
 unsigned int  rsp_dcls(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, unsigned char **buf);
 unsigned int  rsp_dnls(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, unsigned char **buf);
 
-unsigned int rsp_fiid(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, unsigned char **buf);
-unsigned int rsp_frdn(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, unsigned char **buf);
-unsigned int rsp_iiii(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, unsigned char **buf);
-unsigned int rsp_fyld(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, unsigned char **buf);
+unsigned int rsp_fiid(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, unsigned  char**buf);
+unsigned int rsp_frdn(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, unsigned  char**buf);
+unsigned int rsp_iiii(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, unsigned  char**buf);
+unsigned int rsp_fyld(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, unsigned  char**buf);
 
 
 /** Status ops **/

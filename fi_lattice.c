@@ -156,7 +156,7 @@ int extract_name(const unsigned char* path, int length) {
 
 
 
-StatFrame * spin_up(unsigned int **iarr, unsigned char **req_arr_buf, unsigned char **fullreqbuf, unsigned char **respbuffer,
+StatFrame * spin_up(unsigned int **iarr, unsigned char **req_arr_buf, unsigned char **fullreqbuf, unsigned int **respbuffer,
         StatFrame **stsfrm, InfoFrame **infofrm, Resp_Tbl **rsp_tbl, HashLattice **hashlattice,
         Dir_Chains **dirchains, LttcFlags *flgsbuf, const int *cnfdir_fd, unsigned int **tmparrbuf, uniArr **cmdseqarr) {
 
@@ -336,7 +336,7 @@ StatFrame * spin_up(unsigned int **iarr, unsigned char **req_arr_buf, unsigned c
         }
 
         setSts(stsfrm,RESPN,0);
-        printf("Response: %s\n", *respbuffer+16);
+//        printf("Response: %s\n", *respbuffer+16);
         epoll_ctl(efd, EPOLL_CTL_MOD, data_socket, epOUTevent);
 
 
@@ -546,7 +546,7 @@ void summon_lattice() {
           *  INIT FUNC ARRAY
           * */
          Resp_Tbl* rsp_tbl;
-         init_rsptbl(cnfdir_fd, &rsp_tbl, &status_frm, &info_frm, &dirchains, &hashlattice, respbuffer);
+        init_rsptbl(cnfdir_fd, &rsp_tbl, &status_frm, &info_frm, &dirchains, &hashlattice);
 
 
            /* * * * * * * * * * *

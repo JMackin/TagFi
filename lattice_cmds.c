@@ -562,10 +562,9 @@ void serrOut(StatFrame **sts_frm, char *msg){
 
 
 unsigned int prpbuf(unsigned char **buf){
-    printf("%s\n: ",(*buf));
     LattTyps lead = (LattTyps) LEAD;
-    memcpy(*buf,&lead,ltyp_s);
-    return ltyp_s;
+    *(*buf) = lead.nui;
+    return 1;
 }
 
 unsigned int rsparr_len_inc(void* itm, unsigned int cnt, unsigned int mlti){
@@ -780,7 +779,7 @@ unsigned int rsp_err(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *chns, La
  }
 
 /** Info funcs */
- unsigned int rsp_nfo(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice * hltc, unsigned char **buf) {
+ unsigned int rsp_nfo(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice * hltc, unsigned char** buf) {
     printf("Response: info");
 
     size_t bcnt = prpbuf(buf);
@@ -800,6 +799,7 @@ unsigned int rsp_err(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *chns, La
     // Fail if no code found
     LattObj objeid;
     memcpy(&objeid,((*inf_frm)->arr),ltyp_s);
+
     //TODO: Fail on malformed request
 
 
@@ -828,7 +828,7 @@ unsigned int rsp_err(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *chns, La
     }
     else{
         stsErno(MALREQ,sts_frm,errno,0,"ID zero provided.","response::info",NULL);
-        return 1;
+        return bcnt;
     }
 
     return respsz;
@@ -913,9 +913,9 @@ RspFunc *rsp_act(
 
 //Info
     unsigned int  (*und)(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc, unsigned char **buf);
-    unsigned int (*err)(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc, unsigned char **buf);
-    unsigned int (*nfo)(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc, unsigned char **buf);
-    unsigned int (*sts)(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc, unsigned char **buf);
+    unsigned int (*err)(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc, unsigned char**buf);
+    unsigned int (*nfo)(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc, unsigned char**buf);
+    unsigned int (*sts)(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc, unsigned char**buf);
 //Travel*
     unsigned int (*fiid)(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc, unsigned char **buf);
     unsigned int (*diid)(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc, unsigned char **buf);
@@ -979,13 +979,8 @@ RspFunc *rsp_act(
 /**
  * Init response table
  * */
-void init_rsptbl(int cnfg_fd,
-                 Resp_Tbl **rsp_tbl,
-                 StatFrame **sts_frm,
-                 InfoFrame **inf_frm,
-                 DChains *dchns,
-                 Lattice *hltc,
-                 unsigned char *buf) {
+void
+init_rsptbl(int cnfg_fd, Resp_Tbl **rsp_tbl, StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc) {
 
     unsigned int *rsp_map;
     unsigned int fcnt = RSPARRLEN;
@@ -1041,12 +1036,12 @@ LattReply dtrm_rsp(StatFrame **sts_frm,
  * \ProcessResponse
  */
 unsigned int proc_rsp(Resp_Tbl *rsp_tbl,
-                        LattReply rsp,
-                        StatFrame **sts_frm,
-                        InfoFrame **inf_frm,
-                        DChains *dchns,
-                        Lattice *hltc,
-                        unsigned char **buf) {
+                      LattReply rsp,
+                      StatFrame **sts_frm,
+                      InfoFrame **inf_frm,
+                      DChains *dchns,
+                      Lattice *hltc,
+                      unsigned char **buf) {
     unsigned int rspsz;
     unsigned int rsparrsz;
     // Update status and return 1 on failure
@@ -1059,7 +1054,7 @@ unsigned int proc_rsp(Resp_Tbl *rsp_tbl,
     }
 
     // Insert reply object into buffer at +sizeof(LattTyp) offset
-    memcpy(*buf+ltyp_s,&rsp,sizeof(LattReply));
+    //memcpy(*buf,&rsp,sizeof(LattReply));
 
     // Call function at index 'rsp' (the reply object value) from function array.
     rspsz = (*rsp_tbl->rsp_funcarr)[rsp](sts_frm, inf_frm, dchns, hltc, buf);
@@ -1081,22 +1076,41 @@ InfoFrame* respond(Resp_Tbl *rsp_tbl,
                    InfoFrame **inf_frm,
                    DChains *dchns,
                    Lattice *hltc,
-                   unsigned int **resp_buf) {
+                   unsigned char **resp_buf) {
 
     //TODO: Reset infoframe, implement and include.
 
     /** Determine response avenue and return a reply object */
     LattReply rsp = dtrm_rsp(sts_frm,inf_frm);  // Reply object returned from 'determine response'
-    bzero(*resp_buf,ARRSIZE-1);                 // Zero response buffer
+   // bzero(*(*resp_buf),ARRSIZE-1);                 // Zero response buffer
 
-    /** Process response; build response sequence based on results of determination process */
-    if (proc_rsp(rsp_tbl,rsp,sts_frm,inf_frm,dchns,hltc,resp_buf)){
-        int iern = errno;
-        setErr(sts_frm,NOINFO,rsp);
-        serrOut(sts_frm,"Resp processing failed");
-        (*inf_frm)->qual = iern;
-        return *inf_frm;
+    unsigned int rspsz;
+    unsigned int rsparrsz;
+    // Update status and return 1 on failure
+    // if the value of reply object is > the
+    // num of function in the array.
+    if (rsp > rsp_tbl->fcnt) {
+        setErr(sts_frm, MISCLC, rsp);
+        serrOut(sts_frm, "LattReply for response processing outside defined functionality.");
+        return 1;
     }
+
+    // Insert reply object into buffer at +sizeof(LattTyp) offset
+    //memcpy(*buf,&rsp,sizeof(LattReply));
+
+    // Call function at index 'rsp' (the reply object value) from function array.
+    rspsz = (*rsp_tbl->rsp_funcarr)[rsp](sts_frm, inf_frm, dchns, hltc, resp_buf);
+
+    // Get array len from response sequence
+    rsparrsz = rspsz - (3*ltyp_s)-(UCSiZ);
+
+    // Update InfoFrame
+    (*inf_frm)->arr_len = rspsz;
+    (*inf_frm)->rsp_size = rsparrsz;
+
+    // Update status and return 0 on success
+    setSts(sts_frm, RESPN, 0);
+    return 0;
 
     fprintf(stdout,"\nres:%u\n",rsp);
     return *inf_frm;
