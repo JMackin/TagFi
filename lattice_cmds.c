@@ -25,6 +25,7 @@
 #define CMDCNT 16
 #define ARRSIZE 256
 #define CLOSEONFAIL 333
+#define HASHSTRLEN 64
 
 
 int is_init = 0;
@@ -578,14 +579,14 @@ void rsparr_out(unsigned char **buf, unsigned int arrlen){
     }
 }
 
-unsigned int rsparr_addsep(unsigned char** buf,unsigned int offset)
-{memcpy(*buf+arr_b+offset,&sep,ltyp_s);return ltyp_s;}
-
 unsigned char* rsparr_pos(unsigned char** buf)
 {return *buf+arr_b;}
 
+unsigned int rsparr_addsep(unsigned char** buf,unsigned int offset)
+{memcpy(rsparr_pos(buf)+offset,&sep,ltyp_s);return ltyp_s;}
+
 unsigned int rsparr_add_lt(LattType lt, unsigned char** buf, unsigned int offset)
-{memcpy(rsparr_pos(buf)+offset,&lt,ltyp_s);return ltyp_s;}
+{uint bcnt = rsparr_addsep(buf,offset+ltyp_s);memcpy(rsparr_pos(buf)+offset,&lt,ltyp_s);return bcnt+ltyp_s;}
 
 unsigned int rsparr_add_replobj(unsigned char** buf, LattReply obj){
     return rsparr_add_lt((LattType) obj, buf, 0);
@@ -620,94 +621,92 @@ unsigned char* rsparr_add_msg(unsigned char **buf, unsigned char* msg, unsigned 
  */
 
 
-unsigned int inf_NADA(unsigned char **buf, LattType lattItm){
+unsigned int inf_NADA(unsigned char **buf, LattType lattItm, LattStruct lattStruct){
 
-    lattItm.obj = NADA;
-    rsparr_add_lt(lattItm,buf,0);
     return 0;
 
 }
-unsigned int inf_LTTC(unsigned char **buf, LattType lattItm){
+unsigned int inf_LTTC(unsigned char **buf, LattType lattItm, LattStruct lattStruct){
     lattItm.obj = LTTC;
     rsparr_add_lt(lattItm,buf,0);
     return 0;
 }
-unsigned int inf_BRDG(unsigned char **buf, LattType lattItm){
+unsigned int inf_BRDG(unsigned char **buf, LattType lattItm, LattStruct lattStruct){
     lattItm.obj = BRDG;
     rsparr_add_lt(lattItm,buf,0);
     return 0;
 }
-unsigned int inf_DIRN(unsigned char **buf, LattType lattItm){
+unsigned int inf_DIRN(unsigned char **buf, LattType lattItm, LattStruct lattStruct){
     lattItm.obj = DIRN;
     rsparr_add_lt(lattItm,buf,0);
     return 0;
 }
-unsigned int inf_FTBL(unsigned char **buf, LattType lattItm){
+unsigned int inf_FTBL(unsigned char **buf, LattType lattItm, LattStruct lattStruct){
     lattItm.obj = FTBL;
     rsparr_add_lt(lattItm,buf,0);
     return 0;
 }
-unsigned int inf_FIMP(unsigned char **buf, LattType lattItm){
+unsigned int inf_FIMP(unsigned char **buf, LattType lattItm, LattStruct lattStruct){
     lattItm.obj = FIMP;
     rsparr_add_lt(lattItm,buf,0);
     return 0;
 }
-unsigned int inf_LFLG(unsigned char **buf, LattType lattItm){
+unsigned int inf_LFLG(unsigned char **buf, LattType lattItm, LattStruct lattStruct){
     lattItm.obj = LFLG;
     rsparr_add_lt(lattItm,buf,0);
     return 0;
 }
-unsigned int inf_SFRM(unsigned char **buf, LattType lattItm){
+unsigned int inf_SFRM(unsigned char **buf, LattType lattItm, LattStruct lattStruct){
     lattItm.obj = SFRM;
     rsparr_add_lt(lattItm,buf,0);
     return 0;
 }
-unsigned int inf_IFRM(unsigned char **buf, LattType lattItm){
+unsigned int inf_IFRM(unsigned char **buf, LattType lattItm, LattStruct lattStruct){
     lattItm.obj = IFRM;
     rsparr_add_lt(lattItm,buf,0);
     return 0;
 }
-unsigned int inf_SEQT(unsigned char **buf, LattType lattItm){
+unsigned int inf_SEQT(unsigned char **buf, LattType lattItm, LattStruct lattStruct){
     lattItm.obj = SEQT;
     rsparr_add_lt(lattItm,buf,0);
     return 0;
 }
-unsigned int inf_CMSQ(unsigned char **buf, LattType lattItm){
+unsigned int inf_CMSQ(unsigned char **buf, LattType lattItm, LattStruct lattStruct){
     lattItm.obj = CMSQ;
     rsparr_add_lt(lattItm,buf,0);
     return 0;
 }
-unsigned int inf_ICAR(unsigned char **buf, LattType lattItm){
+unsigned int inf_ICAR(unsigned char **buf, LattType lattItm, LattStruct lattStruct){
     lattItm.obj = ICAR;
     rsparr_add_lt(lattItm,buf,0);
     return 0;
 }
-unsigned int inf_VSSL(unsigned char **buf, LattType lattItm){
+unsigned int inf_VSSL(unsigned char **buf, LattType lattItm, LattStruct lattStruct){
     lattItm.obj = VSSL;
     rsparr_add_lt(lattItm,buf,0);
     return 0;
 }
-unsigned int inf_FIOB(unsigned char **buf, LattType lattItm){
+unsigned int inf_FIOB(unsigned char **buf, LattType lattItm, LattStruct lattStruct){
     lattItm.obj = FIOB;
     rsparr_add_lt(lattItm,buf,0);
     return 0;
 }
-unsigned int inf_IDID(unsigned char **buf, LattType lattItm){
+unsigned int inf_IDID(unsigned char **buf, LattType lattItm, LattStruct lattStruct){
     lattItm.obj = IDID;
     rsparr_add_lt(lattItm,buf,0);
     return 0;
 }
-unsigned int inf_NMNM(unsigned char **buf, LattType lattItm){
+unsigned int inf_NMNM(unsigned char **buf, LattType lattItm, LattStruct lattStruct){
     lattItm.obj = NMNM;
     rsparr_add_lt(lattItm,buf,0);
     return 0;
 }
-unsigned int inf_FIDE(unsigned char **buf, LattType lattItm){
+unsigned int inf_FIDE(unsigned char **buf, LattType lattItm, LattStruct lattStruct){
     lattItm.obj = FIDE;
     rsparr_add_lt(lattItm,buf,0);
     return 0;
 }
-unsigned int inf_DCHN(unsigned char **buf, LattType lattItm){
+unsigned int inf_DCHN(unsigned char **buf, LattType lattItm, LattStruct lattStruct){
     lattItm.obj = DCHN;
     rsparr_add_lt(lattItm,buf,0);
     return 0;
@@ -718,15 +717,24 @@ InfoFunc* gen_infofunc_arr(){
 
     InfoFunc* infofuncarr = (InfoFunc*) malloc(sizeof(InfoFunc));
 
-    unsigned int (*nada)(unsigned char **buf, LattType lattItm); unsigned int (*seqt)(unsigned char **buf, LattType lattItm);
-    unsigned int (*lttc)(unsigned char **buf, LattType lattItm); unsigned int (*cmsq)(unsigned char **buf, LattType lattItm);
-    unsigned int (*brdg)(unsigned char **buf, LattType lattItm); unsigned int (*icar)(unsigned char **buf, LattType lattItm);
-    unsigned int (*dirn)(unsigned char **buf, LattType lattItm); unsigned int (*vssl)(unsigned char **buf, LattType lattItm);
-    unsigned int (*ftbl)(unsigned char **buf, LattType lattItm); unsigned int (*fiob)(unsigned char **buf, LattType lattItm);
-    unsigned int (*fimp)(unsigned char **buf, LattType lattItm); unsigned int (*idid)(unsigned char **buf, LattType lattItm);
-    unsigned int (*lflg)(unsigned char **buf, LattType lattItm); unsigned int (*nmnm)(unsigned char **buf, LattType lattItm);
-    unsigned int (*sfrm)(unsigned char **buf, LattType lattItm); unsigned int (*fide)(unsigned char **buf, LattType lattItm);
-    unsigned int (*ifrm)(unsigned char **buf, LattType lattItm); unsigned int (*dchn)(unsigned char **buf, LattType lattItm);
+    unsigned int (*nada)(unsigned char **buf, LattType lattItm, LattStruct lattStruct);
+    unsigned int (*seqt)(unsigned char **buf, LattType lattItm, LattStruct lattStruct);
+    unsigned int (*lttc)(unsigned char **buf, LattType lattItm, LattStruct lattStruct);
+    unsigned int (*cmsq)(unsigned char **buf, LattType lattItm, LattStruct lattStruct);
+    unsigned int (*brdg)(unsigned char **buf, LattType lattItm, LattStruct lattStruct);
+    unsigned int (*icar)(unsigned char **buf, LattType lattItm, LattStruct lattStruct);
+    unsigned int (*dirn)(unsigned char **buf, LattType lattItm, LattStruct lattStruct);
+    unsigned int (*vssl)(unsigned char **buf, LattType lattItm, LattStruct lattStruct);
+    unsigned int (*ftbl)(unsigned char **buf, LattType lattItm, LattStruct lattStruct);
+    unsigned int (*fiob)(unsigned char **buf, LattType lattItm, LattStruct lattStruct);
+    unsigned int (*fimp)(unsigned char **buf, LattType lattItm, LattStruct lattStruct);
+    unsigned int (*idid)(unsigned char **buf, LattType lattItm, LattStruct lattStruct);
+    unsigned int (*lflg)(unsigned char **buf, LattType lattItm, LattStruct lattStruct);
+    unsigned int (*nmnm)(unsigned char **buf, LattType lattItm, LattStruct lattStruct);
+    unsigned int (*sfrm)(unsigned char **buf, LattType lattItm, LattStruct lattStruct);
+    unsigned int (*fide)(unsigned char **buf, LattType lattItm, LattStruct lattStruct);
+    unsigned int (*ifrm)(unsigned char **buf, LattType lattItm, LattStruct lattStruct);
+    unsigned int (*dchn)(unsigned char **buf, LattType lattItm, LattStruct lattStruct);
 
     nada = &inf_NADA; seqt = &inf_SEQT;
     lttc = &inf_LTTC; cmsq = &inf_CMSQ;
@@ -767,19 +775,37 @@ unsigned int rsp_nfo(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, L
 
     lattItm.nui = 0;
     printf("Response: info");
-    size_t bcnt = 4+ prpbuf(buf,lattItm);
+    size_t bcnt = 4 + prpbuf(buf,lattItm);
     size_t arrlen = 0;
     uint respsz;
     uint i;
     LattObj objeid;
     InfoFunc* funarr;
+    LattStruct lattStruct;
+
+
+    lattStruct.dirChains =  *dchns;
+    lattStruct.lattice = *hltc;
+
+    char* dnhshstr;
+    dnhshstr = yield_dnhstr(&(*dchns)->vessel);
+
+    (lattStruct.fiTbl) =
+            ((yield_bridge(*hltc,       // HashLattice* hashlattice
+            (unsigned char*) dnhshstr,  // uchar* filename
+            HASHSTRLEN,                         // uint namelength
+            (*dchns)->vessel))          // Dir_Node* residentDirnode
+            ->fitable);
+
     funarr = gen_infofunc_arr();
+
     // Extract the desired object ID from the first byte of the request array,
     // and the array content, which can be an ID, etc. depending on the subject.
     //
     // Fail if no code found
 
     memcpy(&lattItm.obj,((*inf_frm)->arr),ltyp_s);
+
     //TODO: Fail on malformed request
 
 
@@ -795,8 +821,10 @@ unsigned int rsp_nfo(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, L
         if (i > 18){
             respsz = 1;
         }else {
-            respsz = (*funarr)[i](buf, lattItm);
+            respsz = ((*funarr)[i](buf, lattItm, lattStruct));
+            free(dnhshstr);
         }
+
         // return of 0 means the object is there but failed to be queried.
         // return of 1 means the object is tmissing entirely.
         if (!respsz){
@@ -813,7 +841,7 @@ unsigned int rsp_nfo(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, L
         return 0;
     }
 
-    return respsz;
+    return respsz+bcnt;
 
  }
 

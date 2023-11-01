@@ -673,8 +673,6 @@ typedef union LattType{
     unsigned char nuc;
 }LattType;
 
-typedef unsigned int (*InfoFunc[INFARRLEN])(unsigned char **buf, LattType lattItm);
-
 
 RspFunc* rsp_act(
         RspMap rspMap,
@@ -682,14 +680,16 @@ RspFunc* rsp_act(
         InfoFrame** inf_frm,
         RspFunc* (funarr));
 
-
-void
-init_rsptbl(int cnfg_fd, Resp_Tbl **rsp_tbl, StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc);
+void init_rsptbl(int cnfg_fd,
+                 Resp_Tbl **rsp_tbl,
+                 StatFrame **sts_frm,
+                 InfoFrame **inf_frm,
+                 DChains *dchns,
+                 Lattice *hltc);
 
 LattType dtrm_rsp(StatFrame** sts_frm,
                   InfoFrame** inf_frm,
                   LattType);
-
 
 unsigned int respond(Resp_Tbl *rsp_tbl,
                    StatFrame **sts_frm,
@@ -698,6 +698,14 @@ unsigned int respond(Resp_Tbl *rsp_tbl,
                    Lattice *hltc,
                    unsigned char *resp_buf);
 
+typedef struct LattStruct{
+    Lattice lattice;
+    DChains dirChains;
+    Fi_Tbl* fiTbl;
+    unsigned long* itmID;
+}LattStruct;
+
+typedef unsigned int (*InfoFunc[INFARRLEN])(unsigned char **buf, LattType lattItm, LattStruct lattStruct);
 
 /**<br> >Response string element positions:
 *<br>
