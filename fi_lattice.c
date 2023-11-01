@@ -529,14 +529,29 @@ void summon_lattice() {
           *  INIT FUNC ARRAY
           * */
          Resp_Tbl* rsp_tbl;
-        init_rsptbl(cnfdir_fd, &rsp_tbl, &status_frm, &info_frm, &dirchains, &hashlattice);
+        init_rsptbl(cnfdir_fd,
+                    &rsp_tbl,
+                    &status_frm,
+                    &info_frm,
+                    &dirchains,
+                    &hashlattice);
 
 
            /* * * * * * * * * * *
           *   EXECUTE SERVER   *
          ** * * * * * * * * **/
-         status_frm = spin_up(&rsp_buffer, &req_arr_buf, &req_buf, &status_frm, &info_frm, &rsp_tbl,
-                              &hashlattice, &dirchains, &reqflg_arr, &cnfdir_fd, &tmparrbuf, &cmdseqarr);
+         status_frm = spin_up(&rsp_buffer,
+                              &req_arr_buf,
+                              &req_buf,
+                              &status_frm,
+                              &info_frm,
+                              &rsp_tbl,
+                              &hashlattice,
+                              &dirchains,
+                              &reqflg_arr,
+                              &cnfdir_fd,
+                              &tmparrbuf,
+                              &cmdseqarr);
 
 
          if (status_frm->err_code) {

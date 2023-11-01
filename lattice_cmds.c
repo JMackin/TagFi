@@ -566,10 +566,18 @@ void serrOut(StatFrame **sts_frm, char *msg){
 *  Response CMDS  *
 * * * * * * * * **/
 
+unsigned char* rsparr_pos(unsigned char** buf)
+{return *buf+arr_b;}
 
 unsigned int prpbuf(unsigned char **buf,LattType lattItm) {
     lattItm.flg.uflg =  LEAD;
     memcpy(*buf,&lattItm,ltyp_s);
+    return ltyp_s;
+}
+
+unsigned int endbuf(unsigned char **buf,LattType lattItm, unsigned int rsplen) {
+    lattItm.flg.uflg =  END;
+    memcpy((*buf)+rsplen,&lattItm,ltyp_s);
     return ltyp_s;
 }
 
@@ -588,21 +596,18 @@ void rsparr_out(unsigned char **buf, unsigned int arrlen){
     }
 }
 
-unsigned char* rsparr_pos(unsigned char** buf)
-{return *buf+arr_b;}
-
 unsigned int rsparr_addsep(unsigned char** buf,unsigned int offset)
 {memcpy(rsparr_pos(buf)+offset,&sep,ltyp_s);return ltyp_s;}
 
 unsigned int rsparr_add_lt(LattType lt, unsigned char** buf, unsigned int offset)
-{uint bcnt = rsparr_addsep(buf,offset+ltyp_s);memcpy(rsparr_pos(buf)+offset,&lt,ltyp_s);return bcnt+ltyp_s;}
+{memcpy(rsparr_pos(buf)+offset,&lt,ltyp_s);return rsparr_addsep(buf,offset+ltyp_s)+ltyp_s;}
 
 unsigned int rsparr_add_replobj(unsigned char** buf, LattReply obj){
     return rsparr_add_lt((LattType) obj, buf, 0);
 }
 
-unsigned char* rsparr_add_msg(unsigned char **buf, unsigned char* msg, unsigned int len, unsigned int offst)
-{(len+offst+arr_b > ARRSIZE) ? msg = NULL : memcpy(rsparr_pos(buf)+offst,msg,len);return msg;}
+unsigned int rsparr_add_msg(unsigned char **buf, char* msg, unsigned int len, unsigned int offst)
+{memcpy(rsparr_pos(buf)+offst,msg,len);return rsparr_addsep(buf,len+offst)+len;}
 
     // lead | item | arrsz | arr | DONE
 
@@ -636,9 +641,20 @@ unsigned int inf_NADA(unsigned char **buf, LattType lattItm, LattStruct lattStru
 
 }
 unsigned int inf_LTTC(unsigned char **buf, LattType lattItm, LattStruct lattStruct){
+    uint bcnt;
     lattItm.obj = LTTC;
-    rsparr_add_lt(lattItm,buf,0);
-    return 0;
+    bcnt = rsparr_add_lt(lattItm,buf,0);
+
+    bcnt += rsparr_add_msg(buf,"CNT",4,bcnt);
+    lattItm.nui = lattStruct.lattice->count;
+    bcnt += rsparr_add_lt(lattItm,buf,bcnt);
+
+    bcnt += rsparr_add_msg(buf,"MAX",4,bcnt);
+    lattItm.nui = lattStruct.lattice->max;
+    bcnt += rsparr_add_lt(lattItm,buf,bcnt);
+
+    return bcnt;
+
 }
 unsigned int inf_BRDG(unsigned char **buf, LattType lattItm, LattStruct lattStruct){
     lattItm.obj = BRDG;
@@ -781,17 +797,16 @@ unsigned int rsp_err(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *chns, La
 unsigned int rsp_nfo(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice * hltc, unsigned char** buf) {
 
     LattType lattItm;
-
     lattItm.nui = 0;
     printf("Response: info");
-    size_t bcnt = 4 + prpbuf(buf,lattItm);
+    size_t bcnt = arr_b;
+
     size_t arrlen = 0;
     uint respsz;
     uint i;
     LattObj objeid;
     InfoFunc* funarr;
     LattStruct lattStruct;
-
 
     lattStruct.dirChains =  *dchns;
     lattStruct.lattice = *hltc;
@@ -832,9 +847,7 @@ unsigned int rsp_nfo(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, L
         if (i > 18){
             respsz = 1;
         }else {
-
             respsz = ((*funarr)[i](buf, lattItm, lattStruct));
-
             sodium_free(dnhshstr);
             free(funarr);
         }
@@ -1105,11 +1118,12 @@ unsigned int respond(Resp_Tbl *rsp_tbl,
 
     //TODO: Reset infoframe, implement and include.
     LattType lattItm;
-    lattItm.nui = 0;
+    lattItm.nui =  0;
+
+    prpbuf(&rsp_buf,lattItm);
     /** Determine response avenue and return a reply object */
     lattItm = dtrm_rsp(sts_frm,inf_frm,lattItm);  // Reply object returned from 'determine response'
    // bzero(*(*resp_buf),ARRSIZE-1);                 // Zero response buffer
-
 
     unsigned int rspsz;
     unsigned int rsparrsz;
@@ -1127,11 +1141,11 @@ unsigned int respond(Resp_Tbl *rsp_tbl,
 
     // Call function at index 'rsp' (the reply object value) from function array.
     rspsz = (*rsp_tbl->rsp_funcarr)[lattItm.rpl](sts_frm, inf_frm, dchns, hltc, &rsp_buf);
-
-
     if (!rspsz){
         return 1;
     }
+    rspsz += endbuf(&rsp_buf,lattItm,rspsz);
+
 
     // Get array len from response sequence
     rsparrsz = rspsz - (3*ltyp_s)-(UCSiZ);
