@@ -344,13 +344,12 @@ StatFrame * spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsign
         }
 
         /** DETERMINE RESPONSE */
-        *infofrm = respond(*rsp_tbl,
+        if (respond(*rsp_tbl,
                      stsfrm,
                      infofrm,
                      dirchains,
                      hashlattice,
-                     *rsp_buf); //TODO: replace init w/ uniArr type.
-       if (infofrm==NULL){
+                     *rsp_buf)){
             setErr(stsfrm,MISSPK,0);
             serrOut(stsfrm,"Failed to stage a response");
             goto Errorjump; // TODO: replace w/ better option.
@@ -359,7 +358,6 @@ StatFrame * spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsign
         setSts(stsfrm,RESPN,0);
 //        printf("Response: %s\n", *respbuffer+16);
         epoll_ctl(efd, EPOLL_CTL_MOD, data_socket, epOUTevent);
-
 
 
         /**
@@ -383,7 +381,6 @@ StatFrame * spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsign
                 stsErno(MISSPK, stsfrm, errno, (*infofrm)->rsp_size, "Response write to socket failed", "write", 0);
             }
         }
-
 
         /**
          * ACTION:
@@ -413,6 +410,7 @@ StatFrame * spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsign
         //cmd_seq = destroy_cmdseq(stsfrm,&cmd_seq);
 //        cmd_seq = reset_cmdseq(&cmd_seq,2);
 // VER. F
+
         close(data_socket);
 
 
@@ -585,7 +583,6 @@ void summon_lattice() {
                              "\nCode: %d"
                              "\nAct id: %d"
                              "\nModr: %c\n", status_frm->status, status_frm->act_id, status_frm->modr);
-             stsErno(BADCNF, &statusFrame, errno, 333, "Failed starting server", "spin_up", 0);
          }
 
          /**
