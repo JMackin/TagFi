@@ -405,8 +405,6 @@ StatFrame * spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsign
     close(connection_socket);
     free(epINevent);
     free(epOUTevent);
-//    cmd_seq = destroy_cmdseq(stsfrm, &cmd_seq);
-    //destroy_cmdseq(stsfrm,&prev_seq);
 
     unlink(SOCKET_NAME);
     return *stsfrm;

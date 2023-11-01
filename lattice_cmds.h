@@ -185,9 +185,6 @@ Cmd_Seq* init_cmdseq(Cmd_Seq** cmdSeq, uniArr ** arr, unsigned int type);
 
 Cmd_Seq *reset_cmdseq(Cmd_Seq **cmdSeq, unsigned int type);
 
-//VER F.
-//unsigned int init_seqtbl(Seq_Tbl* seq_tbl, unsigned long mx_sz);
-
 typedef struct Cmd_Seq {
     unsigned long seq_id;
     unsigned int lead;
