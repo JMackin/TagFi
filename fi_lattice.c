@@ -25,9 +25,7 @@
 #define ARRSZ 256
 #define FLGSCNT 16
 
-//void load_dir_targets(){
-//
-//}
+
 unsigned long UISZ = sizeof(unsigned int);
 unsigned long UCSZ = sizeof(unsigned char);
 int erno;
@@ -303,14 +301,6 @@ StatFrame * spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsign
          * */
 
 
-        /**|  |||  |||  |||  |||  |||  |||  |||  |||
-         * <br>
-         * VERSION SPLIT POINT:
-         *<br>
-         * ALTERNATE REQUEST FLOW
-         * <br>
-         *|  |||  |||  |||  |||  |||  |||  |||  |||*/
-
         /**
          * PARSE REQUEST
          * */
@@ -330,27 +320,23 @@ StatFrame * spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsign
         if ((*stsfrm)->err_code) {
             setErr(stsfrm,MALREQ,0);
             serrOut(stsfrm,"Failed to process request.");
-//            fprintf(stderr, "lead: %d\nreq_buf: %s", (*cmd_seq).lead, *req_buf);
             goto Errorjump; // TODO: replace w/ better option.
         }
 
         /** DETERMINE RESPONSE */
-        *infofrm = respond(*rsp_tbl,
+        if (respond(*rsp_tbl,
                      stsfrm,
                      infofrm,
                      dirchains,
                      hashlattice,
-                     *rsp_buf); //TODO: replace init w/ uniArr type.
-       if (infofrm==NULL){
+                     *rsp_buf)){
             setErr(stsfrm,MISSPK,0);
             serrOut(stsfrm,"Failed to stage a response");
             goto Errorjump; // TODO: replace w/ better option.
         }
 
         setSts(stsfrm,RESPN,0);
-//        printf("Response: %s\n", *respbuffer+16);
         epoll_ctl(efd, EPOLL_CTL_MOD, data_socket, epOUTevent);
-
 
 
         /**
@@ -375,16 +361,10 @@ StatFrame * spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsign
             }
         }
 
-
         /**
          * ACTION:
          *  save received sequence
          * */
-//        if ((*stsfrm)->act_id == SVSQ) {
-//            save_seq(cmd_seq, *cnfdir_fd);
-//        }
-// VER F
-
 
         i++;
 
@@ -399,7 +379,6 @@ StatFrame * spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsign
         bzero(*req_buf, buf_len - 1);
         bzero(*flgsbuf,FLGSCNT);
         bzero(*rsp_buf, arrbuf_len-1);
-        bzero(*tmparrbuf,arrbuf_len-1);
 
         close(data_socket);
 
@@ -570,7 +549,6 @@ void summon_lattice() {
                              "\nCode: %d"
                              "\nAct id: %d"
                              "\nModr: %c\n", status_frm->status, status_frm->act_id, status_frm->modr);
-             stsErno(BADCNF, &statusFrame, errno, 333, "Failed starting server", "spin_up", 0);
          }
 
          /**

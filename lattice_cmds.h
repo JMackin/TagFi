@@ -8,9 +8,6 @@
 #define INFARRLEN 19
 #include "chkmk_didmap.h"
 
-//    SeqMap* seq_map;
-
-
 /**
  *<h4><code>
  * RequestCMDS
@@ -444,7 +441,7 @@ typedef enum LattAct {
  * <li> LFLG = 32 -  Request/response flag
  * <li> SFRM = 64 -  Status frame
  * <li> IFRM = 128 -  Info frame
- * <li> BUFF = 256 -  Buffers
+ * <li> DCHN = 256 - Dir Chains
  * <li> SEQT = 512 -  Stored seq table
  * <li> CMSQ = 1024 -   Cmd sequence (response or request)
  * <li> ICAR = 2048 - Int or Char array
@@ -452,10 +449,10 @@ typedef enum LattAct {
  * <li> FIOB = 8192 - Actual file object
  * <li> IDID = 16384 - ID for an object
  * <li> NMNM = 32768 - Name for an object
- * <li> FRLD = 65536 - Cmd frame lead
- * <li> FIDE = 131072 - File desc or socket
+ * <li> FIDE = 65536 - File desc or socket
  * <li> HSKY = 262144 - Hash key
- * <li> DCHN = 524288 - Dir Chains
+ * <li> FRLD = 524288 - Cmd frame lead
+ * <li> BUFF = 131072 -  Buffers
  */
 
 typedef enum LattObj{
@@ -631,8 +628,6 @@ typedef unsigned int** RspMap;
 
 typedef unsigned int (*RspFunc[RSPARRLEN])(StatFrame**, InfoFrame**, DChains*, Lattice*, unsigned char**);
 
-typedef unsigned int (*InfoFunc[INFARRLEN])(unsigned char **buf);
-
 
 typedef struct Resp_Tbl{
     unsigned int fcnt;
@@ -650,18 +645,9 @@ unsigned int build_lead(const unsigned int* cmd_flags, unsigned int flg_cnt);
 
 unsigned long save_seq(Cmd_Seq *cmd_seq, int cnfdir_fd);
 
-//VER F
-//unsigned long save_seq(Cmd_Seq *cmd_seq, int cnfdir_fd);
-
-//VER F
-//unsigned long save_seq(Cmd_Seq* cmd_seq, Seq_Tbl** seq_tbl, int cnfdir_fd);
 
 
 void destroy_cmdstructures(unsigned char *buffer, unsigned char *respbuffer, unsigned char *tmparrbuf, Resp_Tbl *rsp_tbl);
-
-//VER F
-//void destroy_cmdstructures(unsigned char *buffer, unsigned char *respbuffer, unsigned char *carr, unsigned int *iarr,
-//                           Resp_Tbl *rsp_tbl, Seq_Tbl *sqTbl);
 
 unsigned int serial_seq(unsigned char* seq_out,
                         Cmd_Seq** cmd_seq);
@@ -677,28 +663,8 @@ int unmask_cmds(unsigned int** cmds,
 Cmd_Seq* destroy_cmdseq(StatFrame** sts_frm, Cmd_Seq** cmdSeq);
 Cmd_Seq* copy_cmdseq(unsigned int flip, Cmd_Seq** cmdSeq, Cmd_Seq** copy, StatFrame** sts_frm);
 
-RspFunc* rsp_act(
-              RspMap rspMap,
-              StatFrame** sts_frm,
-              InfoFrame** inf_frm,
-              RspFunc* (funarr));
 
-
-void
-init_rsptbl(int cnfg_fd, Resp_Tbl **rsp_tbl, StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc);
-
-LattReply dtrm_rsp(StatFrame** sts_frm,
-                   InfoFrame** inf_frm);
-
-
-InfoFrame* respond(Resp_Tbl *rsp_tbl,
-                   StatFrame **sts_frm,
-                   InfoFrame **inf_frm,
-                   DChains *dchns,
-                   Lattice *hltc,
-                   unsigned char *resp_buf);
-
-typedef union LattTyps{
+typedef union LattType{
     LattErr err;
     LattReply rpl;
     LattAct act;
@@ -708,8 +674,32 @@ typedef union LattTyps{
     int ni;
     unsigned int nui;
     unsigned char nuc;
-}LattTyps;
+}LattType;
 
+typedef unsigned int (*InfoFunc[INFARRLEN])(unsigned char **buf, LattType lattItm);
+
+
+RspFunc* rsp_act(
+        RspMap rspMap,
+        StatFrame** sts_frm,
+        InfoFrame** inf_frm,
+        RspFunc* (funarr));
+
+
+void
+init_rsptbl(int cnfg_fd, Resp_Tbl **rsp_tbl, StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc);
+
+LattType dtrm_rsp(StatFrame** sts_frm,
+                  InfoFrame** inf_frm,
+                  LattType);
+
+
+unsigned int respond(Resp_Tbl *rsp_tbl,
+                   StatFrame **sts_frm,
+                   InfoFrame **inf_frm,
+                   DChains *dchns,
+                   Lattice *hltc,
+                   unsigned char *resp_buf);
 
 
 /**<br> >Response string element positions:
