@@ -17,6 +17,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <sys/time.h>
+#include <time.h>
 
 
 #define DNKEYPATH "/home/ujlm/Code/Clang/C/TagFI/keys"
@@ -183,7 +184,7 @@ Dir_Node* add_dnode(unsigned long long did, unsigned char* dname, unsigned short
 
     Dir_Node *dnode = (Dir_Node *) (malloc(sizeof(Dir_Node)));
     Dir_Node *base = (mord) ? dirchains->dir_head->right : dirchains->dir_head->left;
-    dnode->diname = (unsigned char *) malloc(nlen * sizeof(unsigned char));
+    dnode->diname = (unsigned char *) calloc(1+nlen,sizeof(unsigned char));
     dnode->diname = memcpy(dnode->diname, dname, nlen * sizeof(unsigned char));
     unsigned long cnt = ((base->did) & DGCNTMASK) >> DGCNTSHFT;
 
@@ -221,7 +222,9 @@ void yield_dnhsh(Dir_Node** dirnode, unsigned char** dn_hash) {
     *dn_hash = (unsigned char*) sodium_malloc(crypto_generichash_BYTES);
     unsigned char* dkey = (unsigned char*) sodium_malloc(crypto_shorthash_KEYBYTES);
 
+    //TODO: OPTIMIZE THIS
     recv_little_hash_key(dnkeyfd,((*dirnode)->diname),expo_dirnmlen((*dirnode)->did),dkey);
+
     real_hash_keyfully((&(*dirnode)->diname), dn_hash, expo_dirnmlen((*dirnode)->did), (const unsigned char **) &dkey, crypto_shorthash_KEYBYTES);
 
     sodium_free(dkey);
@@ -229,12 +232,16 @@ void yield_dnhsh(Dir_Node** dirnode, unsigned char** dn_hash) {
 }
 
 char* yield_dnhstr(Dir_Node** dirnode){
-    char* str_buf = (char*) calloc(crypto_generichash_BYTES*2,sizeof(unsigned char));
-    unsigned char *hsh_buf = (unsigned char*) sodium_allocarray(crypto_generichash_BYTES*2,sizeof(unsigned char));
+    char* str_buf = (char*) sodium_malloc(crypto_generichash_BYTES*2+1);
+
+    unsigned char *hsh_buf;
     yield_dnhsh(dirnode, &hsh_buf);
+
     dn_hdid_str(&hsh_buf,&str_buf);
     sodium_free(hsh_buf);
+
     return str_buf;
+
 }
 
 

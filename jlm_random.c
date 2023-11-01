@@ -93,7 +93,7 @@ void real_hash_keyfully(unsigned char** in, unsigned char** out, size_t inlen, c
 }
 
 void dn_hdid_str(unsigned char** dn_hash, char** strout) {
-    sodium_bin2hex(*strout, (crypto_generichash_BYTES*2+1), *dn_hash, crypto_generichash_BYTES);
+       sodium_bin2hex(*strout, (crypto_generichash_BYTES*2+1), *dn_hash, crypto_generichash_BYTES);
 }
 
 

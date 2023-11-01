@@ -83,7 +83,6 @@ void destroy_metastructures(InfoFrame *infoFrame, uniArr *cmdseqarr, LttcFlags r
     free(infoFrame);
     free(cmdseqarr);
     free(reqflg_arr);
-    free(tmparrbuf);
 }
 
 size_t read_conf(unsigned char** dnconf_addr, int cnfdir_fd){
@@ -279,7 +278,7 @@ StatFrame * spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsign
         if (epoll_wait(efd,epINevent,3,500) > 0){
             if ((epINevent->events&EPOLLIN) != EPOLLIN) {
                 stsErno(EPOLLE, stsfrm, errno, epINevent->events, "Issue detected by EPOLLE", "epoll_wait - in", 0);
-                goto Errorjump;
+                continue;
             }
         }
         clock_t clkc = clock();
@@ -305,10 +304,6 @@ StatFrame * spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsign
          * PARSE REQUEST
          * */
 
-        /**
-         * re
-         *
-         */
         *infofrm = parse_req(*req_buf,   // <<< Raw Request
                              infofrm,
                              stsfrm,
@@ -316,13 +311,14 @@ StatFrame * spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsign
                              *tmparrbuf,
                              req_arr_buf); // >>> Extracted array
 
-        clock_t clke = clock();
         if ((*stsfrm)->err_code) {
             setErr(stsfrm,MALREQ,0);
             serrOut(stsfrm,"Failed to process request.");
-            goto Errorjump; // TODO: replace w/ better option.
+            continue; // TODO: replace w/ better option.
         }
 
+
+        clock_t clke = clock();
         /** DETERMINE RESPONSE */
         if (respond(*rsp_tbl,
                      stsfrm,
@@ -332,56 +328,55 @@ StatFrame * spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsign
                      *rsp_buf)){
             setErr(stsfrm,MISSPK,0);
             serrOut(stsfrm,"Failed to stage a response");
-            goto Errorjump; // TODO: replace w/ better option.
+            // TODO: replace w/ better option.
         }
+        //TODO: Optimize response processing time
+        clock_t clkf = clock();
 
-        setSts(stsfrm,RESPN,0);
-        epoll_ctl(efd, EPOLL_CTL_MOD, data_socket, epOUTevent);
 
-
-        /**
-         * ACTION:
-         *  shutdown
-         * */
         if ((*stsfrm)->act_id == GBYE) {
+            /**
+             * ACTION:
+             *  shutdown
+             * */
             setSts(stsfrm, SHTDN, 0);
             exit_flag = 1;
-        }else {
+        }else{
 
-            /** WRITEOUT REPLY */
-            if (epoll_wait(efd, epOUTevent, 3, 7000) > 0) {
-                if ((epINevent->events & EPOLLOUT) != EPOLLOUT) {
-                    stsErno(EPOLLE, stsfrm, errno, epINevent->events, "Issue detected by EPOLLE", "epoll_wait - out",
-                            0);
-                    goto Errorjump;
+            if (!(*stsfrm)->err_code)
+            {
+                setSts(stsfrm, RESPN, 0);
+                epoll_ctl(efd, EPOLL_CTL_MOD, data_socket, epOUTevent);
+
+                /** WRITEOUT REPLY */
+                if (epoll_wait(efd, epOUTevent, 3, 7000) > 0) {
+                    if ((epINevent->events & EPOLLOUT) != EPOLLOUT) {
+                        stsErno(EPOLLE, stsfrm, errno, epINevent->events, "Issue detected by EPOLLE",
+                                "epoll_wait - out",
+                                0);
+                    }
+                }
+                if (write(data_socket, rsp_buf, (*infofrm)->arr_len) == -1) {
+                    stsErno(MISSPK, stsfrm, errno, (*infofrm)->rsp_size, "Response write to socket failed", "write", 0);
                 }
             }
-            if (write(data_socket, rsp_buf, (*infofrm)->arr_len) == -1) {
-                stsErno(MISSPK, stsfrm, errno, (*infofrm)->rsp_size, "Response write to socket failed", "write", 0);
-            }
         }
+        clock_t clkg = clock();
 
         /**
          * ACTION:
          *  save received sequence
          * */
-
         i++;
 
         /**
          * CLEAR CONNECTION
          * */
 
-        /** Save cmd seq **/
-
-        Errorjump:// TODO: replace w/ better option.
-        
         bzero(*req_buf, buf_len - 1);
         bzero(*flgsbuf,FLGSCNT);
         bzero(*rsp_buf, arrbuf_len-1);
-
         close(data_socket);
-
 
         /**
          * CLOSE ON SHTDN CMD
@@ -390,12 +385,14 @@ StatFrame * spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsign
             exit_flag = 1;
             serrOut(stsfrm, NULL);
         }
-        clock_t clkf = clock();
+        clock_t clkh = clock();
+
         printf("\n-----------------\ntimes:\n accept%ld\n",(clkb-clka));
-        printf("epoll:%ld\n",(clkc-clkb));
+        printf("epoll:%ld\n",clkc-clkb);
         printf("read:%ld\n",(clkd-clkc));
         printf("parse:%ld\n",(clke-clkd));
-        printf("close:%ld\n-----------------\n",(clkf-clke));
+        printf("respond:%ld\n",(clkf-clke));
+        printf("clearout:%ld\n",(clkg-clkf));
 
 
 

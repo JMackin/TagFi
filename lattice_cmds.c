@@ -9,6 +9,7 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <time.h>
 #include "jlm_random.h"
 #include "sodium.h"
 #include "chkmk_didmap.h"
@@ -457,8 +458,9 @@ void setSts(StatFrame **sts_frm, LattStts ltcst, unsigned int modr) {
     }
 }
 
+//TODO: OPTIMIZE THIS
 long stsErno(LattErr ltcerr, StatFrame **sts_frm, int erno, long misc, char *msg, char *function, char *miscdesc) {
-
+    clock_t ca = clock();
     fprintf(stderr,"\n\t---------- Error ----------\n\t");
     (*sts_frm)->err_code = ltcerr;
     perror(" ");
@@ -483,11 +485,18 @@ long stsErno(LattErr ltcerr, StatFrame **sts_frm, int erno, long misc, char *msg
         fprintf(stderr, "\n\t\t------------------\n");
         fprintf(stderr,"\t NOTE:  \n\t\t\t%s\n", miscdesc);
     }
+    clock_t cb = clock();
+    fprintf(stderr,"\n\t\t <<ErrorTime: %ld>>",cb-ca);
+
     fprintf(stderr, "\n\t---------------------------\n"
                     "\t| | | | | | | | | | | | | |\n");
 
     (*sts_frm)->status = STERR;
     (*sts_frm)->modr = erno;
+
+
+
+
 
     if ((*sts_frm)->act_id == GBYE || (misc == 333)) {
         (*sts_frm)->status = SHTDN;
@@ -799,6 +808,8 @@ unsigned int rsp_nfo(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, L
 
     funarr = gen_infofunc_arr();
 
+
+
     // Extract the desired object ID from the first byte of the request array,
     // and the array content, which can be an ID, etc. depending on the subject.
     //
@@ -821,8 +832,11 @@ unsigned int rsp_nfo(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, L
         if (i > 18){
             respsz = 1;
         }else {
+
             respsz = ((*funarr)[i](buf, lattItm, lattStruct));
-            free(dnhshstr);
+
+            sodium_free(dnhshstr);
+            free(funarr);
         }
 
         // return of 0 means the object is there but failed to be queried.
@@ -991,7 +1005,6 @@ RspFunc *rsp_act(
  * */
 void
 init_rsptbl(int cnfg_fd, Resp_Tbl **rsp_tbl, StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc) {
-
     unsigned int *rsp_map;
     unsigned int fcnt = RSPARRLEN;
     RspFunc *rsp_func;
@@ -1002,6 +1015,7 @@ init_rsptbl(int cnfg_fd, Resp_Tbl **rsp_tbl, StatFrame **sts_frm, InfoFrame **in
     (*rsp_tbl)->rsp_funcarr = rsp_act(&rsp_map, sts_frm, inf_frm, rsp_func);
     (*rsp_tbl)->rsp_map = (RspMap *) &rsp_map;
     (*rsp_tbl)->fcnt = fcnt;
+
 }
 
 /**
@@ -1090,7 +1104,6 @@ unsigned int respond(Resp_Tbl *rsp_tbl,
                    unsigned char *rsp_buf) {
 
     //TODO: Reset infoframe, implement and include.
-
     LattType lattItm;
     lattItm.nui = 0;
     /** Determine response avenue and return a reply object */
@@ -1114,6 +1127,7 @@ unsigned int respond(Resp_Tbl *rsp_tbl,
 
     // Call function at index 'rsp' (the reply object value) from function array.
     rspsz = (*rsp_tbl->rsp_funcarr)[lattItm.rpl](sts_frm, inf_frm, dchns, hltc, &rsp_buf);
+
 
     if (!rspsz){
         return 1;
