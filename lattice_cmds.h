@@ -216,7 +216,6 @@ typedef struct InfoFrame {
     unsigned char *arr;
 } InfoFrame;
 InfoFrame *init_info_frm(InfoFrame **info_frm);
-InfoFrame *init_info_frm(InfoFrame **info_frm, uniArr **seqArr);
 
 
 // VER F
@@ -474,7 +473,7 @@ typedef enum LattAct {
  * <li> LFLG = 32 -  Request/response flag
  * <li> SFRM = 64 -  Status frame
  * <li> IFRM = 128 -  Info frame
- * <li> BUFF = 256 -  Buffers
+ * <li> DCHN = 256 - Dir Chains
  * <li> SEQT = 512 -  Stored seq table
  * <li> CMSQ = 1024 -   Cmd sequence (response or request)
  * <li> ICAR = 2048 - Int or Char array
@@ -482,10 +481,10 @@ typedef enum LattAct {
  * <li> FIOB = 8192 - Actual file object
  * <li> IDID = 16384 - ID for an object
  * <li> NMNM = 32768 - Name for an object
- * <li> FRLD = 65536 - Cmd frame lead
- * <li> FIDE = 131072 - File desc or socket
+ * <li> FIDE = 65536 - File desc or socket
  * <li> HSKY = 262144 - Hash key
- * <li> DCHN = 524288 - Dir Chains
+ * <li> FRLD = 524288 - Cmd frame lead
+ * <li> BUFF = 131072 -  Buffers
  */
 
 typedef enum LattObj{
@@ -669,8 +668,6 @@ typedef unsigned int** RspMap;
 
 typedef unsigned int (*RspFunc[RSPARRLEN])(StatFrame**, InfoFrame**, DChains*, Lattice*, unsigned char**);
 
-typedef unsigned int (*InfoFunc[INFARRLEN])(unsigned char **buf);
-
 
 typedef struct Resp_Tbl{
     unsigned int fcnt;
@@ -715,11 +712,28 @@ int unmask_cmds(unsigned int** cmds,
 Cmd_Seq* destroy_cmdseq(StatFrame** sts_frm, Cmd_Seq** cmdSeq);
 Cmd_Seq* copy_cmdseq(unsigned int flip, Cmd_Seq** cmdSeq, Cmd_Seq** copy, StatFrame** sts_frm);
 
+
+typedef union LattType{
+    LattErr err;
+    LattReply rpl;
+    LattAct act;
+    LattObj obj;
+    LattStts sts;
+    LttFlg flg;
+    int ni;
+    unsigned int nui;
+    unsigned char nuc;
+}LattType;
+
+typedef unsigned int (*InfoFunc[INFARRLEN])(unsigned char **buf, LattType lattItm);
+
+
 RspFunc* rsp_act(
-              RspMap rspMap,
-              StatFrame** sts_frm,
-              InfoFrame** inf_frm,
-              RspFunc* (funarr));
+        RspMap rspMap,
+        StatFrame** sts_frm,
+        InfoFrame** inf_frm,
+        RspFunc* (funarr));
+
 // VER. A
 //RspFunc* rsp_act(int cnfg_fd,
 //              RspMap rspMap,
@@ -734,11 +748,12 @@ RspFunc* rsp_act(
 void
 init_rsptbl(int cnfg_fd, Resp_Tbl **rsp_tbl, StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc);
 
-LattReply dtrm_rsp(StatFrame** sts_frm,
-                   InfoFrame** inf_frm);
+LattType dtrm_rsp(StatFrame** sts_frm,
+                  InfoFrame** inf_frm,
+                  LattType);
 
 
-InfoFrame* respond(Resp_Tbl *rsp_tbl,
+unsigned int respond(Resp_Tbl *rsp_tbl,
                    StatFrame **sts_frm,
                    InfoFrame **inf_frm,
                    DChains *dchns,
