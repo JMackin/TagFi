@@ -60,7 +60,6 @@ void destroy_cmdstructures(unsigned char *buffer, unsigned char *respbuffer, uns
     free(buffer);
     free(respbuffer);
     free(carr);
-    free(iarr);
     //VER F
 //    for (int i = 0; i < seqTbl->cnt; i++) {
 //        free((*(seqTbl)->seq_map->cmd_seq + i)->arr);
@@ -554,8 +553,9 @@ InfoFrame *parse_req(const unsigned char *fullreqbuf, //<-- same name in spin up
         memcpy(req_arr_buf, fullreqbuf + (UISiZ * 2), (UCSiZ * (*infofrm)->arr_len));
         (*infofrm)->arr = *req_arr_buf;
 
-        memcpy(carr_buf, fullreqbuf + (UISiZ * 2), (UCSiZ * (*infofrm)->arr_len));
-        (*infofrm)->arr->carr = *carr_buf;
+//VER G
+//        memcpy(carr_buf, fullreqbuf + (UISiZ * 2), (UCSiZ * (*infofrm)->arr_len));
+//        (*infofrm)->arr->carr = *carr_buf;
 //VER B
 //        (*cmdseq)->arr->carr = carr_buf;
     }

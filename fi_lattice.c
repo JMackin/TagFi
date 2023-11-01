@@ -173,7 +173,9 @@ StatFrame * spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsign
 //    cmd_seq = init_cmdseq(&cmd_seq,cmdseqarr,2);           // Request and Response Frame
     //Cmd_Seq *prev_seq = NULL;          // Keep last request frame.
 
-    *infofrm = init_info_frm(infofrm,cmdseqarr); // Request/Response Info Frame
+//    VER G
+//    *infofrm = init_info_frm(infofrm,cmdseqarr); // Request/Response Info Frame
+    *infofrm = init_info_frm(infofrm); // Request/Response Info Frame
 
     int exit_flag = 0;
     int i = 0;
@@ -405,7 +407,8 @@ StatFrame * spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsign
         bzero(*req_buf, buf_len - 1);
         bzero(*flgsbuf,FLGSCNT);
         bzero(*rsp_buf, arrbuf_len-1);
-        bzero(*tmparrbuf,arrbuf_len-1);
+//VER G
+//        bzero(*tmparrbuf,arrbuf_len-1);
         //prev_seq = copy_cmdseq(0,&cmd_seq,&prev_seq,stsfrm);
         //cmd_seq = destroy_cmdseq(stsfrm,&cmd_seq);
 //        cmd_seq = reset_cmdseq(&cmd_seq,2);
