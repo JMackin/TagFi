@@ -109,6 +109,7 @@ int make_bridgeanchor(Dir_Node** dirnode,
 unsigned int gotonode(unsigned long long did, Dir_Chains* dchns);
 
 void yield_dnhsh(Dir_Node** dirnode, unsigned char** dn_hash);
+char *yield_dnhstr(Dir_Node** dirnode);
 
 /**
  *

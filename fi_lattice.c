@@ -85,7 +85,6 @@ void destroy_metastructures(InfoFrame *infoFrame, uniArr *cmdseqarr, LttcFlags r
     free(infoFrame);
     free(cmdseqarr);
     free(reqflg_arr);
-    free(tmparrbuf);
 }
 
 size_t read_conf(unsigned char** dnconf_addr, int cnfdir_fd){
@@ -240,12 +239,8 @@ StatFrame * spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsign
         return *stsfrm;
     }
      struct epoll_event *epINevent;
-     struct epoll_event *epOUTevent;
      epINevent = (struct epoll_event*) malloc(sizeof(struct epoll_event)*3);
-     epOUTevent = (struct epoll_event*) malloc(sizeof(struct epoll_event)*3);
-     epINevent->events = EPOLLIN;
-     epOUTevent->events = EPOLLOUT;
-
+     epINevent->events = EPOLLIN | EPOLLOUT;
 
     /**
     * LISTEN ON A SOCKET
@@ -270,12 +265,13 @@ StatFrame * spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsign
          * ATTACH EPOLL
          * */
         setSts(stsfrm, LISTN, 0);
-        epoll_ctl(efd, EPOLL_CTL_ADD, data_socket, epINevent);
         clock_t clka = clock();
         /**
          * RECIEVE
          * */
         data_socket = accept(connection_socket, NULL, NULL);    // ACCEPT 'A'
+        epoll_ctl(efd, EPOLL_CTL_ADD, data_socket, epINevent);
+
         if (data_socket == -1) {
             perror("accept: ");
             setErr(stsfrm, BADCON, 'B');// 65 = 'A' -> accept step
@@ -290,13 +286,11 @@ StatFrame * spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsign
          * EPOLL MONITOR DATA CONN
          * */
         if (epoll_wait(efd,epINevent,3,500) > 0){
-            if ((epINevent->events&EPOLLIN) != EPOLLIN) {
+            if ((epINevent->events&EPOLLERR) == EPOLLERR) {
                 stsErno(EPOLLE, stsfrm, errno, epINevent->events, "Issue detected by EPOLLE", "epoll_wait - in", 0);
-                goto Errorjump;
             }
         }
         clock_t clkc = clock();
-        epoll_ctl(efd, EPOLL_CTL_MOD, data_socket, epOUTevent);
 
         /**
          * READ REQUEST INTO BUFFER
@@ -326,10 +320,6 @@ StatFrame * spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsign
          * PARSE REQUEST
          * */
 
-        /**
-         * re
-         *
-         */
         *infofrm = parse_req(*req_buf,   // <<< Raw Request
                              infofrm,
                              stsfrm,
@@ -337,14 +327,14 @@ StatFrame * spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsign
                              *tmparrbuf,
                              req_arr_buf); // >>> Extracted array
 
-        clock_t clke = clock();
         if ((*stsfrm)->err_code) {
             setErr(stsfrm,MALREQ,0);
             serrOut(stsfrm,"Failed to process request.");
-//            fprintf(stderr, "lead: %d\nreq_buf: %s", (*cmd_seq).lead, *req_buf);
-            goto Errorjump; // TODO: replace w/ better option.
+             // TODO: replace w/ better option.
         }
 
+
+        clock_t clke = clock();
         /** DETERMINE RESPONSE */
         if (respond(*rsp_tbl,
                      stsfrm,
@@ -354,35 +344,40 @@ StatFrame * spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsign
                      *rsp_buf)){
             setErr(stsfrm,MISSPK,0);
             serrOut(stsfrm,"Failed to stage a response");
-            goto Errorjump; // TODO: replace w/ better option.
+            // TODO: replace w/ better option.
         }
-
-        setSts(stsfrm,RESPN,0);
-//        printf("Response: %s\n", *respbuffer+16);
-        epoll_ctl(efd, EPOLL_CTL_MOD, data_socket, epOUTevent);
+        //TODO: Optimize response processing time
+        clock_t clkf = clock();
 
 
-        /**
-         * ACTION:
-         *  shutdown
-         * */
         if ((*stsfrm)->act_id == GBYE) {
+            /**
+             * ACTION:
+             *  shutdown
+             * */
             setSts(stsfrm, SHTDN, 0);
             exit_flag = 1;
-        }else {
+        }else{
+                setSts(stsfrm, RESPN, 0);
 
-            /** WRITEOUT REPLY */
-            if (epoll_wait(efd, epOUTevent, 3, 7000) > 0) {
-                if ((epINevent->events & EPOLLOUT) != EPOLLOUT) {
-                    stsErno(EPOLLE, stsfrm, errno, epINevent->events, "Issue detected by EPOLLE", "epoll_wait - out",
-                            0);
-                    goto Errorjump;
+                /** WRITEOUT REPLY */
+                if (epoll_wait(efd,epINevent,2,1000)){
+                    if ((epINevent->events&EPOLLERR) == EPOLLERR) {
+                        stsErno(EPOLLE, stsfrm, errno, epINevent->events, "Issue detected by EPOLLE", "epoll_wait - in", 0);
+                        printf("\n>>>%d\n",epINevent->events);
+                   }
+                    ret = write(data_socket, *rsp_buf, buf_len);
+                    printf("\n>>>%d\n",epINevent->events);
+
                 }
-            }
-            if (write(data_socket, rsp_buf, (*infofrm)->arr_len) == -1) {
-                stsErno(MISSPK, stsfrm, errno, (*infofrm)->rsp_size, "Response write to socket failed", "write", 0);
-            }
+
+
+                if (ret == -1){
+                    printf("\n>>>%d\n",epINevent->events);
+                }
+
         }
+        clock_t clkg = clock();
 
         /**
          * ACTION:
@@ -400,10 +395,6 @@ StatFrame * spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsign
          * CLEAR CONNECTION
          * */
 
-        /** Save cmd seq **/
-
-        Errorjump:// TODO: replace w/ better option.
-        
         bzero(*req_buf, buf_len - 1);
         bzero(*flgsbuf,FLGSCNT);
         bzero(*rsp_buf, arrbuf_len-1);
@@ -416,7 +407,6 @@ StatFrame * spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsign
 
         close(data_socket);
 
-
         /**
          * CLOSE ON SHTDN CMD
          * */
@@ -424,21 +414,22 @@ StatFrame * spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsign
             exit_flag = 1;
             serrOut(stsfrm, NULL);
         }
-        clock_t clkf = clock();
+        clock_t clkh = clock();
+
         printf("\n-----------------\ntimes:\n accept%ld\n",(clkb-clka));
-        printf("epoll:%ld\n",(clkc-clkb));
+        printf("epoll:%ld\n",clkc-clkb);
         printf("read:%ld\n",(clkd-clkc));
         printf("parse:%ld\n",(clke-clkd));
-        printf("close:%ld\n-----------------\n",(clkf-clke));
+        printf("respond:%ld\n",(clkf-clke));
+        printf("clearout:%ld\n",(clkg-clkf));
 
 
 
     }// END WHILE !EXITFLAG
 
-    epoll_ctl(efd, EPOLL_CTL_DEL, data_socket, epOUTevent);
+    epoll_ctl(efd, EPOLL_CTL_DEL, data_socket, epINevent);
     close(connection_socket);
     free(epINevent);
-    free(epOUTevent);
 //    cmd_seq = destroy_cmdseq(stsfrm, &cmd_seq);
     //destroy_cmdseq(stsfrm,&prev_seq);
 
@@ -571,14 +562,29 @@ void summon_lattice() {
           *  INIT FUNC ARRAY
           * */
          Resp_Tbl* rsp_tbl;
-        init_rsptbl(cnfdir_fd, &rsp_tbl, &status_frm, &info_frm, &dirchains, &hashlattice);
+        init_rsptbl(cnfdir_fd,
+                    &rsp_tbl,
+                    &status_frm,
+                    &info_frm,
+                    &dirchains,
+                    &hashlattice);
 
 
            /* * * * * * * * * * *
           *   EXECUTE SERVER   *
          ** * * * * * * * * **/
-         status_frm = spin_up(&rsp_buffer, &req_arr_buf, &req_buf, &status_frm, &info_frm, &rsp_tbl,
-                              &hashlattice, &dirchains, &reqflg_arr, &cnfdir_fd, &tmparrbuf, &cmdseqarr);
+         status_frm = spin_up(&rsp_buffer,
+                              &req_arr_buf,
+                              &req_buf,
+                              &status_frm,
+                              &info_frm,
+                              &rsp_tbl,
+                              &hashlattice,
+                              &dirchains,
+                              &reqflg_arr,
+                              &cnfdir_fd,
+                              &tmparrbuf,
+                              &cmdseqarr);
 
 
          if (status_frm->err_code) {

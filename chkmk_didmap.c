@@ -17,6 +17,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <sys/time.h>
+#include <time.h>
 
 
 #define DNKEYPATH "/home/ujlm/Code/Clang/C/TagFI/keys"
@@ -183,7 +184,7 @@ Dir_Node* add_dnode(unsigned long long did, unsigned char* dname, unsigned short
 
     Dir_Node *dnode = (Dir_Node *) (malloc(sizeof(Dir_Node)));
     Dir_Node *base = (mord) ? dirchains->dir_head->right : dirchains->dir_head->left;
-    dnode->diname = (unsigned char *) malloc(nlen * sizeof(unsigned char));
+    dnode->diname = (unsigned char *) calloc(1+nlen,sizeof(unsigned char));
     dnode->diname = memcpy(dnode->diname, dname, nlen * sizeof(unsigned char));
     unsigned long cnt = ((base->did) & DGCNTMASK) >> DGCNTSHFT;
 
@@ -221,11 +222,26 @@ void yield_dnhsh(Dir_Node** dirnode, unsigned char** dn_hash) {
     *dn_hash = (unsigned char*) sodium_malloc(crypto_generichash_BYTES);
     unsigned char* dkey = (unsigned char*) sodium_malloc(crypto_shorthash_KEYBYTES);
 
+    //TODO: OPTIMIZE THIS
     recv_little_hash_key(dnkeyfd,((*dirnode)->diname),expo_dirnmlen((*dirnode)->did),dkey);
+
     real_hash_keyfully((&(*dirnode)->diname), dn_hash, expo_dirnmlen((*dirnode)->did), (const unsigned char **) &dkey, crypto_shorthash_KEYBYTES);
 
     sodium_free(dkey);
     close(dnkeyfd);
+}
+
+char* yield_dnhstr(Dir_Node** dirnode){
+    char* str_buf = (char*) sodium_malloc(crypto_generichash_BYTES*2+1);
+
+    unsigned char *hsh_buf;
+    yield_dnhsh(dirnode, &hsh_buf);
+
+    dn_hdid_str(&hsh_buf,&str_buf);
+    sodium_free(hsh_buf);
+
+    return str_buf;
+
 }
 
 
@@ -260,14 +276,18 @@ int make_bridgeanchor(Dir_Node** dirnode, char** path, unsigned int pathlen) {
     real_hash_keyfully((&(*dirnode)->diname), &dn_hash, expo_dirnmlen((*dirnode)->did), (const unsigned char **) &dkey, crypto_shorthash_KEYBYTES);
     dn_hdid_str(&dn_hash, &dn_hdid);
 
+
     sodium_free(dkey);
     sodium_free(dn_hash);
     close(dnkeyfd);
 
     int diranch = openat(dnfd, (char*) dn_hdid, O_CREAT|O_RDWR, S_IRWXU);
 
+    //TODO: handle write error for bridge anchor
     write(diranch, *path, (pathlen+expo_dirnmlen((*dirnode)->did)));
     fsync(diranch);
+
+
 
     if (diranch < 0 )
     {
@@ -278,7 +298,6 @@ int make_bridgeanchor(Dir_Node** dirnode, char** path, unsigned int pathlen) {
     }
 
     return 0;
-
 }
 
 
@@ -367,7 +386,6 @@ HashLattice * init_hashlattice() {
         hashlattice->bridges[i] = NULL;
     }
 
-
     return hashlattice;
 }
 
@@ -384,7 +402,7 @@ void make_bridge(Fi_Tbl* fitbl, FiMap* fimap, Dir_Node* dnode,HashLattice* hashl
     //        printf(">>>>>%s\n",idx);
 
     int i = 0;
-    while ((hashlattice->bridges[idx]) != 0 || (hashlattice->bridges[idx]) != NULL) {
+    while ((hashlattice->bridges[idx]) != 0 && (hashlattice->bridges[idx]) != NULL) {
         printf("Collision!inc: %d", i);
         i++;
         idx += i;
@@ -501,6 +519,31 @@ int map_dir(const char* dir_path,
     struct dirent ***dentrys = (struct dirent***) sodium_malloc(sizeof(struct dirent**));
     int n;
     int dir_cnt = 0;
+
+
+    unsigned char* hkey = (unsigned char*) sodium_malloc(sizeof(unsigned char)*crypto_shorthash_KEYBYTES);
+
+    unsigned long long rootiid;
+    unsigned long long roothshno;
+    unsigned long rootino = cwd_ino(".");
+    // Each dir node is a link in the dir chains
+    Dir_Node* dirNode_ptr;
+
+    // Gen numbers for the root first, to be used in the creation of values for its entries
+    mk_one_dir_hashes(&rootiid,&roothshno,rootino);
+
+    // Root node is created and added to the chain
+    dirNode_ptr = add_dnode(rootiid,rootdirname,dnlen,1,dirchains);
+
+    // A unique hashkey is created and stored for the dir node
+    mk_little_hash_key(&hkey);
+    dump_little_hash_key(hkey,rootdirname,dnlen);
+
+    if (make_bridgeanchor(&dirNode_ptr, (char **) &dir_path, path_len) < 0)
+    {
+        perror("Failed making bridge anchor\n");
+    }
+
     // scandir returns number of entrys in the directory
     n = scandir(dir_path, dentrys, NULL, alphasort);
 
@@ -534,12 +577,12 @@ int map_dir(const char* dir_path,
     unsigned long long* haidarr = (unsigned long long*) calloc((n-dir_cnt),sizeof(unsigned long long));
 
     // Vars for root, i.e. the directory currently being mapped
-    unsigned long long rootiid;
-    unsigned long long roothshno;
-    unsigned long rootino = cwd_ino(".");
-
-    // Gen numbers for the root first, to be used in the creation of values for its entries
-    mk_one_dir_hashes(&rootiid,&roothshno,rootino);
+//    unsigned long long rootiid;
+//    unsigned long long roothshno;
+//    unsigned long rootino = cwd_ino(".");
+//
+//    // Gen numbers for the root first, to be used in the creation of values for its entries
+//    mk_one_dir_hashes(&rootiid,&roothshno,rootino);
     // Gen numbers for the entries
     mk_hashes(haidarr, fhshno_arr, idarr, n, dir_cnt, entype);
 
@@ -548,23 +591,23 @@ int map_dir(const char* dir_path,
 
     // Each entry (file) is represented by a Filemap containing fiid, fhshno, finame
     FiMap* fimap_ptr;
-    // Each dir node is a link in the dir chains
-    Dir_Node* dirNode_ptr;
+//    // Each dir node is a link in the dir chains
+//    Dir_Node* dirNode_ptr;
 
-    unsigned char* hkey = (unsigned char*) sodium_malloc(sizeof(unsigned char)*crypto_shorthash_KEYBYTES);
-
-    // Root node is created and added to the chain
-    dirNode_ptr = add_dnode(rootiid,rootdirname,dnlen,1,dirchains);
-
-    // A unique hashkey is created and stored for the dir node
-    mk_little_hash_key(&hkey);
-    dump_little_hash_key(hkey,rootdirname,dnlen);
-
-
-    if (make_bridgeanchor(&dirNode_ptr, (char **) &dir_path, path_len) < 0)
-    {
-        perror("Failed making bridge anchor\n");
-    }
+//    unsigned char* hkey = (unsigned char*) sodium_malloc(sizeof(unsigned char)*crypto_shorthash_KEYBYTES);
+//
+//    // Root node is created and added to the chain
+//    dirNode_ptr = add_dnode(rootiid,rootdirname,dnlen,1,dirchains);
+//
+//    // A unique hashkey is created and stored for the dir node
+//    mk_little_hash_key(&hkey);
+//    dump_little_hash_key(hkey,rootdirname,dnlen);
+//
+//
+//    if (make_bridgeanchor(&dirNode_ptr, (char **) &dir_path, path_len) < 0)
+//    {
+//        perror("Failed making bridge anchor\n");
+//    }
 
     // For each entry in the root...
     for (i=0;i<n;i++) {
