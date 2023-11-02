@@ -226,12 +226,8 @@ StatFrame * spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsign
         return *stsfrm;
     }
      struct epoll_event *epINevent;
-     struct epoll_event *epOUTevent;
      epINevent = (struct epoll_event*) malloc(sizeof(struct epoll_event)*3);
-     epOUTevent = (struct epoll_event*) malloc(sizeof(struct epoll_event)*3);
-     epINevent->events = EPOLLIN;
-     epOUTevent->events = EPOLLOUT;
-
+     epINevent->events = EPOLLIN | EPOLLOUT;
 
     /**
     * LISTEN ON A SOCKET
@@ -251,17 +247,17 @@ StatFrame * spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsign
         i = 0;
         stsReset(stsfrm);
 
-
         /**
          * ATTACH EPOLL
          * */
         setSts(stsfrm, LISTN, 0);
-        epoll_ctl(efd, EPOLL_CTL_ADD, data_socket, epINevent);
         clock_t clka = clock();
         /**
          * RECIEVE
          * */
         data_socket = accept(connection_socket, NULL, NULL);    // ACCEPT 'A'
+        epoll_ctl(efd, EPOLL_CTL_ADD, data_socket, epINevent);
+
         if (data_socket == -1) {
             perror("accept: ");
             setErr(stsfrm, BADCON, 'B');// 65 = 'A' -> accept step
@@ -276,13 +272,11 @@ StatFrame * spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsign
          * EPOLL MONITOR DATA CONN
          * */
         if (epoll_wait(efd,epINevent,3,500) > 0){
-            if ((epINevent->events&EPOLLIN) != EPOLLIN) {
+            if ((epINevent->events&EPOLLERR) == EPOLLERR) {
                 stsErno(EPOLLE, stsfrm, errno, epINevent->events, "Issue detected by EPOLLE", "epoll_wait - in", 0);
-                continue;
             }
         }
         clock_t clkc = clock();
-        epoll_ctl(efd, EPOLL_CTL_MOD, data_socket, epOUTevent);
 
         /**
          * READ REQUEST INTO BUFFER
@@ -314,7 +308,7 @@ StatFrame * spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsign
         if ((*stsfrm)->err_code) {
             setErr(stsfrm,MALREQ,0);
             serrOut(stsfrm,"Failed to process request.");
-            continue; // TODO: replace w/ better option.
+             // TODO: replace w/ better option.
         }
 
 
@@ -342,24 +336,24 @@ StatFrame * spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsign
             setSts(stsfrm, SHTDN, 0);
             exit_flag = 1;
         }else{
-
-            if (!(*stsfrm)->err_code)
-            {
                 setSts(stsfrm, RESPN, 0);
-                epoll_ctl(efd, EPOLL_CTL_MOD, data_socket, epOUTevent);
 
                 /** WRITEOUT REPLY */
-                if (epoll_wait(efd, epOUTevent, 3, 7000) > 0) {
-                    if ((epINevent->events & EPOLLOUT) != EPOLLOUT) {
-                        stsErno(EPOLLE, stsfrm, errno, epINevent->events, "Issue detected by EPOLLE",
-                                "epoll_wait - out",
-                                0);
-                    }
+                if (epoll_wait(efd,epINevent,2,1000)){
+                    if ((epINevent->events&EPOLLERR) == EPOLLERR) {
+                        stsErno(EPOLLE, stsfrm, errno, epINevent->events, "Issue detected by EPOLLE", "epoll_wait - in", 0);
+                        printf("\n>>>%d\n",epINevent->events);
+                   }
+                    ret = write(data_socket, *rsp_buf, buf_len);
+                    printf("\n>>>%d\n",epINevent->events);
+
                 }
-                if (write(data_socket, rsp_buf, (*infofrm)->arr_len) == -1) {
-                    stsErno(MISSPK, stsfrm, errno, (*infofrm)->rsp_size, "Response write to socket failed", "write", 0);
+
+
+                if (ret == -1){
+                    printf("\n>>>%d\n",epINevent->events);
                 }
-            }
+
         }
         clock_t clkg = clock();
 
@@ -398,10 +392,9 @@ StatFrame * spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsign
 
     }// END WHILE !EXITFLAG
 
-    epoll_ctl(efd, EPOLL_CTL_DEL, data_socket, epOUTevent);
+    epoll_ctl(efd, EPOLL_CTL_DEL, data_socket, epINevent);
     close(connection_socket);
     free(epINevent);
-    free(epOUTevent);
 
     unlink(SOCKET_NAME);
     return *stsfrm;
