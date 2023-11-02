@@ -810,6 +810,7 @@ unsigned int rsp_nfo(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, L
     InfoFunc* funarr;
     LattStruct lattStruct;
 
+
     lattStruct.dirChains =  *dchns;
     lattStruct.lattice = *hltc;
 
@@ -847,8 +848,8 @@ unsigned int rsp_nfo(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, L
         respsz = 1;
     }else {
         // Extract identifier which would be in the request array at position array start+8
-        memcpy(lattStruct.itmID,(*inf_frm)->arr+(rspsz_b),(rspsz_b));
-
+        memcpy(&itmID,(*inf_frm)->arr+(rspsz_b),(rspsz_b));
+        (lattStruct.itmID) = &itmID;
         respsz = ((*funarr)[i](buf, lattItm, lattStruct));
 
         sodium_free(dnhshstr);
