@@ -6,8 +6,11 @@
 #define ENDBYTES 538968075
 #define RSPARRLEN 16
 #define INFARRLEN 19
-#include "chkmk_didmap.h"
+#define HASHSTRLEN 64
 
+
+
+//SPLITTO reqs
 /**
  *<h4><code>
  * RequestCMDS
@@ -119,6 +122,8 @@ typedef enum ReqFlag {
     END = 2147483647
 } ReqFlag;
 
+
+//SPLITTO rsps.h
 /**
  * <h4><code>
  * \ResponseCMDs
@@ -161,16 +166,16 @@ typedef enum RspFlag {
     DONE = 2147483647
 }RspFlag;
 
-
+//SPLITTO works
 typedef union LttFlg{
     ReqFlag req;
     RspFlag rsp;
     int flg;
     unsigned int uflg;
 }LttFlg;
+//SPLITTO works
 
 typedef LttFlg* LttcFlags;
-
 
 
 typedef union uniArr{
@@ -179,12 +184,12 @@ typedef union uniArr{
 }uniArr;
 
 
+//DEFUNCT
 typedef struct Cmd_Seq Cmd_Seq;
-
 Cmd_Seq* init_cmdseq(Cmd_Seq** cmdSeq, uniArr ** arr, unsigned int type);
-
 Cmd_Seq *reset_cmdseq(Cmd_Seq **cmdSeq, unsigned int type);
 
+//DEFUNCT
 typedef struct Cmd_Seq {
     unsigned long seq_id;
     unsigned int lead;
@@ -195,6 +200,8 @@ typedef struct Cmd_Seq {
     uniArr *arr;
 }Cmd_Seq;
 
+
+//SPLITTO works
 typedef struct InfoFrame {
     unsigned int lead;
     unsigned int cat_pfx;
@@ -211,6 +218,7 @@ typedef struct InfoFrame {
 } InfoFrame;
 InfoFrame *init_info_frm(InfoFrame **info_frm);
 
+//SPLITTO signals
 
 /**
  *  <h4><code>
@@ -256,6 +264,8 @@ typedef enum LattStts{
     // 256 512 1024 2048 4096 8192
 }LattStts;
 
+
+//SPLITTO rsps.h
 
 /**
  *<h4><code>
@@ -332,6 +342,10 @@ typedef enum LattReply{
     IIIII = 8,
 } LattReply;
 
+
+
+//SPLITTO signals
+
 /**
  * <h4><code>
  * \Errors
@@ -397,6 +411,9 @@ typedef enum LattErr{
     MISSPK = 262144
 } LattErr;
 
+
+//SPLITTO signals
+
 /**
  * <h4><code>
  *\Actions
@@ -425,6 +442,8 @@ typedef enum LattAct {
     GBYE = 128
 }LattAct;
 
+
+//SPLITTO signals
 
 /**
  * <h4><code>
@@ -500,20 +519,22 @@ typedef enum LattObj{
 
 } LattObj;
 
+//DEFUNCT
 typedef unsigned char* cmdKey;
 
+//SPLITTO reqs
 typedef ReqFlag* ReqArr;
 
+//SPLITTO rsps
 typedef RspFlag* RspArr;
 
+//DEFUNCT
 typedef struct LatticeCommand {
     RspArr rsps;
     ReqArr reqs;
     int n_req;
 } latticeCmd;
 
-
-//}Cmd_Seq;
 
 
 /** <h4><code>
@@ -550,6 +571,7 @@ typedef struct LatticeCommand {
  *<li><b>END-Flag</b><br>      <i> will trigger a malformed request error if not in expected position.
  * */
 
+//SPLITTO signals
 
 /**
  *  <h4><code>
@@ -613,6 +635,7 @@ typedef struct StatFrame{
     unsigned int modr;
 }StatFrame;
 
+// SPLITTO reqs
 InfoFrame * parse_req(const unsigned char* fullreqbuf,
                       InfoFrame **infofrm,
                       StatFrame** stsfrm,
@@ -620,11 +643,11 @@ InfoFrame * parse_req(const unsigned char* fullreqbuf,
                       unsigned char* tmparrbuf,
                       unsigned char** req_arr_buf);
 
+//SPLITTO rsps
 typedef unsigned int** RspMap;
-
 typedef unsigned int (*RspFunc[RSPARRLEN])(StatFrame**, InfoFrame**, DChains*, Lattice*, unsigned char**);
 
-
+//SPLITTO rsps
 typedef struct Resp_Tbl{
     unsigned int fcnt;
     RspMap* rsp_map; // 3 x 3 x fcnt - 3D array: {LattReply,Mod,actIdx}
@@ -641,8 +664,7 @@ unsigned int build_lead(const unsigned int* cmd_flags, unsigned int flg_cnt);
 
 unsigned long save_seq(Cmd_Seq *cmd_seq, int cnfdir_fd);
 
-
-
+//SPLITTO works
 void destroy_cmdstructures(unsigned char *buffer, unsigned char *respbuffer, unsigned char *tmparrbuf, Resp_Tbl *rsp_tbl);
 
 unsigned int serial_seq(unsigned char* seq_out,
@@ -659,7 +681,7 @@ int unmask_cmds(unsigned int** cmds,
 Cmd_Seq* destroy_cmdseq(StatFrame** sts_frm, Cmd_Seq** cmdSeq);
 Cmd_Seq* copy_cmdseq(unsigned int flip, Cmd_Seq** cmdSeq, Cmd_Seq** copy, StatFrame** sts_frm);
 
-
+//SPLITTO signals
 typedef union LattType{
     LattErr err;
     LattReply rpl;
@@ -672,30 +694,32 @@ typedef union LattType{
     unsigned char nuc;
 }LattType;
 
-
+//SPLITTO rsps
 RspFunc* rsp_act(
         RspMap rspMap,
         StatFrame** sts_frm,
         InfoFrame** inf_frm,
         RspFunc* (funarr));
-
+//SPLITTO rsps
 void init_rsptbl(int cnfg_fd,
                  Resp_Tbl **rsp_tbl,
                  StatFrame **sts_frm,
                  InfoFrame **inf_frm,
                  DChains *dchns,
                  Lattice *hltc);
-
+//SPLITTO rsps
 LattType dtrm_rsp(StatFrame** sts_frm,
                   InfoFrame** inf_frm,
                   LattType);
-
+//SPLITTO rsps
 unsigned int respond(Resp_Tbl *rsp_tbl,
                    StatFrame **sts_frm,
                    InfoFrame **inf_frm,
                    DChains *dchns,
                    Lattice *hltc,
                    unsigned char *resp_buf);
+
+//SPLITTO works
 
 typedef struct LattStruct{
     Lattice lattice;
@@ -704,6 +728,7 @@ typedef struct LattStruct{
     unsigned long* itmID;
 }LattStruct;
 
+//SPLITTO rsps
 typedef unsigned int (*InfoFunc[INFARRLEN])(unsigned char **buf, LattType lattItm, LattStruct lattStruct);
 
 /**<br> >Response string element positions:
@@ -718,28 +743,34 @@ typedef unsigned int (*InfoFunc[INFARRLEN])(unsigned char **buf, LattType lattIt
 */
 
 
+//SPLITTO rsps
 /** Response actions */
 
 unsigned int  rsp_sts(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, unsigned  char**buf);
 unsigned int  rsp_nfo(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, unsigned  char**buf);
 unsigned int  rsp_err(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, unsigned  char**buf);
 unsigned int  rsp_und(StatFrame** sts_frm, InfoFrame **inf_frm, DChains* dchns, Lattice* hltc, unsigned  char**buf);
+//SPLITTO rsps
 
 unsigned int  rsp_gond(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, unsigned char **buf);
 unsigned int  rsp_gohd(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, unsigned char **buf);
 unsigned int  rsp_dsch(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, unsigned char **buf);
 unsigned int  rsp_vvvv(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, unsigned char **buf);
+//SPLITTO rsps
 
 unsigned int  rsp_diid(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, unsigned char **buf);
 unsigned int  rsp_jjjj(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, unsigned char **buf);
 unsigned int  rsp_dcls(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, unsigned char **buf);
 unsigned int  rsp_dnls(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, unsigned char **buf);
+//SPLITTO rsps
 
 unsigned int rsp_fiid(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, unsigned  char**buf);
 unsigned int rsp_frdn(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, unsigned  char**buf);
 unsigned int rsp_iiii(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, unsigned  char**buf);
 unsigned int rsp_fyld(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, unsigned  char**buf);
 
+
+//SPLITTO signals----------------------------------------
 
 /** Status ops **/
 
@@ -760,5 +791,8 @@ void stsOut(StatFrame** sts_frm);
 void serrOut(StatFrame** sts_frm, char* msg);
 
 long stsErno(LattErr ltcerr, StatFrame **sts_frm, int erno, long misc, char *msg, char *function, char *miscdesc);
+
+//---------------------------------------- SPLITTO signals
+
 
 #endif //TAGFI_LATTICE_CMDS_H

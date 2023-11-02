@@ -1,7 +1,6 @@
 //
 // Created by ujlm on 10/6/23.
 //
-#include "sodium.h"
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <stdio.h>
@@ -14,9 +13,11 @@
 #include <string.h>
 #include <sys/epoll.h>
 #include <errno.h>
-#include "chkmk_didmap.h"
-#include "lattice_cmds.h"
+#include "lattice_works.h"
 #include "jlm_random.h"
+#include "lattice_rsps.h"
+#include "lattice_signals.h"
+
 
 #define CNFIGPTH "/home/ujlm/CLionProjects/TagFI/config"
 #define DNCONFFI "dirnodes"
@@ -26,8 +27,7 @@
 #define FLGSCNT 16
 
 
-unsigned long UISZ = sizeof(unsigned int);
-unsigned long UCSZ = sizeof(unsigned char);
+
 int erno;
 StatFrame* statusFrame;
 

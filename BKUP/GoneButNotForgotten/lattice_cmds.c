@@ -140,9 +140,8 @@ InfoFrame *init_info_frm(InfoFrame **info_frm) {
     (*info_frm)->flags = NULL;
 
     return *info_frm;
-
 }
-
+//DEFUNCT
 /**
  * Reset Info Frame, set StatusFrame to error code, set modifier is set to previous status code.
  */
@@ -155,6 +154,7 @@ void err_info_frm(InfoFrame *info_frm, StatFrame **stats_frm, LattErr errcode, u
     info_frm->req_size = 0;
     info_frm->arr_type = 0;
 }
+//DEFUNCT
 
 /**
  * Reset InfoFrame
@@ -177,6 +177,7 @@ void info_frm_rst(InfoFrame **info_frm) {
 * Request Parsing *
 * * * * * * * * * */
 
+// SPLITTO reqs ----------------------------------------------------
 /**
  * \SplitCategories
  *  Recursively iterate array of masked integers representing the OR'd value for
@@ -433,7 +434,9 @@ InfoFrame *parse_req(const unsigned char *fullreqbuf, //<-- same name in spin up
 
     return (*infofrm);
 }
+// ---------------------------------------------------- SPLITTO reqs
 
+// SPLITTO signals ----------------------------------------------------
 
 /* * * * * * * * * * * * * *
 *  StatusFrame Functions   *
@@ -561,6 +564,10 @@ void serrOut(StatFrame **sts_frm, char *msg){
     stsErno((*sts_frm)->err_code,sts_frm,errno,0,msg,NULL,NULL);
 
 }
+// ------------------------------- SPLITTO signals
+
+
+//SPLITTO rsps -------------------------------
 
 /* * * * * * * * * *
 *  Response CMDS  *
@@ -927,6 +934,10 @@ unsigned int rsp_nfo(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, L
     printf("Response: Empty");
 }
 
+//------------------------------- SPLITTO RSPS
+
+// SPLITTO RSPS -------------------------------
+
 /* * * * * * * * * * * **
 *  Response processing  *
 * * * * * * * * * * * * */
@@ -1122,3 +1133,4 @@ unsigned int respond(Resp_Tbl *rsp_tbl,
     setSts(sts_frm, RESPN, 0);
     return 0;
 }
+//------------------------------- SPLITTO RSPS

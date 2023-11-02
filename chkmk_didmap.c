@@ -12,12 +12,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <string.h>
-#include <errno.h>
-#include <sys/types.h>
 #include <sys/stat.h>
-#include <unistd.h>
-#include <sys/time.h>
-#include <time.h>
 
 
 #define DNKEYPATH "/home/ujlm/Code/Clang/C/TagFI/keys"
