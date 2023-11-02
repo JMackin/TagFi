@@ -613,7 +613,6 @@ typedef struct StatFrame{
     unsigned int modr;
 }StatFrame;
 
-//}InfoFrame;
 InfoFrame * parse_req(const unsigned char* fullreqbuf,
                       InfoFrame **infofrm,
                       StatFrame** stsfrm,

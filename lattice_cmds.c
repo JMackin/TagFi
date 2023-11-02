@@ -41,7 +41,8 @@ const unsigned long ltyp_s = sizeof(LattType);
 const unsigned int rspszb = sizeof(unsigned int)+sizeof(unsigned int)+sizeof(LattType);
 const unsigned int rspsz_b = sizeof(LattType) + sizeof(LattType);
 const unsigned int arr_b = sizeof(LattType) + sizeof(LattType) + sizeof(unsigned int);
-const LattType sep = (LattType) 0xdbdbdbdb;
+const LattType isep = (LattType) 0xdbdbdbdb;
+const LattType csep = (LattType) 0xbddbdbbd;
 
 
 //// Secure zero and destroy CMD struct. Returns pointer to NULL.
@@ -561,7 +562,6 @@ void serrOut(StatFrame **sts_frm, char *msg){
 
 }
 
-
 /* * * * * * * * * *
 *  Response CMDS  *
 * * * * * * * * **/
@@ -596,18 +596,19 @@ void rsparr_out(unsigned char **buf, unsigned int arrlen){
     }
 }
 
-unsigned int rsparr_addsep(unsigned char** buf,unsigned int offset)
-{memcpy(rsparr_pos(buf)+offset,&sep,ltyp_s);return ltyp_s;}
+// iorc =  0 : char,  1 : int
+unsigned int rsparr_addsep(unsigned char** buf,unsigned int offset,unsigned int iorc)
+{memcpy(rsparr_pos(buf)+offset,(iorc ? &isep : &csep),ltyp_s);return ltyp_s;}
 
 unsigned int rsparr_add_lt(LattType lt, unsigned char** buf, unsigned int offset)
-{memcpy(rsparr_pos(buf)+offset,&lt,ltyp_s);return rsparr_addsep(buf,offset+ltyp_s)+ltyp_s;}
+{memcpy(rsparr_pos(buf)+offset+ltyp_s,&lt,ltyp_s);return rsparr_addsep(buf,offset,1)+ltyp_s;}
 
 unsigned int rsparr_add_replobj(unsigned char** buf, LattReply obj){
     return rsparr_add_lt((LattType) obj, buf, 0);
 }
 
 unsigned int rsparr_add_msg(unsigned char **buf, char* msg, unsigned int len, unsigned int offst)
-{memcpy(rsparr_pos(buf)+offst,msg,len);return rsparr_addsep(buf,len+offst)+len;}
+{memcpy(rsparr_pos(buf)+offst+ltyp_s,msg,len);return rsparr_addsep(buf,offst,0)+len;}
 
     // lead | item | arrsz | arr | DONE
 
@@ -658,11 +659,12 @@ unsigned int inf_LTTC(unsigned char **buf, LattType lattItm, LattStruct lattStru
 }
 unsigned int inf_BRDG(unsigned char **buf, LattType lattItm, LattStruct lattStruct){
     lattItm.obj = BRDG;
-    rsparr_add_lt(lattItm,buf,0);
-    return 0;
+
+
 }
 unsigned int inf_DIRN(unsigned char **buf, LattType lattItm, LattStruct lattStruct){
     lattItm.obj = DIRN;
+
     rsparr_add_lt(lattItm,buf,0);
     return 0;
 }
@@ -800,7 +802,7 @@ unsigned int rsp_nfo(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, L
     lattItm.nui = 0;
     printf("Response: info");
     size_t bcnt = arr_b;
-
+    u_long itmID;
     size_t arrlen = 0;
     uint respsz;
     uint i;
@@ -823,8 +825,6 @@ unsigned int rsp_nfo(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, L
 
     funarr = gen_infofunc_arr();
 
-
-
     // Extract the desired object ID from the first byte of the request array,
     // and the array content, which can be an ID, etc. depending on the subject.
     //
@@ -834,7 +834,6 @@ unsigned int rsp_nfo(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, L
 
     //TODO: Fail on malformed request
 
-
     if (lattItm.obj>FIDE || (lattItm.nui & (lattItm.nui-1)) ){
         stsErno(MALREQ,sts_frm,errno,lattItm.nui,"Invalid object ID provided.","response::info","object id value");
         return 1;
@@ -842,29 +841,28 @@ unsigned int rsp_nfo(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, L
     }
 
     // query requested object and return response size in bytes.
-    if (lattItm.nui){
-        i = __builtin_ctz(lattItm.nui)+1;   // Info Req subject index = count of its values trailing zeros.
-        if (i > 18){
-            respsz = 1;
-        }else {
-            respsz = ((*funarr)[i](buf, lattItm, lattStruct));
-            sodium_free(dnhshstr);
-            free(funarr);
-        }
 
-        // return of 0 means the object is there but failed to be queried.
-        // return of 1 means the object is tmissing entirely.
-        if (!respsz){
-            stsErno(MISSNG,sts_frm,errno,0,"Info requested couldn't be retrieved.","resp::info",NULL);
-            return 0;
-        }
-        if (respsz == 1) {
-            stsErno(UNKNWN,sts_frm,errno,0,"Info requested for unknown object.","resp::info",NULL);
-            return 0;
-        }
+    i = __builtin_ctz(lattItm.nui)+1;   // Info Req subject index = count of its values trailing zeros.
+    if (i > 18){
+        respsz = 1;
+    }else {
+        // Extract identifier which would be in the request array at position array start+8
+        memcpy(lattStruct.itmID,(*inf_frm)->arr+(rspsz_b),(rspsz_b));
+
+        respsz = ((*funarr)[i](buf, lattItm, lattStruct));
+
+        sodium_free(dnhshstr);
+        free(funarr);
     }
-    else{
-        stsErno(MALREQ,sts_frm,errno,0,"ID zero provided.","response::info",NULL);
+
+    // return of 0 means the object is there but failed to be queried.
+    // return of 1 means the object is tmissing entirely.
+    if (!respsz){
+        stsErno(MISSNG,sts_frm,errno,0,"Info requested couldn't be retrieved.","resp::info",NULL);
+        return 0;
+    }
+    if (respsz == 1) {
+        stsErno(UNKNWN,sts_frm,errno,0,"Info requested for unknown object.","resp::info",NULL);
         return 0;
     }
 
@@ -1028,7 +1026,6 @@ init_rsptbl(int cnfg_fd, Resp_Tbl **rsp_tbl, StatFrame **sts_frm, InfoFrame **in
     (*rsp_tbl)->rsp_funcarr = rsp_act(&rsp_map, sts_frm, inf_frm, rsp_func);
     (*rsp_tbl)->rsp_map = (RspMap *) &rsp_map;
     (*rsp_tbl)->fcnt = fcnt;
-
 }
 
 /**
@@ -1052,6 +1049,7 @@ LattType dtrm_rsp(StatFrame **sts_frm,
             if (!(*inf_frm)->trfidi[1]) {    //Not a file op.
                 if ((*inf_frm)->sys_op) {
                     reply.rpl = OINFO;    // Info op -> masked with bits #3 and #4 : 1100
+
                 } else {
                     sys = 1;    // System op -> unique handling. : 0110/1010
                 }
@@ -1073,41 +1071,6 @@ LattType dtrm_rsp(StatFrame **sts_frm,
 /**
  * \ProcessResponse
  */
-unsigned int proc_rsp(Resp_Tbl *rsp_tbl,
-                      LattReply rsp,
-                      StatFrame **sts_frm,
-                      InfoFrame **inf_frm,
-                      DChains *dchns,
-                      Lattice *hltc,
-                      unsigned char **buf) {
-    unsigned int rspsz;
-    unsigned int rsparrsz;
-    // Update status and return 1 on failure
-    // if the value of reply object is > the
-    // num of function in the array.
-    if (rsp > rsp_tbl->fcnt) {
-        setErr(sts_frm, MISCLC, rsp);
-        serrOut(sts_frm, "LattReply for response processing outside defined functionality.");
-        return 1;
-    }
-
-    // Insert reply object into buffer at +sizeof(LattTyp) offset
-    //memcpy(*buf,&rsp,sizeof(LattReply));
-
-    // Call function at index 'rsp' (the reply object value) from function array.
-    rspsz = (*rsp_tbl->rsp_funcarr)[rsp](sts_frm, inf_frm, dchns, hltc, buf);
-
-    // Get array len from response sequence
-    rsparrsz = rspsz - (3*ltyp_s)-(UCSiZ);
-
-    // Update InfoFrame
-    (*inf_frm)->arr_len = rspsz;
-    (*inf_frm)->rsp_size = rsparrsz;
-
-    // Update status and return 0 on success
-    setSts(sts_frm, RESPN, 0);
-    return 0;
-}
 
 unsigned int respond(Resp_Tbl *rsp_tbl,
                    StatFrame **sts_frm,
@@ -1123,7 +1086,6 @@ unsigned int respond(Resp_Tbl *rsp_tbl,
     prpbuf(&rsp_buf,lattItm);
     /** Determine response avenue and return a reply object */
     lattItm = dtrm_rsp(sts_frm,inf_frm,lattItm);  // Reply object returned from 'determine response'
-   // bzero(*(*resp_buf),ARRSIZE-1);                 // Zero response buffer
 
     unsigned int rspsz;
     unsigned int rsparrsz;
@@ -1146,9 +1108,10 @@ unsigned int respond(Resp_Tbl *rsp_tbl,
     }
     rspsz += endbuf(&rsp_buf,lattItm,rspsz);
 
-
     // Get array len from response sequence
-    rsparrsz = rspsz - (3*ltyp_s)-(UCSiZ);
+    rsparrsz = rspsz - (4*ltyp_s);
+
+    rsparr_len_set(rsparrsz,&rsp_buf);
 
     // Update InfoFrame
     (*inf_frm)->arr_len = rsparrsz;
