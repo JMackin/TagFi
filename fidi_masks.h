@@ -11,7 +11,7 @@
  *           b: Name length - String-length of the filename. / 9 bits.
  *           c: Format - File format code defined by fiforms.h / 8 bits.
  *           d: Dir. Id - Id number of the resident directory,
- *              defined by sequence of addition to Dir_Chains. / 6 bits.
+ *              defined by sequence of addition to DiChains. / 6 bits.
  *           e: Dir. groupbase - The Dir_chains arm to which
  *              the resident directory belongs.
  *             [ (01=media, 10=docs) / 2 bits. ]
@@ -80,7 +80,7 @@
  * Gives the number produced by XORing a random u_long and the file index num.
  *
  * 0b111111111111111111111111111111111000000000000000000000000000
- *  C||      FINOMASK - 32bits       ||       FiMap attr.       |  */
+ *  C||      FINOMASK - 32bits       ||       FiNode attr.       |  */
 #define FINOMASK 1152921504472629248
 
 
@@ -131,7 +131,7 @@
  *  * FRDIRMSK - 7 bits */
 #define FRDIRMSK 252
 
-#define FBSGPCLIP 127 // &mask to clip down a did for masking with a FiMap object
+#define FBSGPCLIP 127 // &mask to clip down a did for masking with a FiNode object
 
 #define FRDIRSHFT 2  // Num of trailing bits after FRDIRMSK
 

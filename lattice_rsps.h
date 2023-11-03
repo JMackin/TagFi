@@ -30,6 +30,7 @@ void init_rsptbl(int cnfg_fd,
 LattType dtrm_rsp(StatFrame** sts_frm,
                   InfoFrame** inf_frm,
                   LattType);
+
 typedef unsigned int (*InfoFunc[INFARRLEN])(unsigned char **buf, LattType lattItm, LattStruct lattStruct);
 
 

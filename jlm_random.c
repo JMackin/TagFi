@@ -174,7 +174,6 @@ void recv_little_hash_key(int dnkeyfd, unsigned char* dirname, unsigned int knml
 
 
 unsigned long long little_hsh_llidx(unsigned char* hkey, unsigned char* tobehshed, unsigned int tbh_len, unsigned long long xno) {
-
     unsigned char* outp = (unsigned char*) sodium_malloc(sizeof (unsigned long));
 
     if (crypto_shorthash(outp, tobehshed, tbh_len, hkey) != 0){
@@ -185,8 +184,39 @@ unsigned long long little_hsh_llidx(unsigned char* hkey, unsigned char* tobehshe
 
     unsigned long outidx = eightchartollong(outp,crypto_shorthash_KEYBYTES) ^ xno;
     sodium_free(outp);
+
     return outidx;
 }
+
+// intbuf = 2 * char[16]
+unsigned long latt_hsh_idx(unsigned int* hkey, unsigned long long* tobehshed, unsigned char intbuf[2][16]){
+
+    clock_t ca = clock();
+    memcpy((intbuf[0]),hkey,sizeof(unsigned int)*4);
+    memcpy((intbuf[1]),&tobehshed,sizeof(long)*2);
+
+    unsigned char **dubbuf = NULL;
+
+
+    unsigned long outidx;
+    unsigned char* outp = (unsigned char*) sodium_malloc(sizeof (unsigned long));
+
+    if (crypto_shorthash(outp, *(intbuf+1), 16, *(intbuf)) != 0){
+        fprintf(stderr, "Something went wrong hashing for an index.\n");
+        sodium_free(outp);
+        return 1;
+    }
+
+    memcpy(&outidx,outp,sizeof(unsigned long));
+    sodium_free(outp);
+
+    clock_t cb =  clock();
+
+    printf(">>>>>%lu\n",cb-ca);
+    return outidx;
+}
+
+
 
 //unsigned long long noky_lhsh_lidx(unsigned char* tobehshed, unsigned int wlen, unsigned long xno) {
 //
@@ -218,3 +248,4 @@ void get_many_little_salts(unsigned long** saltls, int n)
 
     } while(n--);
 }
+

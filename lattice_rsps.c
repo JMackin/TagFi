@@ -7,6 +7,7 @@
 #include <string.h>
 #include <errno.h>
 #include "lattice_works.h"
+#include "fidi_masks.h"
 #include "lattice_rsps.h"
 
 const LattType isep = (LattType) 0xdbdbdbdb;
@@ -40,6 +41,7 @@ const LattType csep = (LattType) 0xbddbdbbd;
  *      int:    '0xdbdbdbdb' (3688618971)
  *      char:   '0xbddbdbbd' (3185302461)
  */
+
 
 
 /* * * * * * * * * * * * *
@@ -122,13 +124,13 @@ unsigned int inf_LTTC(unsigned char **buf, LattType lattItm, LattStruct lattStru
 }
 unsigned int inf_BRDG(unsigned char **buf, LattType lattItm, LattStruct lattStruct){
     lattItm.obj = BRDG;
-
+    return 0;
 
 }
 unsigned int inf_DIRN(unsigned char **buf, LattType lattItm, LattStruct lattStruct){
     lattItm.obj = DIRN;
-
     rsparr_add_lt(lattItm,buf,0);
+
     return 0;
 }
 unsigned int inf_FTBL(unsigned char **buf, LattType lattItm, LattStruct lattStruct){
@@ -138,6 +140,8 @@ unsigned int inf_FTBL(unsigned char **buf, LattType lattItm, LattStruct lattStru
 }
 unsigned int inf_FIMP(unsigned char **buf, LattType lattItm, LattStruct lattStruct){
     lattItm.obj = FIMP;
+
+
     rsparr_add_lt(lattItm,buf,0);
     return 0;
 }
@@ -295,7 +299,7 @@ unsigned int rsp_nfo(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, L
             ((yield_bridge(*hltc,       // HashLattice* hashlattice
                            (unsigned char*) dnhshstr,  // uchar* filename
                            HASHSTRLEN,                         // uint namelength
-                           (*dchns)->vessel))          // Dir_Node* residentDirnode
+                           (*dchns)->vessel))          // DiNode* residentDirnode
                     ->fitable);
 
     funarr = gen_infofunc_arr();
@@ -305,8 +309,7 @@ unsigned int rsp_nfo(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, L
     //
     // Fail if no code found
 
-    memcpy(&lattItm.obj,((*inf_frm)->arr),ltyp_s);
-
+    memcpy(&itmID,((*inf_frm)->arr),ltyp_s);
     //TODO: Fail on malformed request
 
     if (lattItm.obj>FIDE || (lattItm.nui & (lattItm.nui-1)) ){
@@ -344,18 +347,51 @@ unsigned int rsp_nfo(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, L
     return respsz+bcnt;
 
 }
-
+//uint bcnt;
+//lattItm.obj = LTTC;
+//bcnt = rsparr_add_lt(lattItm,buf,0);
 unsigned int rsp_sts(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice * hltc, unsigned char **buf) {
     printf("Response: Status frame");
+    uint bcnt;
+    LattType lattitm;
+    lattitm.obj = SFRM;
+    bcnt = rsparr_add_lt(lattitm,buf,0);
 
+    bcnt += rsparr_add_msg(buf,"STS",ltyp_s,bcnt);
+    lattitm.sts =(*sts_frm)->status;
+    bcnt += rsparr_add_lt(lattitm,buf,bcnt);
+
+    bcnt += rsparr_add_msg(buf,"ERR",ltyp_s,bcnt);
+    lattitm.err = (*sts_frm)->err_code;
+    bcnt += rsparr_add_lt(lattitm,buf,bcnt);
+
+    bcnt += rsparr_add_msg(buf,"ACT",ltyp_s,bcnt);
+    lattitm.act = (*sts_frm)->act_id;
+    bcnt += rsparr_add_lt(lattitm,buf,bcnt);
+
+    bcnt += rsparr_add_msg(buf,"MOD",ltyp_s,bcnt);
+    lattitm.nui = (*sts_frm)->modr;
+    bcnt += rsparr_add_lt(lattitm,buf,bcnt);
+
+    return bcnt;
+
+    //TODO: Test and verify this function
 }
 
 unsigned int rsp_und(StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice * hltc, unsigned char **buf) {
-    printf("Response: Undefined");
+    return 0;
 }
 
 unsigned int rsp_fiid(StatFrame **sts_frm, InfoFrame **inf_frm, DChains*dchns, Lattice* hltc, unsigned char **buf) {
-    printf("Response: File ID");
+    printf("Response: Filename for ID");
+    u_long itmID;
+    memcpy(&itmID,(*inf_frm)->arr+(rspsz_b),(rspsz_b));
+//    (*dchns)->vessel->
+//
+//    yield_bridge()
+//
+//    yield_bridge(hltc,)
+
 }
 
 unsigned int rsp_diid(StatFrame **sts_frm, InfoFrame **inf_frm, DChains*dchns, Lattice* hltc, unsigned char **buf) {

@@ -25,6 +25,21 @@
 #define HASHSTRLEN 64
 #define ENDBYTES 538968075
 
+/*
+ *
+ * Info Requests must follow this format:
+ *
+ * @byte  |_______________________________
+ *  1:    |       [OR'd lead flags]
+ *  4:    |          -> [Arr-Len]
+ *  8:    |          -> { Array: ========{ Request subject |x| subject ID/name |x| Misc/Qualifier }
+ * 8+len: |          -> [END/DONE flag]
+ *
+ *       |x| = seperator:
+ *                 \ \_ int:  '0xdbdbdbdb' (3688618971)
+ *                  \____ char: '0xbddbdbbd' (3185302461)
+ */
+
 
 /**
  * \SplitCategories

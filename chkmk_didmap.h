@@ -6,6 +6,8 @@
 #define TAGFI_CHKMK_DIDMAP_H
 
 #include "lattice_works.h"
+#include "fi_lattice.h"
+
 
 
 /**

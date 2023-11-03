@@ -43,8 +43,8 @@ StatFrame* init_stat_frm(StatFrame** status_frm)
 
 
 void cleanup(HashLattice* hashlattice,
-             Dir_Chains* dirchains,
-             Fi_Tbl** tbl_list,
+             DiChains* dirchains,
+             Armature** tbl_list,
              unsigned char* dnconf_addr,
              size_t dn_size,
              unsigned char* seqstr_addr,
@@ -154,8 +154,8 @@ int extract_name(const unsigned char* path, int length) {
 
 
 StatFrame * spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsigned char **req_buf,
-        StatFrame **stsfrm, InfoFrame **infofrm, Resp_Tbl **rsp_tbl, HashLattice **hashlattice,
-        Dir_Chains **dirchains, LttcFlags *flgsbuf, const int *cnfdir_fd, unsigned char **tmparrbuf, uniArr **cmdseqarr) {
+                    StatFrame **stsfrm, InfoFrame **infofrm, Resp_Tbl **rsp_tbl, HashLattice **hashlattice,
+                    DiChains **dirchains, LttcFlags *flgsbuf, const int *cnfdir_fd, unsigned char **tmparrbuf, uniArr **cmdseqarr) {
 
     /**
      * INFO AND STATUS VARS
@@ -349,7 +349,6 @@ StatFrame * spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsign
 
                 }
 
-
                 if (ret == -1){
                     printf("\n>>>%d\n",epINevent->events);
                 }
@@ -457,7 +456,7 @@ void summon_lattice() {
          * STRUCTURES
          * */
         //  DirNode chains
-        Dir_Chains *dirchains = init_dchains();
+        DiChains *dirchains = init_dchains();
         //  HashBridge lattice
         HashLattice *hashlattice = init_hashlattice();
         //  Size of config file in bytes
@@ -494,7 +493,7 @@ void summon_lattice() {
 
         dn_cnt = nodepaths(dn_conf, &lengths, &paths);
         // Array of FileTables connected to DirNodes
-        Fi_Tbl **tbl_list = (Fi_Tbl **) calloc(dn_cnt, sizeof(Fi_Tbl *));
+        Armature **tbl_list = (Armature **) calloc(dn_cnt, sizeof(Armature *));
 
 
 
