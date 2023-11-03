@@ -13,6 +13,7 @@
 
 #include "lattice_signals.h"
 #include "lattice_works.h"
+
 typedef union LattType{
     LattErr err;
     LattReply rpl;
