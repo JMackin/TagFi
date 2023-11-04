@@ -423,6 +423,10 @@ void summon_lattice() {
      * DECLARATIONS
      * */
     int i = 0;
+    double long* PROFILING = (double long*) calloc(2, sizeof(double long));
+    double long* PROFILING2 = (double long*) calloc(2, sizeof(double long));
+
+
     unsigned int arrbuf_len = 256;
     unsigned int seqtbl_sz;  // Sequence Table size
     unsigned char *seqstr_addr; // Stored sequences memory mapping
@@ -509,14 +513,14 @@ void summon_lattice() {
                         (*(lengths + i) - nm_len),
                         dirchains,
                         hashlattice,
-                        &(tbl_list[i])) < 0) {
-                stsErno(MISMAP, &statusFrame, errno, 333, "Big fail", "map_dir", 0);
-                cleanup(hashlattice, dirchains, tbl_list, dn_conf, dn_size, NULL, 0, lengths, paths, dn_cnt, cnfdir_fd);
-                destroy_cmdstructures(req_buf, rsp_buffer, req_arr_buf, NULL);
-                destroy_metastructures(info_frm, cmdseqarr, reqflg_arr, tmparrbuf);
-                return;
-            }
+                        &(tbl_list[i]))< 0){
+            stsErno(MISMAP, &statusFrame, errno, 333, "Big fail", "map_dir", 0);
+            cleanup(hashlattice, dirchains, tbl_list, dn_conf, dn_size, NULL, 0, lengths, paths, dn_cnt, cnfdir_fd);
+            destroy_cmdstructures(req_buf, rsp_buffer, req_arr_buf, NULL);
+            destroy_metastructures(info_frm, cmdseqarr, reqflg_arr, tmparrbuf);
+            return;}
         }
+
          /**
           *  INIT FUNC ARRAY
           * */

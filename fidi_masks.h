@@ -30,10 +30,10 @@
  * Directory ID masks and attributes
  * */
 
-#define HTMASK 8191                // Hash table mask -> 13 bits
-#define HTSIZE 8192                // Max item count
+#define HTMASK 65535                // Hash table mask -> 15 bits
+#define HTSIZE 65536                // Max item count
 #define DITMMX 63                  // Max directory count
-#define LTTCMX 524287              // Max item count for lattice: Max dir count (64) * Max File item count (8192) - 1
+#define LTTCMX 4194303              // Max item count for lattice: Max dir count (64) * Max File item count (8192) - 1
 #define DCHNSSHIFT 6               // Number of bits in Dir ID no.
 #define DCHNSMASK 63               // 0b00000000000000111111 - ID under group-base - abs:63
 #define DBASEMASK 192              // 0b00000000000011000000 - Base ID: 01=media, 10=docs - abs:2

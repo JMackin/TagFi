@@ -49,7 +49,7 @@ void mk_hashes(unsigned long long* haidarr,
             (*(fhshno_arr[j])) = clip_to_32((*(fhshno_arr[j])));
 
             haidarr[j] = msk_fino((*(fhshno_arr[j])), idarr[i]);
-            printf("\n%llu\n\n", haidarr[j]);
+            //printf("\n%llu\n\n", haidarr[j]);
 
             j++;
         }
@@ -314,9 +314,9 @@ void init_armatr(Armature*** armatr, unsigned int size, unsigned char** hkey){
 
 }
 
-FiNode* mk_fimap(unsigned int nlen, unsigned char* finame,
-                 unsigned long long fiid, unsigned  long long did,
-                 unsigned long fhshno){
+FiNode* mk_finnode(unsigned int nlen, unsigned char* finame,
+                   unsigned long long fiid, unsigned  long long did,
+                   unsigned long fhshno){
 
     FiNode* fimap = (FiNode*) malloc(sizeof(FiNode));
 
@@ -328,7 +328,7 @@ FiNode* mk_fimap(unsigned int nlen, unsigned char* finame,
     fiid = msk_redir(fiid, did);
 
     fimap->fiid = fiid;
-    fimap->fhshno = fhshno;
+    fimap->fhshno = fhshno^clock();
 
     return fimap;
 }
@@ -344,7 +344,7 @@ unsigned int getidx(FiNode* fimap)
 //}
 
 void add_entry(FiNode* fimap, Armature* armatr) {
-
+    float x = 0;
     if (armatr->entries[getidx(fimap)] != NULL) {
 
         unsigned long* fino = (unsigned long*) sodium_malloc(sizeof(unsigned long));
@@ -356,7 +356,8 @@ void add_entry(FiNode* fimap, Armature* armatr) {
 
         while (armatr->entries[*hshno & HTMASK] != NULL) {
             printf("!Collision!");
-            (*hshno)++;
+            (*hshno) += 2;
+            x++;
         }
 
         fimap->fhshno = *hshno;
@@ -387,21 +388,23 @@ HashLattice * init_hashlattice() {
     return hashlattice;
 }
 
-void build_bridge(Armature* armatr, FiNode* fiNode, DiNode* dnode, HashLattice* hashlattice, unsigned char buf[2][16]){
+clock_t build_bridge2(Armature* armatr, FiNode* fiNode, DiNode* dnode, HashLattice* hashlattice, unsigned char obuf[16]){
+    clock_t ca = clock();
     if (hashlattice->count > hashlattice->max-3){
         fprintf(stderr, "Hash lattice full\n");
     }
     HashBridge* hshbrg = (HashBridge*) malloc(sizeof(HashBridge));
 
-    (hshbrg->unid) = (unsigned long long*) sodium_malloc(sizeof(unsigned long long));
-    *(hshbrg->unid) = ((fiNode->fiid) ^ dnode->did);
+    unsigned long long int inid = (fiNode->fiid ^ dnode->did);
+    memcpy(hshbrg->unid,&inid,16);
 
-    clock_t ca = clock();
-    unsigned long idx = latt_hsh_idx((unsigned int *) ((armatr)->lttc_key), hshbrg->unid, buf) & LTTCMX;
+
+    unsigned long idx = latt_hsh_idx((armatr), fiNode, obuf);
+    //unsigned long idx = little_hsh_llidx((armatr->lttc_key), fiNode->finame, 16, dnode->did) & LTTCMX;
 
     int i = 0;
-    while ((hashlattice->bridges[idx]) != 0 && (hashlattice->bridges[idx]) != NULL) {
-        printf("Collision!inc: %d", i);
+    while ((hashlattice->bridges[idx]) != NULL) {
+        printf("\nBridgeCollision!inc: %d\n", i);
         i++;
         idx += i;
     }
@@ -412,38 +415,42 @@ void build_bridge(Armature* armatr, FiNode* fiNode, DiNode* dnode, HashLattice* 
     hashlattice->bridges[idx] = hshbrg;
     hashlattice->count++;
 
+    clock_t cb = clock();
+    printf(">>%ld<<",cb-ca);
+    return cb-ca;
 }
 
-void make_bridge(Armature* armatr, FiNode* fiNode, DiNode* dnode, HashLattice* hashlattice, unsigned char* hkey){
-
+clock_t build_bridge(Armature* armatr, FiNode* fiNode, DiNode* dnode, HashLattice* hashlattice, unsigned char buf[16]){
+    clock_t ca = clock();
     if (hashlattice->count > hashlattice->max-3){
         fprintf(stderr, "Hash lattice full\n");
     }
-
     HashBridge* hshbrg = (HashBridge*) malloc(sizeof(HashBridge));
-    clock_t ca = clock();
-    unsigned long idx = little_hsh_llidx(hkey, fiNode->finame, expo_finmlen(fiNode->fiid), dnode->did) & LTTCMX;
-    clock_t cb = clock();
 
-    printf(">>>>>%lu\n",cb-ca);
+    unsigned long long int inid = (fiNode->fiid ^ dnode->did);
+    memcpy(hshbrg->unid,&inid,8);
 
+    unsigned long idx = latt_hsh_idx((armatr), fiNode, buf) & LTTCMX;
+    //unsigned long idx = little_hsh_llidx((armatr->lttc_key), fiNode->finame, 16, dnode->did) & LTTCMX;
     int i = 0;
     while ((hashlattice->bridges[idx]) != 0 && (hashlattice->bridges[idx]) != NULL) {
-        printf("Collision!inc: %d", i);
+        printf("\nBridgeCollision!inc: %d\n", i);
         i++;
-        idx += i;
+        idx += i*2;
     }
 
-        hshbrg->dirnode = dnode;
-        hshbrg->finode = fiNode;
-        hshbrg->fitable = armatr;
-        (hshbrg->unid) = (unsigned long long*) sodium_malloc(sizeof(unsigned long long));
-        *(hshbrg->unid) = ((fiNode->fiid) ^ dnode->did);
-        hashlattice->bridges[idx] = hshbrg;
-        hashlattice->count++;
+    hshbrg->dirnode = dnode;
+    hshbrg->finode = fiNode;
+    hshbrg->fitable = armatr;
+    hashlattice->bridges[idx] = hshbrg;
+    hashlattice->count++;
+
+    clock_t cb = clock();
+    printf(">>%ld<<",cb-ca);
+    return cb-ca;
 }
 
-HashBridge* yield_bridge(HashLattice* hashLattice, unsigned char* filename, unsigned int n_len, DiNode* root_dnode) {
+HashBridge* yield_bridge(HashLattice* hashLattice, unsigned char* fiid, unsigned int n_len, DiNode* root_dnode) {
 
     unsigned char *kbuf = (unsigned char*) sodium_malloc(crypto_shorthash_KEYBYTES);
     int dnkeyfd = openat(AT_FDCWD,DNKEYPATH,O_DIRECTORY,O_RDONLY);
@@ -451,11 +458,53 @@ HashBridge* yield_bridge(HashLattice* hashLattice, unsigned char* filename, unsi
     recv_little_hash_key(dnkeyfd, root_dnode->diname, expo_dirnmlen(root_dnode->did), kbuf);
 
     close(dnkeyfd);
-    unsigned long idx = little_hsh_llidx(kbuf, filename, n_len, root_dnode->did) & LTTCMX;
+    unsigned long idx = little_hsh_llidx(kbuf, fiid, n_len, root_dnode->did) & LTTCMX;
 
     return hashLattice->bridges[idx];
 }
+//
+//void make_bridge(Armature* armatr, FiNode* fiNode, DiNode* dnode, HashLattice* hashlattice, unsigned char* hkey){
+//
+//    if (hashlattice->count > hashlattice->max-3){
+//        fprintf(stderr, "Hash lattice full\n");
+//    }
+//
+//    HashBridge* hshbrg = (HashBridge*) malloc(sizeof(HashBridge));
+//    clock_t ca = clock();
+//    unsigned long idx = little_hsh_llidx(hkey, fiNode->finame, expo_finmlen(fiNode->fiid), dnode->did) & LTTCMX;
+//    clock_t cb = clock();
+//
+//    printf(">>>>>%lu\n",cb-ca);
+//
+//    int i = 0;
+//    while ((hashlattice->bridges[idx]) != 0 && (hashlattice->bridges[idx]) != NULL) {
+//        printf("Collision!inc: %d", i);
+//        i++;
+//        idx += i;
+//    }
+//
+//        hshbrg->dirnode = dnode;
+//        hshbrg->finode = fiNode;
+//        hshbrg->fitable = armatr;
+//        (hshbrg->unid) = (unsigned long long*) sodium_malloc(sizeof(unsigned long long));
+//        *(hshbrg->unid) = ((fiNode->fiid) ^ dnode->did);
+//        hashlattice->bridges[idx] = hshbrg;
+//        hashlattice->count++;
+//}
 
+
+//HashBridge* yield_bridge(HashLattice* hashLattice, unsigned char* filename, unsigned int n_len, DiNode* root_dnode) {
+//
+//    unsigned char *kbuf = (unsigned char*) sodium_malloc(crypto_shorthash_KEYBYTES);
+//    int dnkeyfd = openat(AT_FDCWD,DNKEYPATH,O_DIRECTORY,O_RDONLY);
+//
+//    recv_little_hash_key(dnkeyfd, root_dnode->diname, expo_dirnmlen(root_dnode->did), kbuf);
+//
+//    close(dnkeyfd);
+//    unsigned long idx = little_hsh_llidx(kbuf, filename, n_len, root_dnode->did) & LTTCMX;
+//
+//    return hashLattice->bridges[idx];
+//}
 
 
 void destoryhashbridge(HashBridge* hashbridge){
@@ -530,7 +579,7 @@ int filter_dirscan(const struct dirent *entry) {
     return ((entry->d_name[0] == 46)) || (strnlen(entry->d_name, 4) > 3);
 }
 
-int map_dir(const char* dir_path,
+double long* map_dir(const char* dir_path,
             unsigned int path_len,
             unsigned char* rootdirname,
             unsigned int dnlen,
@@ -579,10 +628,8 @@ int map_dir(const char* dir_path,
     unsigned long* idarr = (unsigned long*) calloc(n, sizeof(unsigned long));
     unsigned char* entype = (unsigned char*) calloc(n, sizeof (unsigned char));
     unsigned long* nlens= (unsigned long*) calloc(n, sizeof(unsigned long));
-
-    unsigned char dubbuf[2][16] = {{0},{0}};
-
-
+    unsigned char dubbuf[16] = {0};
+    unsigned char dubbuf2[16] = {0};
 
     // For each entry in the directory...
     for (i=0;i<n;i++){
@@ -638,7 +685,6 @@ int map_dir(const char* dir_path,
 //    {
 //        perror("Failed making bridge anchor\n");
 //    }
-
     // For each entry in the root...
     for (i=0;i<n;i++) {
 
@@ -651,14 +697,12 @@ int map_dir(const char* dir_path,
         else {
 
             // Make a filemap object for it
-            fimap_ptr = mk_fimap(nlens[i],farr[i],haidarr[j],rootino,*fhshno_arr[j]);
+            fimap_ptr = mk_finnode(nlens[i], farr[i], haidarr[j], rootino, *fhshno_arr[j]);
             // Add the entry to the file/hash table
             add_entry(fimap_ptr,*armatr);
             // Add a lattice bridge to connect filemap object to the dir node
-            make_bridge(*armatr, fimap_ptr,dirNode_ptr,hashlattice, hkey);
-            //build_bridge(*armatr, fimap_ptr,dirNode_ptr,hashlattice,dubbuf);
+            build_bridge2(*armatr, fimap_ptr,dirNode_ptr, hashlattice, dubbuf);
             sodium_free(fhshno_arr[j]);
-
             j++;
 
         }
@@ -666,44 +710,44 @@ int map_dir(const char* dir_path,
     }
 
 
-///**
-// *
-// *  Begin test section...
-// *  -------------------------------
-// */
-//
-//    for (i = 0; i<(*armatr)->totsize; i++){
-//        if ((*armatr)->entries[i] != NULL){
-//                        printf("\n%lu: ", expo_fino((*armatr)->entries[i]->fhshno,(*armatr)->entries[i]->fiid));
-//            printf("%s\n",(*armatr)->entries[i]->finame);
-//            printf("fiid: %llu\n",(*armatr)->entries[i]->fiid);
-//            printf("fhshno: %lu\n",(*armatr)->entries[i]->fhshno);
+/**
+ *
+ *  Begin test section...
+ *  -------------------------------
+ */
+
+    for (i = 0; i<(*armatr)->totsize; i++){
+        if ((*armatr)->entries[i] != NULL || (*armatr)->entries[i] != 0){
+                        printf("\n%lu: ", expo_fino((*armatr)->entries[i]->fhshno,(*armatr)->entries[i]->fiid));
+            printf("%s\n",(*armatr)->entries[i]->finame);
+            printf("fiid: %llu\n",(*armatr)->entries[i]->fiid);
+            printf("fhshno: %lu\n",(*armatr)->entries[i]->fhshno);
 //            printf("nmlen: %u\n", expo_finmlen((*armatr)->entries[i]->fiid));
 //            printf("format: %u\n",expo_format((*armatr)->entries[i]->fiid));
 //            printf("Resident dir: %u\n", expo_redir((*armatr)->entries[i]->fiid));
-//
-//            printf("%lu\n",(*armatr)->entries[i]->fhshno);
-//        }
-//    }
-//
-//    dirchains->vessel = dirchains->dir_head;
-//    for (i=0;i<7;i++) {
-//        travel_dchains(dirchains, 1, 1);
-//        printf("%s\n", dirchains->vessel->diname);
-//        printf("%llu\n", dirchains->vessel->did);
-//        printf("%llu\n", dirchains->vessel->did & DCHNSMASK);
-//        printf("%llu\n", (dirchains->vessel->did & DBASEMASK) >> DBASESHFT);
-//        printf("%llu\n", (dirchains->vessel->did & DNAMEMASK) >> DNAMESHFT);
-//        printf("%llu\n", (dirchains->vessel->did & DNAMEMASK) >> DNAMESHFT);
-//
-//    }
-//
-//    printf("\n\n");
-//    printf("%s\n",dirchains->dir_head->diname);
-//    printf("%llu\n",dirchains->dir_head->did);
-//
-//    //unsigned char* bridgefiid = (yield_bridge(hashlattice, "sandpit.tar.gpg", 15, dirNode_ptr, "/home/ujlm/CLionProjects/TagFI/keys/Tech.lhsk"))->dirnode->diname;
-//    //printf("BRIDGE >> %s", bridgefiid);
+
+            printf("%lu\n",(*armatr)->entries[i]->fhshno);
+        }
+    }
+
+    dirchains->vessel = dirchains->dir_head;
+    for (i=0;i<7;i++) {
+        travel_dchains(dirchains, 1, 1);
+        printf("%s\n", dirchains->vessel->diname);
+        printf("%llu\n", dirchains->vessel->did);
+        printf("%llu\n", dirchains->vessel->did & DCHNSMASK);
+        printf("%llu\n", (dirchains->vessel->did & DBASEMASK) >> DBASESHFT);
+        printf("%llu\n", (dirchains->vessel->did & DNAMEMASK) >> DNAMESHFT);
+        printf("%llu\n", (dirchains->vessel->did & DNAMEMASK) >> DNAMESHFT);
+
+    }
+
+    printf("\n\n");
+    printf("%s\n",dirchains->dir_head->diname);
+    printf("%llu\n",dirchains->dir_head->did);
+
+    //unsigned char* bridgefiid = (yield_bridge(hashlattice, "sandpit.tar.gpg", 15, dirNode_ptr, "/home/ujlm/CLionProjects/TagFI/keys/Tech.lhsk"))->dirnode->diname;
+    //printf("BRIDGE >> %s", bridgefiid);
 
 
 
@@ -723,5 +767,4 @@ int map_dir(const char* dir_path,
     free(haidarr);
     free(fhshno_arr);
 
-    return 0;
 }

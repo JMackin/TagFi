@@ -4,6 +4,8 @@
 #include <sys/ioctl.h>
 #include <unistd.h>
 #include <string.h>
+#include "lattice_works.h"
+#include "fidi_masks.h"
 
 #define DNKEYPATH "/home/ujlm/CLionProjects/TagFI/keys"
 
@@ -94,6 +96,11 @@ void real_hash_keyfully(unsigned char** in, unsigned char** out, size_t inlen, c
 
 void dn_hdid_str(unsigned char** dn_hash, char** strout) {
        sodium_bin2hex(*strout, (crypto_generichash_BYTES*2+1), *dn_hash, crypto_generichash_BYTES);
+}
+char* btostr(char* strout[16], unsigned char** dn_hash) {
+
+       sodium_bin2hex(*strout, 16, *dn_hash,8);
+    return *strout;
 }
 
 
@@ -186,35 +193,34 @@ unsigned long long little_hsh_llidx(unsigned char* hkey, unsigned char* tobehshe
     sodium_free(outp);
 
     return outidx;
+
+
 }
 
-// intbuf = 2 * char[16]
-unsigned long latt_hsh_idx(unsigned int* hkey, unsigned long long* tobehshed, unsigned char intbuf[2][16]){
+unsigned long latt_hsh_idx(Armature* armtr, FiNode *fiNode, unsigned char intbuf[16]){
 
-    clock_t ca = clock();
-    memcpy((intbuf[0]),hkey,sizeof(unsigned int)*4);
-    memcpy((intbuf[1]),&tobehshed,sizeof(long)*2);
+    unsigned char tbuf[8];
+    unsigned long outidx=0;
+    unsigned long outidx2=0;
+    memcpy(&outidx,&fiNode->fhshno,8);
+    memcpy(&outidx2,armtr->lttc_key,8);
+    outidx2 &= 5726623060;
+    outidx &= 2863311530;
+    outidx2 >>= 4;
+    outidx^=outidx2;
+    memcpy(tbuf,&outidx,8);
 
-    unsigned char **dubbuf = NULL;
 
 
-    unsigned long outidx;
-    unsigned char* outp = (unsigned char*) sodium_malloc(sizeof (unsigned long));
-
-    if (crypto_shorthash(outp, *(intbuf+1), 16, *(intbuf)) != 0){
+    if (crypto_shorthash(intbuf, tbuf, expo_finmlen(fiNode->fiid), armtr->lttc_key) != 0){
         fprintf(stderr, "Something went wrong hashing for an index.\n");
-        sodium_free(outp);
         return 1;
     }
+    memcpy(&outidx,intbuf,8);
 
-    memcpy(&outidx,outp,sizeof(unsigned long));
-    sodium_free(outp);
-
-    clock_t cb =  clock();
-
-    printf(">>>>>%lu\n",cb-ca);
-    return outidx;
+    return (outidx&4194303);
 }
+
 
 
 

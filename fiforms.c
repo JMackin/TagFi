@@ -295,7 +295,6 @@ unsigned int grab_ffid(unsigned char* fname, unsigned int nlen) {
 
         if (buf[n] == 46) {
             dotpos = n;
-
         }
         n++;
     }
@@ -323,7 +322,6 @@ unsigned int grab_ffid(unsigned char* fname, unsigned int nlen) {
                 free(buf);
                 free(ext_buf);
                 return ++res;
-
             }
 
             if (ext_buf[n] != form_exts[i][n]) {

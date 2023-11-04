@@ -13,7 +13,7 @@
 #define LKEYSZ 16
 
 
-typedef unsigned int LatticeKey[4];
+typedef unsigned char LatticeKey[LKEYSZ];
 
 typedef struct FiNode{
     unsigned long long fiid;
@@ -41,7 +41,7 @@ typedef struct DiChains{
 }DiChains;
 
 typedef struct HashBridge {
-    unsigned long long* unid;
+    unsigned char unid[16];
     DiNode* dirnode;
     Armature* fitable;
     FiNode* finode;
@@ -111,7 +111,7 @@ typedef struct LattStruct{
 typedef struct stat* stptr;
 
 
-int map_dir(const char* dir_path,
+double long* map_dir(const char* dir_path,
             unsigned int path_len,
             unsigned char* dirname,
             unsigned int dnlen,
@@ -123,11 +123,11 @@ DiChains* init_dchains();
 
 HashLattice * init_hashlattice();
 
-FiNode* mk_fimap(unsigned int nlen,
-                 unsigned char* finame,
-                 unsigned long long fiid,
-                 unsigned  long long did,
-                 unsigned long fhshno);
+FiNode* mk_finnode(unsigned int nlen,
+                   unsigned char* finame,
+                   unsigned long long fiid,
+                   unsigned  long long did,
+                   unsigned long fhshno);
 
 
 typedef unsigned int** RspMap;
@@ -184,11 +184,17 @@ InfoFrame * parse_req(const unsigned char* fullreqbuf,
                       unsigned char* tmparrbuf,
                       unsigned char** req_arr_buf);
 
-void build_bridge(Armature* armatr,
+clock_t build_bridge(Armature* armatr,
                   FiNode* fiNode,
                   DiNode* dnode,
                   HashLattice* hashlattice,
-                  unsigned char buf[2][16]);
+                  unsigned char buf[16]);
+
+clock_t build_bridge2(Armature* armatr,
+                  FiNode* fiNode,
+                  DiNode* dnode,
+                  HashLattice* hashlattice,
+                      unsigned char obuf[16]);
 
 
 
