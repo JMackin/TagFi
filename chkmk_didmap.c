@@ -398,8 +398,8 @@ clock_t build_bridge2(Armature* armatr, FiNode* fiNode, DiNode* dnode, HashLatti
     unsigned long long int inid = (fiNode->fiid ^ dnode->did);
     memcpy(hshbrg->unid,&inid,16);
 
-
-    unsigned long idx = latt_hsh_idx((armatr), fiNode, obuf);
+    unsigned int clk = (fiNode->fhshno)&7;
+    unsigned long idx = latt_hsh_idx((armatr), fiNode, obuf, clk);
     //unsigned long idx = little_hsh_llidx((armatr->lttc_key), fiNode->finame, 16, dnode->did) & LTTCMX;
 
     int i = 0;
@@ -420,35 +420,6 @@ clock_t build_bridge2(Armature* armatr, FiNode* fiNode, DiNode* dnode, HashLatti
     return cb-ca;
 }
 
-clock_t build_bridge(Armature* armatr, FiNode* fiNode, DiNode* dnode, HashLattice* hashlattice, unsigned char buf[16]){
-    clock_t ca = clock();
-    if (hashlattice->count > hashlattice->max-3){
-        fprintf(stderr, "Hash lattice full\n");
-    }
-    HashBridge* hshbrg = (HashBridge*) malloc(sizeof(HashBridge));
-
-    unsigned long long int inid = (fiNode->fiid ^ dnode->did);
-    memcpy(hshbrg->unid,&inid,8);
-
-    unsigned long idx = latt_hsh_idx((armatr), fiNode, buf) & LTTCMX;
-    //unsigned long idx = little_hsh_llidx((armatr->lttc_key), fiNode->finame, 16, dnode->did) & LTTCMX;
-    int i = 0;
-    while ((hashlattice->bridges[idx]) != 0 && (hashlattice->bridges[idx]) != NULL) {
-        printf("\nBridgeCollision!inc: %d\n", i);
-        i++;
-        idx += i*2;
-    }
-
-    hshbrg->dirnode = dnode;
-    hshbrg->finode = fiNode;
-    hshbrg->fitable = armatr;
-    hashlattice->bridges[idx] = hshbrg;
-    hashlattice->count++;
-
-    clock_t cb = clock();
-    printf(">>%ld<<",cb-ca);
-    return cb-ca;
-}
 
 HashBridge* yield_bridge(HashLattice* hashLattice, unsigned char* fiid, unsigned int n_len, DiNode* root_dnode) {
 
