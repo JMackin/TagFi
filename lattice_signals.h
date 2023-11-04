@@ -461,7 +461,6 @@ typedef enum LattReply{
 
  * */
 typedef struct StatFrame{
-
     LattStts status;
     LattAct act_id;
     LattErr err_code;

@@ -47,25 +47,24 @@ void destroy_cmdstructures(unsigned char *buffer, unsigned char *respbuffer, uns
 
 /** Response actions */
 
-unsigned int  rsp_sts(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, unsigned  char**buf);
-unsigned int  rsp_nfo(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, unsigned  char**buf);
-unsigned int  rsp_err(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, unsigned  char**buf);
-unsigned int  rsp_und(StatFrame** sts_frm, InfoFrame **inf_frm, DChains* dchns, Lattice* hltc, unsigned  char**buf);
+unsigned int  rsp_sts(StatFrame** sts_frm, InfoFrame** inf_frm, Armatr* armatr, Lattice* hltc, unsigned  char**buf);
+unsigned int  rsp_nfo(StatFrame** sts_frm, InfoFrame** inf_frm, Armatr* armatr, Lattice* hltc, unsigned  char**buf);
+unsigned int  rsp_err(StatFrame** sts_frm, InfoFrame** inf_frm, Armatr* armatr, Lattice* hltc, unsigned  char**buf);
+unsigned int  rsp_und(StatFrame** sts_frm, InfoFrame **inf_frm, Armatr* armatr, Lattice* hltc, unsigned  char**buf);
 
-unsigned int  rsp_gond(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, unsigned char **buf);
-unsigned int  rsp_gohd(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, unsigned char **buf);
-unsigned int  rsp_dsch(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, unsigned char **buf);
-unsigned int  rsp_vvvv(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, unsigned char **buf);
+unsigned int  rsp_gond(StatFrame** sts_frm, InfoFrame** inf_frm,Armatr* armatr,  Lattice* hltc, unsigned char **buf);
+unsigned int  rsp_gohd(StatFrame** sts_frm, InfoFrame** inf_frm,Armatr* armatr,  Lattice* hltc, unsigned char **buf);
+unsigned int  rsp_dsch(StatFrame** sts_frm, InfoFrame** inf_frm,Armatr* armatr,  Lattice* hltc, unsigned char **buf);
+unsigned int  rsp_vvvv(StatFrame** sts_frm, InfoFrame** inf_frm,Armatr* armatr,  Lattice* hltc, unsigned char **buf);
+unsigned int  rsp_diid(StatFrame** sts_frm, InfoFrame** inf_frm,Armatr* armatr,  Lattice* hltc, unsigned char **buf);
+unsigned int  rsp_jjjj(StatFrame** sts_frm, InfoFrame** inf_frm,Armatr* armatr,  Lattice* hltc, unsigned char **buf);
+unsigned int  rsp_dcls(StatFrame** sts_frm, InfoFrame** inf_frm,Armatr* armatr,  Lattice* hltc, unsigned char **buf);
+unsigned int  rsp_dnls(StatFrame** sts_frm, InfoFrame** inf_frm,Armatr* armatr,  Lattice* hltc, unsigned char **buf);
 
-unsigned int  rsp_diid(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, unsigned char **buf);
-unsigned int  rsp_jjjj(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, unsigned char **buf);
-unsigned int  rsp_dcls(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, unsigned char **buf);
-unsigned int  rsp_dnls(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, unsigned char **buf);
-
-unsigned int rsp_fiid(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, unsigned  char**buf);
-unsigned int rsp_frdn(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, unsigned  char**buf);
-unsigned int rsp_iiii(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, unsigned  char**buf);
-unsigned int rsp_fyld(StatFrame** sts_frm, InfoFrame** inf_frm, DChains* dchns, Lattice* hltc, unsigned  char**buf);
+unsigned int rsp_fiid(StatFrame** sts_frm, InfoFrame** inf_frm, Armatr* armatr, Lattice* hltc, unsigned  char**buf);
+unsigned int rsp_frdn(StatFrame** sts_frm, InfoFrame** inf_frm, Armatr* armatr, Lattice* hltc, unsigned  char**buf);
+unsigned int rsp_iiii(StatFrame** sts_frm, InfoFrame** inf_frm, Armatr* armatr, Lattice* hltc, unsigned  char**buf);
+unsigned int rsp_fyld(StatFrame** sts_frm, InfoFrame** inf_frm, Armatr* armatr, Lattice* hltc, unsigned  char**buf);
 
 
 

@@ -218,7 +218,6 @@ InfoFrame *parse_req(const unsigned char *fullreqbuf, //<-- same name in spin up
      * Build CMD struct
      * */
     ((*infofrm)->flags) = (rqflgsbuf); //Note: *((*cmdseq)->flags)+X to access flags
-    (*infofrm)->lead = flag;
     (*infofrm)->flg_cnt = flgcnt;
 
 
@@ -241,7 +240,6 @@ InfoFrame *parse_req(const unsigned char *fullreqbuf, //<-- same name in spin up
 
         exit_flg = (*infofrm)->arr_len == 1 ? (exit_flg << 1) : 1; // EXIT trigger 1
 
-        (*infofrm)->req_size = (UISiZ * 3) + (UISiZ * (*infofrm)->arr_len); // Set InfoFrame -> request size
 
         /**
          * Check tail byte
@@ -279,7 +277,6 @@ InfoFrame *parse_req(const unsigned char *fullreqbuf, //<-- same name in spin up
         memcpy(&end, (fullreqbuf + (UISiZ * 2) + (UCSiZ * (*infofrm)->arr_len)), UISiZ); //Calc request endpoint
 
 
-        (*infofrm)->req_size = (UISiZ * 3) + (UISiZ * (*infofrm)->arr_len); // Set InfoFrame -> fullreqbuf size
 
         if (end != END) {
             stsErno(MALREQ,stsfrm,errno,end,"Computed position for tail byte doesnt match that of request tail","parse req","calcd end value");

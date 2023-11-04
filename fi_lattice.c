@@ -162,6 +162,7 @@ StatFrame * spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsign
      * */
 
     *infofrm = init_info_frm(infofrm); // Request/Response Info Frame
+    (*infofrm)->vessel = (*dirchains)->vessel;
 
     int exit_flag = 0;
     int i = 0;
@@ -266,8 +267,8 @@ StatFrame * spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsign
         (*stsfrm)->status <<= 1;
         clock_t clkb = clock();
 
-/** Read and Parse */
 
+    /** Read and Parse */
         /**
          * EPOLL MONITOR DATA CONN
          * */
@@ -423,8 +424,6 @@ void summon_lattice() {
      * DECLARATIONS
      * */
     int i = 0;
-    double long* PROFILING = (double long*) calloc(2, sizeof(double long));
-    double long* PROFILING2 = (double long*) calloc(2, sizeof(double long));
 
 
     unsigned int arrbuf_len = 256;
@@ -462,7 +461,7 @@ void summon_lattice() {
         //  DirNode chains
         DiChains *dirchains = init_dchains();
         //  HashBridge lattice
-        HashLattice *hashlattice = init_hashlattice();
+        HashLattice *hashlattice = init_hashlattice(&dirchains);
         //  Size of config file in bytes
 
 
@@ -504,6 +503,8 @@ void summon_lattice() {
            /* * * * * * * * * *
           *  BUILD LATTICE  *
          * * * * * * * * **/
+
+
         for (i = 0; i < dn_cnt; i++) {
             nm_len = extract_name(*(paths + i), *(lengths + i));
             //  Build structures and map each DirNode.
@@ -536,26 +537,29 @@ void summon_lattice() {
            /* * * * * * * * * * *
           *   EXECUTE SERVER   *
          ** * * * * * * * * **/
-         status_frm = spin_up(&rsp_buffer,
-                              &req_arr_buf,
-                              &req_buf,
-                              &status_frm,
-                              &info_frm,
-                              &rsp_tbl,
-                              &hashlattice,
-                              &dirchains,
-                              &reqflg_arr,
-                              &cnfdir_fd,
-                              &tmparrbuf,
-                              &cmdseqarr);
 
 
-         if (status_frm->err_code) {
+        status_frm = spin_up(&rsp_buffer,
+                            &req_arr_buf,
+                            &req_buf,
+                            &status_frm,
+                            &info_frm,
+                            &rsp_tbl,
+                            &hashlattice,
+                            &dirchains,
+                            &reqflg_arr,
+                            &cnfdir_fd,
+                            &tmparrbuf,
+                            &cmdseqarr);
+
+
+        if (status_frm->err_code) {
              fprintf(stderr, "Failure:"
                              "\nCode: %d"
                              "\nAct id: %d"
                              "\nModr: %c\n", status_frm->status, status_frm->act_id, status_frm->modr);
-         }
+        }
+
 
          /**
           * CLEANUP
