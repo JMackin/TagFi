@@ -67,3 +67,6 @@ unsigned int expo_dirchnid(unsigned long long did) {
     return did & DCHNSMASK;
 }
 
+unsigned int expo_dirbase_cnt(unsigned long long did){
+    return (did & DGCNTMASK) >> DGCNTSHFT;
+}

@@ -211,9 +211,9 @@ unsigned int inf_DCHN(unsigned char **buf, LattType lattItm, LattStruct lattStru
  *
  * \GenerateInfoFunctionArray
  * Generate function array for info response operations */
-InfoFunc* gen_infofunc_arr(){
+void gen_infofunc_arr(InfoFunc** infofuncarr){
 
-    InfoFunc* infofuncarr = (InfoFunc*) malloc(sizeof(InfoFunc));
+
 
     unsigned int (*nada)(unsigned char **buf, LattType lattItm, LattStruct lattStruct);
     unsigned int (*seqt)(unsigned char **buf, LattType lattItm, LattStruct lattStruct);
@@ -244,17 +244,16 @@ InfoFunc* gen_infofunc_arr(){
     sfrm = &inf_SFRM; fide = &inf_FIDE;
     ifrm = &inf_IFRM; dchn = &inf_DCHN;
 
-    (*infofuncarr)[0] = nada; (*infofuncarr)[9] = dchn;
-    (*infofuncarr)[1] = lttc; (*infofuncarr)[10] = seqt;
-    (*infofuncarr)[2] = brdg; (*infofuncarr)[11] = cmsq;
-    (*infofuncarr)[3] = dirn; (*infofuncarr)[12] = icar;
-    (*infofuncarr)[4] = ftbl; (*infofuncarr)[13] = vssl;
-    (*infofuncarr)[5] = fimp; (*infofuncarr)[14] = fiob;
-    (*infofuncarr)[6] = lflg; (*infofuncarr)[15] = idid;
-    (*infofuncarr)[7] = sfrm; (*infofuncarr)[16] = nmnm;
-    (*infofuncarr)[8] = ifrm; (*infofuncarr)[17] = fide;
+    (**infofuncarr)[0] = nada; (**infofuncarr)[9] = dchn;
+    (**infofuncarr)[1] = lttc; (**infofuncarr)[10] = seqt;
+    (**infofuncarr)[2] = brdg; (**infofuncarr)[11] = cmsq;
+    (**infofuncarr)[3] = dirn; (**infofuncarr)[12] = icar;
+    (**infofuncarr)[4] = ftbl; (**infofuncarr)[13] = vssl;
+    (**infofuncarr)[5] = fimp; (**infofuncarr)[14] = fiob;
+    (**infofuncarr)[6] = lflg; (**infofuncarr)[15] = idid;
+    (**infofuncarr)[7] = sfrm; (**infofuncarr)[16] = nmnm;
+    (**infofuncarr)[8] = ifrm; (**infofuncarr)[17] = fide;
 
-    return infofuncarr;
 }
 
 
@@ -265,7 +264,7 @@ InfoFunc* gen_infofunc_arr(){
 
 
 
-unsigned int rsp_err(StatFrame **sts_frm, InfoFrame **inf_frm, Armatr *armatr, Lattice* hltc, unsigned char **buf) {
+unsigned int rsp_err(StatFrame **sts_frm, InfoFrame **inf_frm,  Lattice* hltc, unsigned char **buf) {
 
     unsigned int ercode = (*sts_frm)->err_code;
     memcpy(buf,&ercode,sizeof(LattErr));
@@ -274,7 +273,7 @@ unsigned int rsp_err(StatFrame **sts_frm, InfoFrame **inf_frm, Armatr *armatr, L
 }
 
 /** Info funcs */
-unsigned int rsp_nfo(StatFrame **sts_frm, InfoFrame **inf_frm, Armatr *armatr, Lattice * hltc, unsigned char** buf) {
+unsigned int rsp_nfo(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, unsigned char** buf) {
 
     LattType lattItm;
     lattItm.nui = 0;
@@ -285,8 +284,11 @@ unsigned int rsp_nfo(StatFrame **sts_frm, InfoFrame **inf_frm, Armatr *armatr, L
     uint respsz;
     uint i;
     LattObj objeid;
-    InfoFunc* funarr;
+    InfoFunc* infofuncarr;
     LattStruct lattStruct;
+
+    infofuncarr = (InfoFunc*) malloc(sizeof(InfoFunc));
+
 
 
 //    lattStruct.dirChains =  *dchns;
@@ -303,7 +305,7 @@ unsigned int rsp_nfo(StatFrame **sts_frm, InfoFrame **inf_frm, Armatr *armatr, L
 //                    ->fitable);
 
 
-    funarr = gen_infofunc_arr();
+    gen_infofunc_arr(&infofuncarr);
 
     // Extract the desired object ID from the first byte of the request array,
     // and the array content, which can be an ID, etc. depending on the subject.
@@ -328,10 +330,10 @@ unsigned int rsp_nfo(StatFrame **sts_frm, InfoFrame **inf_frm, Armatr *armatr, L
         // Extract identifier which would be in the request array at position array start+8
         memcpy(&itmID,(*inf_frm)->arr+(rspsz_b),(rspsz_b));
         (lattStruct.itmID) = &itmID;
-        respsz = ((*funarr)[i](buf, lattItm, lattStruct));
-
-        free(funarr);
+        respsz = ((*infofuncarr)[i](buf, lattItm, lattStruct));
     }
+    free(*infofuncarr);
+
 
     // return of 0 means the object is there but failed to be queried.
     // return of 1 means the object is tmissing entirely.
@@ -350,7 +352,7 @@ unsigned int rsp_nfo(StatFrame **sts_frm, InfoFrame **inf_frm, Armatr *armatr, L
 //uint bcnt;
 //lattItm.obj = LTTC;
 //bcnt = rsparr_add_lt(lattItm,buf,0);
-unsigned int rsp_sts(StatFrame **sts_frm, InfoFrame **inf_frm, Armatr *armatr, Lattice * hltc, unsigned char **buf) {
+unsigned int rsp_sts(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, unsigned char **buf) {
     printf("Response: Status frame");
     uint bcnt;
     LattType lattitm;
@@ -378,11 +380,11 @@ unsigned int rsp_sts(StatFrame **sts_frm, InfoFrame **inf_frm, Armatr *armatr, L
     //TODO: Test and verify this function
 }
 
-unsigned int rsp_und(StatFrame **sts_frm, InfoFrame **inf_frm, Armatr* armatr, Lattice * hltc, unsigned char **buf) {
+unsigned int rsp_und(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, unsigned char **buf) {
     return 0;
 }
 
-unsigned int rsp_fiid(StatFrame **sts_frm, InfoFrame **inf_frm, Armatr* armatr, Lattice* hltc, unsigned char **buf) {
+unsigned int rsp_fiid(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, unsigned char **buf) {
     printf("Response: Filename for ID");
     u_long itmID;
     memcpy(&itmID,(*inf_frm)->arr+(rspsz_b),(rspsz_b));
@@ -394,46 +396,46 @@ unsigned int rsp_fiid(StatFrame **sts_frm, InfoFrame **inf_frm, Armatr* armatr, 
 
 }
 
-unsigned int rsp_diid(StatFrame **sts_frm, InfoFrame **inf_frm, Armatr* armatr, Lattice* hltc, unsigned char **buf) {
+unsigned int rsp_diid(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, unsigned char **buf) {
     printf("Response: Dir ID");
 }
 
-unsigned int rsp_frdn(StatFrame **sts_frm, InfoFrame **inf_frm, Armatr* armatr, Lattice* hltc, unsigned char **buf) {
+unsigned int rsp_frdn(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, unsigned char **buf) {
     printf("Response: Resident Dir");
 }
 
-unsigned int rsp_gond(StatFrame **sts_frm, InfoFrame **inf_frm, Armatr* armatr, Lattice* hltc, unsigned char **buf) {
+unsigned int rsp_gond(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, unsigned char **buf) {
     printf("Response: Goto node");
 }
 
-unsigned int rsp_fyld(StatFrame **sts_frm, InfoFrame **inf_frm, Armatr* armatr, Lattice* hltc, unsigned char **buf) {
+unsigned int rsp_fyld(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, unsigned char **buf) {
     printf("Response: Yield object");}
 
-unsigned int rsp_jjjj(StatFrame **sts_frm, InfoFrame **inf_frm, Armatr* armatr, Lattice* hltc, unsigned char **buf) {
+unsigned int rsp_jjjj(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, unsigned char **buf) {
     printf("Response: Empty");
 }
 
-unsigned int rsp_dsch(StatFrame **sts_frm, InfoFrame **inf_frm, Armatr* armatr, Lattice* hltc, unsigned char **buf) {
+unsigned int rsp_dsch(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, unsigned char **buf) {
     printf("Response: Search for object");
 }
 
-unsigned int rsp_iiii(StatFrame **sts_frm, InfoFrame **inf_frm, Armatr* armatr, Lattice* hltc, unsigned char **buf) {
+unsigned int rsp_iiii(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, unsigned char **buf) {
     printf("Response: Empty");
 }
 
-unsigned int rsp_dcls(StatFrame **sts_frm, InfoFrame **inf_frm, Armatr* armatr, Lattice *hltc, unsigned char **buf) {
+unsigned int rsp_dcls(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, unsigned char **buf) {
     printf("Response: List chain nodes");
 }
 
-unsigned int rsp_gohd(StatFrame **sts_frm, InfoFrame **inf_frm, Armatr* armatr, Lattice *hltc, unsigned char **buf) {
+unsigned int rsp_gohd(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, unsigned char **buf) {
     printf("Response: Go to chain head");
 }
 
-unsigned int rsp_dnls(StatFrame **sts_frm, InfoFrame **inf_frm, Armatr* armatr, Lattice *hltc, unsigned char **buf) {
+unsigned int rsp_dnls(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, unsigned char **buf) {
     printf("Response: List dir ");
 }
 
-unsigned int rsp_vvvv(StatFrame **sts_frm, InfoFrame **inf_frm, Armatr* armatr, Lattice *hltc, unsigned char **buf) {
+unsigned int rsp_vvvv(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, unsigned char **buf) {
     printf("Response: Empty");
 }
 
@@ -454,25 +456,25 @@ RspFunc *rsp_act(
         RspFunc *funarr){
 
 //Info
-    unsigned int  (*und)(StatFrame **sts_frm, InfoFrame **inf_frm, Armatr* armatr, Lattice *hltc, unsigned char **buf);
-    unsigned int (*err)(StatFrame **sts_frm, InfoFrame **inf_frm, Armatr* armatr, Lattice *hltc, unsigned char**buf);
-    unsigned int (*nfo)(StatFrame **sts_frm, InfoFrame **inf_frm, Armatr* armatr, Lattice *hltc, unsigned char**buf);
-    unsigned int (*sts)(StatFrame **sts_frm, InfoFrame **inf_frm, Armatr* armatr, Lattice *hltc, unsigned char**buf);
+    unsigned int  (*und)(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, unsigned char **buf);
+    unsigned int (*err)(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, unsigned char**buf);
+    unsigned int (*nfo)(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, unsigned char**buf);
+    unsigned int (*sts)(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, unsigned char**buf);
 //Travel*
-    unsigned int (*fiid)(StatFrame **sts_frm, InfoFrame **inf_frm, Armatr* armatr, Lattice *hltc, unsigned char **buf);
-    unsigned int (*diid)(StatFrame **sts_frm, InfoFrame **inf_frm, Armatr* armatr, Lattice *hltc, unsigned char **buf);
-    unsigned int (*frdn)(StatFrame **sts_frm, InfoFrame **inf_frm, Armatr* armatr, Lattice *hltc, unsigned char **buf);
-    unsigned int (*gond)(StatFrame **sts_frm, InfoFrame **inf_frm, Armatr* armatr, Lattice *hltc, unsigned char **buf);
+    unsigned int (*fiid)(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, unsigned char **buf);
+    unsigned int (*diid)(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, unsigned char **buf);
+    unsigned int (*frdn)(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, unsigned char **buf);
+    unsigned int (*gond)(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, unsigned char **buf);
 //Dir*
-    unsigned int (*fyld)(StatFrame **sts_frm, InfoFrame **inf_frm, Armatr* armatr, Lattice *hltc, unsigned char **buf);
-    unsigned int (*jjjj)(StatFrame **sts_frm, InfoFrame **inf_frm,Armatr* armatr,  Lattice *hltc, unsigned char **buf);
-    unsigned int (*dsch)(StatFrame **sts_frm, InfoFrame **inf_frm,Armatr* armatr,  Lattice *hltc, unsigned char **buf);
-    unsigned int (*iiii)(StatFrame **sts_frm, InfoFrame **inf_frm,Armatr* armatr,  Lattice *hltc, unsigned char **buf);
+    unsigned int (*fyld)(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, unsigned char **buf);
+    unsigned int (*jjjj)(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, unsigned char **buf);
+    unsigned int (*dsch)(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, unsigned char **buf);
+    unsigned int (*iiii)(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, unsigned char **buf);
 //File*
-    unsigned int (*dcls)(StatFrame **sts_frm, InfoFrame **inf_frm,Armatr* armatr,  Lattice *hltc, unsigned char **buf);
-    unsigned int (*gohd)(StatFrame **sts_frm, InfoFrame **inf_frm,Armatr* armatr,  Lattice *hltc, unsigned char **buf);
-    unsigned int (*dnls)(StatFrame **sts_frm, InfoFrame **inf_frm,Armatr* armatr,  Lattice *hltc, unsigned char **buf);
-    unsigned int (*vvvv)(StatFrame **sts_frm, InfoFrame **inf_frm,Armatr* armatr,  Lattice *hltc, unsigned char **buf);
+    unsigned int (*dcls)(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, unsigned char **buf);
+    unsigned int (*gohd)(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, unsigned char **buf);
+    unsigned int (*dnls)(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, unsigned char **buf);
+    unsigned int (*vvvv)(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, unsigned char **buf);
 
     und = &rsp_und;
     err = &rsp_err;
@@ -616,7 +618,7 @@ unsigned int respond(Resp_Tbl *rsp_tbl,
     memcpy(rsp_buf+UISiZ,&lattItm,ltyp_s);
 
     // Call function at index 'rsp' (the reply object value) from function array.
-    rspsz = (*rsp_tbl->rsp_funcarr)[lattItm.rpl](sts_frm, inf_frm, dchns, hltc, &rsp_buf);
+    rspsz = (*rsp_tbl->rsp_funcarr)[lattItm.rpl](sts_frm, inf_frm, hltc, &rsp_buf);
     if (!rspsz){
         return 1;
     }
@@ -636,12 +638,3 @@ unsigned int respond(Resp_Tbl *rsp_tbl,
     return 0;
 }
 
-void destroy_cmdstructures(unsigned char *buffer, unsigned char *respbuffer, unsigned char *carr, Resp_Tbl *rsp_tbl) {
-
-    //free(buffer);
-    //free(respbuffer);
-    //free(carr);
-
-    free(((rsp_tbl)->rsp_funcarr));
-    free(rsp_tbl);
-}

@@ -23,6 +23,9 @@
 
 #ifndef TAGFI_FIDI_MASKS_H
 #define TAGFI_FIDI_MASKS_H
+
+#include "lattice_rsps.h"
+
 #define TYPFIL 8        // Regular file flag
 #define TYPDIR 4        // Directory flag
 
@@ -36,20 +39,30 @@
 #define LTTCMX 4194303              // Max item count for lattice: Max dir count (64) * Max File item count (8192) - 1
 #define PARAMX 65535              // Max item count for para bridge lattice
 
-#define DCHNSSHIFT 6               // Number of bits in Dir ID no.
-#define DCHNSMASK 63               // 0b00000000000000111111 - ID under group-base - abs:63
-#define DBASEMASK 192              // 0b00000000000011000000 - Base ID: 01=media, 10=docs - abs:2
-#define DUNUSED 1792               // 0b00000000011100000000 - Unused bits - abs:7
-#define DNAMEMASK 1046528          // 0b11111111100000000000 - Str len of directory name/path - abs:511
-#define MEDABASEM 64               // 0b00000000000001000000 - ID for MEDIA base derived from: (did & DBASEMASK)
-#define DOCSBASEM 128              // 0b00000000000010000000 - ID for DOCS base derived from: (did & DBASEMASK)
+
 #define DTOTALMSK 1048575          // 0b11111111111111111111 - DirNode diid Mask
 #define DMASKSHFT 20               // Total mask bits
-#define DNAMESHFT 11               // Trailing bits after dir str-len flag:  nlen = (DNAMEMASK & did) >> DNAMESHFT
-#define DBASESHFT 6                // Trailing bits after group-base flag: baseID = (DBASEMASK & did) >> DBASESHFT
-#define DGCNTMASK 4032             // 0b111111000000 - Total num. of dirs under group-base. For use on MEDA/DOCS nodes.
-#define DGCNTSHFT 6                // Number of bits in base ID no.
-#define DENTRYCNT
+
+/*
+ * REG NODES:
+ */
+#define DCHNSMASK 255              // 0b00000000000011111111 - ID under group-base
+#define DBASEMASK 768              // 0b00000000001100000000 - Base ID: 01=media, 10=docs - abs:2
+#define MEDABASEM 64               // 0b00000000000100000000 - OR Mask: ID for MEDIA base derived from: (did & DBASEMASK)
+#define DOCSBASEM 128              // 0b00000000001000000010 - OR Mask: ID for DOCS base derived from: (did & DBASEMASK
+#define DBASESHFT 8                // 0b000000000011xxxxxxxx - Trailing bits after group-base flag: baseID = (DBASEMASK & did) >> DBASESHFT
+#define DUNUSED 7168               // 0b00000001110000000000 - Unused bits - abs:7
+#define DUNUSHIFT 10               // 0b0000000111xxxxxxxxxx - Number of trailing after Unused bits - abs:7
+#define DNAMEMASK 1040384          // 0b11111110000000000000 - Str len of directory name - abs:127
+#define DNAMESHFT 13               // 0b1111111xxxxxxxxxxxxx - Trailing bits after dir str-len flag:  nlen = (DNAMEMASK & did) >> DNAMESHFT
+
+/*
+ * BASE NODES:
+ */
+#define DGCNTMASK 4080             // 0b00000000111111110000 - Total num. of dirs under group-base. For use on MEDA/DOCS nodes.
+#define DGCNTSHFT 4                // 0b0000000011111111xxxx - Number of trailing bits after base - dir count.
+
+
 #define DROOTDID 576460752303423489 // Root node did, empty save for 1 set leading bit and 1 trailing - 60 bits
 #define DGRPTMPL 576460752303423488 // 1 leading bit and 59 empty bits, template for base-group did
 #define DGMEDAID 576460752303423490 // MEDA group id
@@ -64,13 +77,13 @@
 
 /** \verbatim
  * FileMap ID empty template
- * 1 set leading bit and 59 empty trailing bits
+ * 1 set leading bit and 62 empty trailing bits
  *
  * 0b100000000000000000000000000000000000000000000000000000000000
- *  C||                FMIDTMPL - 59bits                        |  */
-#define FMIDTMPL 576460752303423488
+ *  C||                FMIDTMPL - 62bits                        |  */
+#define FMIDTMPL 4611686018427387904
 
-#define FMIDSHFT 59                     // Num trailing bits after the leading control bit in the fiid
+#define FMIDSHFT 62                     // Num trailing bits after the leading control bit in the fiid
 
 #define CLIPHSH 4294967295              // &mask to clip the random number and guarantee 32 bit length
 
@@ -81,13 +94,11 @@
  *
  * Gives the number produced by XORing a random u_long and the file index num.
  *
- * 0b111111111111111111111111111111111000000000000000000000000000
- *  C||      FINOMASK - 32bits       ||       FiNode attr.       |  */
-#define FINOMASK 1152921504472629248
+ * 0b111111111111111111111111111111111000000000000000000000000000000
+ *  C||      FINOMASK - 32bits       ||        FiNode attr.        |  */
+#define FINOMASK 9223372035781033984
 
-
-#define FINOSHFT 27  // Num of trailing bits after FINOMASK
-
+#define FINOSHFT 30  // Num of trailing bits after FINOMASK
 
 /**
  *\verbatim
@@ -95,16 +106,16 @@
  *
  * Gives string length of the file name.
  *
- *  0b100000000000000000000000000000000111111111000000000000000000
- *   C||         fhshno               ||   *   ||    add.attr.   |
+ *  0b100000000000000000000000000000000111111111000000000000000000000
+ *   C||         fhshno               ||   *   ||      add.attr.    |
  *
  *  * FNLENMSK - 9 bits
  *
  *  */
-#define FNLENMSK 133955584
+#define FNLENMSK 1071644672
 
 
-#define FNLENSHFT 18 // Num of trailing bits after FNLENMSK
+#define FNLENSHFT 21 // Num of trailing bits after FNLENMSK
 
 
 /** \verbatim
@@ -112,14 +123,14 @@
  *
  * Gives the fileformat, defined by fiForms.
  *
- *  0b10000000000000000000000000000000000000000011111111000000000
- *   C||         fhshno               ||add.atr||   *  ||add.atr|
+ *  0b100000000000000000000000000000000000000000111111110000000000000
+ *   C||         fhshno               ||add.atr||   *  ||  add.atr  |
  *
  *  * FFRMTMSK - 8 bits */
-#define FFRMTMSK 130560
+#define FFRMTMSK 2088960
 
 
-#define FFRMTSHFT 9 // Num of trailing bits after FFRMTMSK
+#define FFRMTSHFT 13 // Num of trailing bits after FFRMTMSK
 
 
 /** \verbatim
@@ -127,15 +138,15 @@
  *
  * Gives dir chain ID of the files resident dir ID
  *
- *  0b10000000000000000000000000000000000000000000000000111111100
- *   C||         fhshno               ||   add.attr.   || *   || |
+ *  0b1000000000000000000000000000000000000000000000000011111111000
+ *   C||         fhshno               ||   add.attr.   || *   ||  |
  *
- *  * FRDIRMSK - 7 bits */
-#define FRDIRMSK 252
+ *  * FRDIRMSK - 8 bits */
+#define FRDIRMSK 2040
 
-#define FBSGPCLIP 127 // &mask to clip down a did for masking with a FiNode object
+#define FBSGPCLIP 255 // &mask to clip down a did for masking with a FiNode object
 
-#define FRDIRSHFT 2  // Num of trailing bits after FRDIRMSK
+#define FRDIRSHFT 3  // Num of trailing bits after FRDIRMSK
 
 
 /**
@@ -152,6 +163,8 @@
 #define FDCHNGMSK 2
 
 #define FDCHNGSHFT 1 // Num of trailing bits after FDCHNGMSK
+
+
 
 
 /**
@@ -184,5 +197,8 @@ unsigned int expo_dirgrp(unsigned long long fiid, unsigned int digrp);
 unsigned int expo_dirnmlen(unsigned long long did);
 unsigned int expo_dirbase(unsigned long long did);
 unsigned int expo_dirchnid(unsigned long long did);
+unsigned int expo_dr_cnt(Lattice lattice);
+unsigned int expo_dirbase_cnt(unsigned long long did);
+
 
 #endif //TAGFI_FIDI_MASKS_H

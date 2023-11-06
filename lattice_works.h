@@ -15,8 +15,11 @@
 
 typedef unsigned char LatticeKey[LKEYSZ];
 
-typedef unsigned char** NodeEntries;
+typedef struct NodeEntries{
+    unsigned char* finame;
+    unsigned long hshno;
 
+}NodeEntries;
 
 typedef struct FiNode{
     unsigned long long fiid;
@@ -26,7 +29,7 @@ typedef struct FiNode{
 
 typedef struct Armature{
     LatticeKey lttc_key;
-    NodeEntries entries;
+    NodeEntries** entries;
     unsigned long totsize;
     unsigned int count;
 } Armature;
@@ -43,23 +46,23 @@ typedef DiNode* Vessel;
 
 typedef struct DiChains{
     DiNode* dir_head;
-    DiNode* vessel;
-
+    Vessel vessel;
 }DiChains;
+struct HashBridge;
+
+typedef struct HashBridge* ParaBridge;
 
 typedef struct HashBridge {
     unsigned char unid[16];
+    ParaBridge parabridge;
     DiNode* dirnode;
     FiNode* finode;
 } HashBridge;
 
 
-
-
 typedef struct HashLattice {
     DiChains* chains;
     HashBridge** bridges;
-    HashBridge** para_bridges;
     unsigned long count;
     unsigned long max;
 } HashLattice;
@@ -121,8 +124,6 @@ typedef struct LattStruct{
 typedef struct stat* stptr;
 
 
-
-
 double long* map_dir(const char* dir_path,
             unsigned int path_len,
             unsigned char* dirname,
@@ -143,9 +144,9 @@ FiNode* mk_finnode(unsigned int nlen,
 
 
 typedef unsigned int** RspMap;
-typedef unsigned int (*RspFunc[RSPARRLEN])(StatFrame**, InfoFrame**, Armatr *, Lattice*, unsigned char**);
+typedef unsigned int (*RspFunc[RSPARRLEN])(StatFrame**, InfoFrame**, Lattice*, unsigned char**);
 
-unsigned int getidx(FiNode* fimap);
+unsigned int getidx(unsigned long fhshno);
 
 void add_entry(FiNode* entry,
                Armature* fiTbl);
@@ -161,7 +162,7 @@ DiNode* add_dnode(unsigned long long did,
                   unsigned char* dname,
                   unsigned short nlen,
                   unsigned int mord,
-                  Lattice lattice,
+                  Lattice* lattice,
                   Armatr armatr);
 
 HashBridge* yield_bridge(HashLattice* hashLattice,
@@ -169,14 +170,16 @@ HashBridge* yield_bridge(HashLattice* hashLattice,
                          unsigned int n_len,
                          DiNode* root_dnode);
 
-void destoryhashbridge(HashBridge* hashbridge);
+void destoryhashbridge(HashBridge hashbridge);
 
 void destryohashlattice(HashLattice* hashlattice);
 
-void destroy_ent(FiNode* fimap,
+void destroy_node(FiNode * node,
                  Armature* fiTbl);
 
-void destroy_tbl(Armature* fitbl);
+int destroy_ent(Armatr armatr,  unsigned long idx);
+
+void destroy_armatr(Armatr fitbl, HashLattice hashLattice);
 
 void destroy_chains(DiChains* dirChains);
 
@@ -203,11 +206,12 @@ clock_t build_bridge(Armature* armatr,
                   HashLattice* hashlattice,
                   unsigned char buf[16]);
 
-void build_bridge2(Armature* armatr,
-                  FiNode* fiNode,
-                  DiNode* dnode,
-                  HashLattice* hashlattice,
-                      unsigned char obuf[16]);
+void build_bridge2(unsigned int clk,
+                   Armature* armatr,
+                   FiNode* fiNode,
+                   DiNode* dnode,
+                   HashLattice* hashlattice,
+                   unsigned char obuf[16]);
 
 unsigned int finode_idx(unsigned long fhshno);
 

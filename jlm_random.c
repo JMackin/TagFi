@@ -197,28 +197,36 @@ unsigned long long little_hsh_llidx(unsigned char* hkey, unsigned char* tobehshe
 
 }
 
-unsigned long latt_hsh_idx(Armature* armtr, unsigned long fhshno, unsigned char intbuf[16],unsigned int clk){
+unsigned long latt_hsh_idx(Armature* armtr, unsigned long fhshno, unsigned char intbuf[16]){
 
-    unsigned char tbuf[8];
     unsigned long outidx=0;
     unsigned long outidx2=0;
+    unsigned int clk = fhshno&3;
+    unsigned int msk = (3817748711);
+    unsigned char tbuf[8];
     memcpy(&outidx,&fhshno,8);
-    memcpy(&outidx2,armtr->lttc_key,8);
-    outidx2 &= (3817748711);
-    outidx2 = (clk) ? outidx2 << 2 : outidx2 >> 1;
-    outidx &= 2863311530;
-    outidx ^= outidx2;
+    //msk = (clk) ? msk << 2 : msk >> 1;
+    //outidx &= msk;
+
+//    unsigned int clk = fhshno & 7;
+//    unsigned int msk = (3817748711);
+//    msk = (clk) ? fhshno << 2 : fhshno >> 1;
+//    fhshno &= msk;
+//    fhshno >>= clk;
+//    return fhshno & HTMASK;
+
     memcpy(tbuf,&outidx,8);
 
     if (crypto_shorthash(intbuf, tbuf, 8, armtr->lttc_key) != 0){
         fprintf(stderr, "Something went wrong hashing for an index.\n");
         return 1;
     }
-    memcpy(&outidx,intbuf,8);
+    memcpy(&outidx2,intbuf,8);
 
-    (outidx&=4194303);
-    (outidx>>=clk);
+    (outidx2 &= 4194303);
+    //(outidx2 >>= clk);
 
+    return outidx2;
 
 }
 

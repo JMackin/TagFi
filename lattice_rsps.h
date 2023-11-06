@@ -41,30 +41,37 @@ unsigned int respond(Resp_Tbl *rsp_tbl,
                      Lattice *hltc,
                      unsigned char *resp_buf);
 
-void destroy_cmdstructures(unsigned char *buffer, unsigned char *respbuffer, unsigned char *tmparrbuf, Resp_Tbl *rsp_tbl);
+
+void destroy_cmdstructures(Resp_Tbl *rsp_tbl,
+                           InfoFrame *infoFrame,
+                           LttcFlags reqflg_arr,
+                           unsigned char* req_buf,
+                           unsigned char* req_arr_buf,
+                           unsigned char* tmparrbuf,
+                           unsigned char* rsp_buf);
 
 
 
 /** Response actions */
 
-unsigned int  rsp_sts(StatFrame** sts_frm, InfoFrame** inf_frm, Armatr* armatr, Lattice* hltc, unsigned  char**buf);
-unsigned int  rsp_nfo(StatFrame** sts_frm, InfoFrame** inf_frm, Armatr* armatr, Lattice* hltc, unsigned  char**buf);
-unsigned int  rsp_err(StatFrame** sts_frm, InfoFrame** inf_frm, Armatr* armatr, Lattice* hltc, unsigned  char**buf);
-unsigned int  rsp_und(StatFrame** sts_frm, InfoFrame **inf_frm, Armatr* armatr, Lattice* hltc, unsigned  char**buf);
+unsigned int  rsp_sts(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice* hltc, unsigned char **buf);
+unsigned int  rsp_nfo(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice* hltc, unsigned char **buf);
+unsigned int  rsp_err(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice* hltc, unsigned char **buf);
+unsigned int  rsp_und(StatFrame** sts_frm, InfoFrame **inf_frm, Lattice* hltc, unsigned  char**buf);
 
-unsigned int  rsp_gond(StatFrame** sts_frm, InfoFrame** inf_frm,Armatr* armatr,  Lattice* hltc, unsigned char **buf);
-unsigned int  rsp_gohd(StatFrame** sts_frm, InfoFrame** inf_frm,Armatr* armatr,  Lattice* hltc, unsigned char **buf);
-unsigned int  rsp_dsch(StatFrame** sts_frm, InfoFrame** inf_frm,Armatr* armatr,  Lattice* hltc, unsigned char **buf);
-unsigned int  rsp_vvvv(StatFrame** sts_frm, InfoFrame** inf_frm,Armatr* armatr,  Lattice* hltc, unsigned char **buf);
-unsigned int  rsp_diid(StatFrame** sts_frm, InfoFrame** inf_frm,Armatr* armatr,  Lattice* hltc, unsigned char **buf);
-unsigned int  rsp_jjjj(StatFrame** sts_frm, InfoFrame** inf_frm,Armatr* armatr,  Lattice* hltc, unsigned char **buf);
-unsigned int  rsp_dcls(StatFrame** sts_frm, InfoFrame** inf_frm,Armatr* armatr,  Lattice* hltc, unsigned char **buf);
-unsigned int  rsp_dnls(StatFrame** sts_frm, InfoFrame** inf_frm,Armatr* armatr,  Lattice* hltc, unsigned char **buf);
+unsigned int  rsp_gond(StatFrame** sts_frm, InfoFrame** inf_frm, Lattice* hltc, unsigned char **buf);
+unsigned int  rsp_gohd(StatFrame** sts_frm, InfoFrame** inf_frm, Lattice* hltc, unsigned char **buf);
+unsigned int  rsp_dsch(StatFrame** sts_frm, InfoFrame** inf_frm, Lattice* hltc, unsigned char **buf);
+unsigned int  rsp_vvvv(StatFrame** sts_frm, InfoFrame** inf_frm, Lattice* hltc, unsigned char **buf);
+unsigned int  rsp_diid(StatFrame** sts_frm, InfoFrame** inf_frm, Lattice* hltc, unsigned char **buf);
+unsigned int  rsp_jjjj(StatFrame** sts_frm, InfoFrame** inf_frm, Lattice* hltc, unsigned char **buf);
+unsigned int  rsp_dcls(StatFrame** sts_frm, InfoFrame** inf_frm, Lattice* hltc, unsigned char **buf);
+unsigned int  rsp_dnls(StatFrame** sts_frm, InfoFrame** inf_frm, Lattice* hltc, unsigned char **buf);
 
-unsigned int rsp_fiid(StatFrame** sts_frm, InfoFrame** inf_frm, Armatr* armatr, Lattice* hltc, unsigned  char**buf);
-unsigned int rsp_frdn(StatFrame** sts_frm, InfoFrame** inf_frm, Armatr* armatr, Lattice* hltc, unsigned  char**buf);
-unsigned int rsp_iiii(StatFrame** sts_frm, InfoFrame** inf_frm, Armatr* armatr, Lattice* hltc, unsigned  char**buf);
-unsigned int rsp_fyld(StatFrame** sts_frm, InfoFrame** inf_frm, Armatr* armatr, Lattice* hltc, unsigned  char**buf);
+unsigned int rsp_fiid(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice* hltc, unsigned char **buf);
+unsigned int rsp_frdn(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice* hltc, unsigned char **buf);
+unsigned int rsp_iiii(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice* hltc, unsigned char **buf);
+unsigned int rsp_fyld(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice* hltc, unsigned char **buf);
 
 
 
