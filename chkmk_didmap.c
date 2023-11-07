@@ -70,7 +70,6 @@ DiNode* mk_tailnode(){
     DiNode* tail = (DiNode*) malloc(sizeof(DiNode));
     tail->diname = 0;
     tail->did = 0;
-
     return tail;
 }
 
@@ -310,16 +309,13 @@ void init_armatr(Armature*** armatr, unsigned int size, unsigned char** hkey){
 
     (**armatr)->totsize=size;
     (**armatr)->count=0;
-    ((**armatr)->entries) = (NodeEntries**) calloc(size, sizeof(NodeEntries*));
+    ((**armatr)->entries) = (NodeEntries*) calloc(size, sizeof(NodeEntries));
 
-    memcpy((&(**armatr)->lttc_key),*hkey,LKEYSZ);
-
-    for (int i = 0; i < size;i++)
-    {
-        (**armatr)->entries[i] = NULL;
-
+    for(int i = 0; i<(**armatr)->totsize; i++){
+        (**armatr)->entries->hshno = 0;
     }
 
+    memcpy((&(**armatr)->lttc_key),*hkey,LKEYSZ);
 }
 
 FiNode* mk_finnode(unsigned int nlen, unsigned char* finame,
@@ -359,47 +355,33 @@ unsigned int finode_idx(unsigned long fhshno)
 }
 
 
-//unsigned long getfino(FiNode* fimap)
-//{
-//    return ((fimap->fhshno))^((fimap->fiid));
-//}
-
 void add_entry(FiNode* finode, Armature* armatr) {
     int x = 0;
 
-
-    if ((armatr->entries[getidx(finode->fhshno)]) != 0) {
+    if ((armatr->entries[getidx(finode->fhshno)]).hshno != 0) {
 
         unsigned long* fino = (unsigned long*) sodium_malloc(sizeof(unsigned long));
 
         *fino = expo_fino(finode->fhshno,expo_finmlen(finode->fiid));
 
-        while (armatr->entries[getidx(finode->fhshno)] != 0) {
+        while (((armatr->entries)[getidx(finode->fhshno)].hshno) != 0) {
             (finode->fhshno) = finode_idx((finode->fhshno));
             printf("EC! X:%d\n",x);
             coll_upup();
             x++;
         }
 
-
-        finode->fiid = (finode_idx(finode->fhshno)>>1 ^ *fino>>1);
+        finode->fiid = ((finode->fhshno)>>1 ^ *fino>>1);
 
         sodium_free(fino);
     }
-
-    armatr->entries[getidx(finode->fhshno)] = (NodeEntries*) malloc(sizeof(NodeEntries));
-    armatr->entries[getidx(finode->fhshno)]->finame = finode->finame;
-    armatr->entries[getidx(finode->fhshno)]->hshno = finode->fhshno;
-
-//
-//    memcpy(armatr->entries[getidx(finode)],&(finode->fhshno),8);
-//    memcpy(armatr->entries[getidx(finode)]+4,&sep,4);
-//    memcpy((armatr->entries)[getidx(finode)]+8,&finode->finame,4);
-//    printf("%s\n",armatr->entries[getidx(finode)]);
+    NodeEntries ne;
+    ne.hshno = finode->fhshno;
+    ne.finame = finode->finame;
+    armatr->entries[getidx(finode->fhshno)] = ne;
     armatr->count++;
 
     inc_collcntr();
-
 }
 
 HashLattice * init_hashlattice(DChains * diChains) {
@@ -413,7 +395,6 @@ HashLattice * init_hashlattice(DChains * diChains) {
 
     hashlattice->bridges = (HashBridge **) calloc(LTTCMX, sizeof(HashBridge));
 
-
     hashlattice->chains = *diChains;
     hashlattice->chains->vessel = hashlattice->chains->dir_head;
 
@@ -424,11 +405,10 @@ HashLattice * init_hashlattice(DChains * diChains) {
 //        hashlattice->bridges[i] = NULL;
 //    }
 
-
     return hashlattice;
 }
 
-void build_bridge2(unsigned int clk, Armature* armatr, FiNode* fiNode, DiNode* dnode, HashLattice* hashlattice, unsigned char obuf[16]){
+void build_bridge2(Armature* armatr, FiNode* fiNode, DiNode* dnode, HashLattice* hashlattice, unsigned char obuf[16]){
 
     timr_st();
     if (hashlattice->count > hashlattice->max-3){
@@ -436,7 +416,6 @@ void build_bridge2(unsigned int clk, Armature* armatr, FiNode* fiNode, DiNode* d
     }
 
     HashBridge* hshbrg = (HashBridge*) malloc(sizeof(HashBridge));
-    hshbrg->parabridge = NULL;
 
     unsigned long long int inid = (fiNode->fiid ^ dnode->did);
     memcpy(hshbrg->unid,&inid,8);
@@ -446,6 +425,7 @@ void build_bridge2(unsigned int clk, Armature* armatr, FiNode* fiNode, DiNode* d
 
     hshbrg->dirnode = dnode;
     hshbrg->finode = fiNode;
+    hshbrg->parabridge = NULL;
     hashlattice->chains->vessel->armature = armatr;
 
     if (hashlattice->bridges[idx] == 0){
@@ -454,19 +434,17 @@ void build_bridge2(unsigned int clk, Armature* armatr, FiNode* fiNode, DiNode* d
         ParaBridge parabrg = hashlattice->bridges[idx];
         int x = 0;
         printf("\nBridgeCollision!\n");
-        while ((parabrg->parabridge) != NULL){
+        while (((parabrg)->parabridge) != NULL){
             (parabrg) = (parabrg)->parabridge;
-            ++x;
             printf("para-level: %d", x);
         }
-        parabrg = hshbrg;
+        (parabrg)->parabridge = hshbrg;
     }
     hashlattice->count++;
 
+
     //printf("[%.2ld]\n",cb-ca);
     timr_hlt();
-    //inc_collcntr();
-
 }
 
 HashBridge* yield_bridge(HashLattice* hashLattice, unsigned char* fiid, unsigned int n_len, DiNode* root_dnode) {
@@ -513,21 +491,21 @@ void destroy_node(FiNode* finode, Armature* armatr) {
     free(finode->finame);
     free(finode);
 
-    armatr->entries[idx] = NULL;
+    //armatr->entries[idx] = NULL;
     armatr->count--;
 }
 
 int destroy_ent(Armatr armatr, unsigned long idx){
-    free(armatr->entries[idx]);
-    return armatr->entries[idx] ? 1 : 0;
+    //free(armatr->entries[idx]);
+    //return armatr->entries[idx] ? 1 : 0;
 }
 
 void destroy_armatr(Armatr armatr, HashLattice hashLattice) {
 
     for (int i =0; i < armatr->totsize; i++) {
-        if (armatr->entries[i] != 0) {
-            if(!destroy_ent(armatr,i)){--(armatr)->count;}
-        }
+//        if (armatr->entries[i] != 0) {
+//            if(!destroy_ent(armatr,i)){--(armatr)->count;}
+//        }
 
     }
     free(armatr->entries);
@@ -679,7 +657,7 @@ double long* map_dir(const char* dir_path,
             // Add the entry to the file/hash table
             add_entry(fimap_ptr,*armatr);
             // Add a lattice bridge to connect filemap object to the dir node
-            build_bridge2(0,*armatr, fimap_ptr,dirNode_ptr, hashlattice, dubbuf);
+            build_bridge2(*armatr, fimap_ptr,dirNode_ptr, hashlattice, dubbuf);
             sodium_free(fhshno_arr[j]);
             j++;
 

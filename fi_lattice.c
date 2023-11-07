@@ -40,7 +40,7 @@ StatFrame* init_stat_frm(StatFrame** status_frm)
     return *status_frm;
 }
 
-void disassemble(Lattice hashlattice,
+void disassemble(Lattice* hashlattice,
                  DChains * dirchains,
                  Armatr* tbl_list,
                  unsigned char* dnconf_addr,
@@ -55,102 +55,107 @@ void disassemble(Lattice hashlattice,
     int hb_cnt = 0;
     int entr_cnt = 0;
     int i;
-    ParaBridge parabrg;
-    ParaBridge prev_parabrg;
 
     munmap(dnconf_addr, dn_size);
     munmap(seqstr_addr, sq_size);
-    unsigned long* idxlst = calloc((PARAMX+hashlattice->max),sizeof(unsigned long));
-    for (i =0; i < hashlattice->max; i++){
-        if ((hashlattice->bridges[i]) != NULL){
-            *(idxlst+brdg_cnt) = (*(((hashlattice->bridges)[i]))->finode).fhshno;
+    unsigned long* idxlst = calloc((PARAMX+(*hashlattice)->max),sizeof(unsigned long));
+    for (i =0; i < (*hashlattice)->max; i++){
+        if (((*hashlattice)->bridges[i]) != NULL){
+            *(idxlst+brdg_cnt) = (*((((*hashlattice)->bridges)[i]))->finode).fhshno;
             ++brdg_cnt;
-            free((*(((hashlattice->bridges)[i]))->finode).finame);
-            free((*(((hashlattice->bridges)[i]))).finode);
+            free((*(((*hashlattice)->bridges)[i])->finode).finame);
+            free((*((*hashlattice)->bridges)[i]).finode);
         }
     }
 
     //MEDA
-    (*hashlattice).chains->vessel = (*dirchains)->dir_head->right;
-    unsigned int cnt = expo_dirbase_cnt(hashlattice->chains->vessel->did);
-    goto_chain_tail(hashlattice->chains,1);
+    (*hashlattice)->chains->vessel = (*dirchains)->dir_head->right;
+    unsigned int cnt = expo_dirbase_cnt((*hashlattice)->chains->vessel->did);
+    goto_chain_tail((*hashlattice)->chains,1);
     entr_cnt = 0;
     for (i = 0; i< cnt; ++i){
 
-
         entr_cnt = 0;
-        if ((*hashlattice).chains->vessel->did == DGMEDAID || (*dirchains)->vessel->did == DGDOCSID) {
+        if ((*hashlattice)->chains->vessel->did == DGMEDAID || (*dirchains)->vessel->did == DGDOCSID) {
             break;
         }
-        for (int j = 0; j < brdg_cnt; ++j){
-            if((*hashlattice).chains->vessel->armature->entries[(idxlst[j]) & HTMASK] != NULL) {
-                free((*hashlattice).chains->vessel->armature->entries[(idxlst[j]) & HTMASK]);
-                entr_cnt++;
-            }
-        }
+//        for (int j = 0; j < brdg_cnt; ++j){
+//            if((*hashlattice)->chains->vessel->armature->entries[(idxlst[j]) & HTMASK] != NULL) {
+//                free((**hashlattice).chains->vessel->armature->entries[(idxlst[j]) & HTMASK]);
+//                entr_cnt++;
+//            }
+//        }
         printf("<<FREED: %d\ncount: %d\n>>",entr_cnt,(*dirchains)->vessel->armature->count);
 
         if (!i){
             free((*dirchains)->vessel->right);
         }
-        free((*hashlattice).chains->vessel->armature->entries);
-        free(((*hashlattice).chains->vessel->armature));
-        (*hashlattice).chains->vessel = (*dirchains)->vessel->left;
-        free(((*hashlattice).chains->vessel->right->diname));
-        free(((*hashlattice).chains->vessel->right));
+        free((*hashlattice)->chains->vessel->armature->entries);
+        free((*hashlattice)->chains->vessel->armature);
+        (*hashlattice)->chains->vessel = (*dirchains)->vessel->left;
+        free((*hashlattice)->chains->vessel->right->diname);
+        free((*hashlattice)->chains->vessel->right);
     }
 
     entr_cnt = 0;
     //DOCS
-    (*hashlattice).chains->vessel = (*dirchains)->dir_head->left;
+    (*hashlattice)->chains->vessel = (*dirchains)->dir_head->left;
     cnt = expo_dirbase_cnt((*dirchains)->vessel->did);
     goto_chain_tail((*dirchains),0);
     for (i = 0; i< cnt; ++i) {
         entr_cnt = 0;
-        if ((*hashlattice).chains->vessel->did == DGMEDAID || (*dirchains)->vessel->did == DGDOCSID) {
-            break;
-        }
-        for (int j = 0; j < brdg_cnt; ++j) {
-            if(((*hashlattice).chains->vessel->armature->entries)[(idxlst[j]) & HTMASK] != NULL) {
-                free(((*hashlattice).chains->vessel->armature->entries)[(idxlst[j]) & HTMASK]);
-                entr_cnt++;
-            }
-
-        }
-        printf("<<FREED: %d\ncount: %d\n>>", entr_cnt, (*hashlattice).chains->vessel->armature->count);
+//        if ((*hashlattice)->chains->vessel->did == DGMEDAID || (*dirchains)->vessel->did == DGDOCSID) {
+//            break;
+//        }
+//        for (int j = 0; j < brdg_cnt; ++j) {
+//            if(((*hashlattice)->chains->vessel->armature->entries)[(idxlst[j]) & HTMASK].hshno != 0) {
+//                free(((*hashlattice)->chains->vessel->armature->entries)[(idxlst[j]) & HTMASK]);
+//                entr_cnt++;
+//            }
+//
+//        }
+        printf("<<FREED: %d\ncount: %d\n>>", entr_cnt, (*hashlattice)->chains->vessel->armature->count);
 
         if (!i){
-            free((*hashlattice).chains->vessel->left);
+            free((*hashlattice)->chains->vessel->left);
         }
-        free((*hashlattice).chains->vessel->armature->entries);
-        free(((*hashlattice).chains->vessel->armature));
-        (*hashlattice).chains->vessel = (*hashlattice).chains->vessel->right;
-        free(((*hashlattice).chains->vessel->left->diname));
-        free(((*hashlattice).chains->vessel->left));
+        free((*hashlattice)->chains->vessel->armature->entries);
+        free((*hashlattice)->chains->vessel->armature);
+        (*hashlattice)->chains->vessel = (*hashlattice)->chains->vessel->right;
+        free((*hashlattice)->chains->vessel->left->diname);
+        free((*hashlattice)->chains->vessel->left);
     }
 
-    (*hashlattice).chains->vessel = (*hashlattice).chains->dir_head;
-    free((*hashlattice).chains->vessel->right);
-    free((*hashlattice).chains->vessel->left);
-    free((*hashlattice).chains->vessel);
+    (*hashlattice)->chains->vessel = (*hashlattice)->chains->dir_head;
+    free((*hashlattice)->chains->vessel->right);
+    free((*hashlattice)->chains->vessel->left);
+    free((*hashlattice)->chains->vessel);
 
+    ParaBridge parabrg;
+    ParaBridge* pbmark;
 
-    for (i = 0; i<hashlattice->max;i++){
-        if(hashlattice->bridges[i] != 0){
-            parabrg = hashlattice->bridges[i]->parabridge;
-
-            free(hashlattice->bridges[i]);
+    for (i = 0; i<(*hashlattice)->max;i++){
+        if((*hashlattice)->bridges[i] != 0){
+            if ((*(*hashlattice)->bridges[i]).parabridge != NULL) {
+                parabrg = ((*hashlattice)->bridges[i])->parabridge;
+                while ((parabrg)->parabridge != NULL) {
+                    pbmark = &parabrg;
+                    parabrg = (parabrg)->parabridge;
+                    free(*pbmark);
+                }
+            }
+            free((*hashlattice)->bridges[i]);
             hb_cnt++;
         }
     }
 
 
-    printf("\n-----\nfreed: %d\ncount: %lu\n-----\n",hb_cnt,hashlattice->count);
-    free(hashlattice->bridges);
-    free(hashlattice);
-
-
+    printf("\n-----\nfreed: %d\ncount: %lu\n-----\n",hb_cnt,(*hashlattice)->count);
+    free((*hashlattice)->bridges);
+    free(*hashlattice);
+    free(tbl_list);
     free(idxlst);
+
     if (lengths != NULL && paths != NULL) {
         free(lengths);
         free(paths);
@@ -568,7 +573,7 @@ void summon_lattice() {
             setAct(&statusFrame,GBYE,NOTHN,0);
             //stsErno(perror, ltcerr, **sts_frm, erno, misc, *msg, *function, *miscdesc);
             stsErno(BADCNF, &statusFrame, errno, 333, "Failed reading config", NULL, 0);
-            disassemble(hashlattice, &dirchains, NULL,
+            disassemble(&hashlattice, &dirchains, NULL,
                         NULL, 0, NULL, 0,
                         NULL, NULL, 0, 0);
             serrOut(&status_frm,NULL);
@@ -588,9 +593,9 @@ void summon_lattice() {
                                   req_arr_buf,
                                   tmparrbuf,
                                   NULL);
-            disassemble(hashlattice, &dirchains, NULL,
-                        dn_conf, dn_size, NULL, 0,
-                        NULL, NULL, 0, cnfdir_fd);
+                                 disassemble(&hashlattice, &dirchains, NULL,
+                                 dn_conf, dn_size, NULL, 0,
+                                 NULL, NULL, 0, cnfdir_fd);
             break;
         }
 
@@ -616,7 +621,7 @@ void summon_lattice() {
                         hashlattice,
                         &(tbl_list[i]))< 0){
                 stsErno(MISMAP, &statusFrame, errno, 333, "Big fail", "map_dir", 0);
-                disassemble(hashlattice,
+                disassemble(&hashlattice,
                             &dirchains,
                             tbl_list,
                             dn_conf,
@@ -685,7 +690,7 @@ void summon_lattice() {
                               req_arr_buf,
                               tmparrbuf,
                               rsp_buf);
-        disassemble(hashlattice,
+        disassemble(&hashlattice,
                     &dirchains,
                     tbl_list,
                     dn_conf,

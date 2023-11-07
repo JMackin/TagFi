@@ -213,8 +213,6 @@ unsigned int inf_DCHN(unsigned char **buf, LattType lattItm, LattStruct lattStru
  * Generate function array for info response operations */
 void gen_infofunc_arr(InfoFunc** infofuncarr){
 
-
-
     unsigned int (*nada)(unsigned char **buf, LattType lattItm, LattStruct lattStruct);
     unsigned int (*seqt)(unsigned char **buf, LattType lattItm, LattStruct lattStruct);
     unsigned int (*lttc)(unsigned char **buf, LattType lattItm, LattStruct lattStruct);

@@ -29,7 +29,7 @@ typedef struct FiNode{
 
 typedef struct Armature{
     LatticeKey lttc_key;
-    NodeEntries** entries;
+    NodeEntries* entries;
     unsigned long totsize;
     unsigned int count;
 } Armature;
@@ -206,7 +206,7 @@ clock_t build_bridge(Armature* armatr,
                   HashLattice* hashlattice,
                   unsigned char buf[16]);
 
-void build_bridge2(unsigned int clk,
+void build_bridge2(
                    Armature* armatr,
                    FiNode* fiNode,
                    DiNode* dnode,
