@@ -55,44 +55,45 @@ void disassemble(Lattice* hashlattice,
     int hb_cnt = 0;
     int entr_cnt = 0;
     int i;
+    int j;
 
     munmap(dnconf_addr, dn_size);
     munmap(seqstr_addr, sq_size);
+
     unsigned long* idxlst = calloc((PARAMX+(*hashlattice)->max),sizeof(unsigned long));
+
     for (i =0; i < (*hashlattice)->max; i++){
         if (((*hashlattice)->bridges[i]) != NULL){
             *(idxlst+brdg_cnt) = (*((((*hashlattice)->bridges)[i]))->finode).fhshno;
             ++brdg_cnt;
             free((*(((*hashlattice)->bridges)[i])->finode).finame);
             free((*((*hashlattice)->bridges)[i]).finode);
+            //free((((*hashlattice)->chains->vessel->armature->entries)[HTMASK&(*idxlst+brdg_cnt)])->finame);
+
         }
     }
 
     //MEDA
     (*hashlattice)->chains->vessel = (*dirchains)->dir_head->right;
-    unsigned int cnt = expo_dirbase_cnt((*hashlattice)->chains->vessel->did);
+    unsigned int cnt = expo_basedir_cnt((*hashlattice)->chains->vessel->did);
     goto_chain_tail((*hashlattice)->chains,1);
     entr_cnt = 0;
     for (i = 0; i< cnt; ++i){
 
-        entr_cnt = 0;
         if ((*hashlattice)->chains->vessel->did == DGMEDAID || (*dirchains)->vessel->did == DGDOCSID) {
+            printf("bb");
             break;
         }
-//        for (int j = 0; j < brdg_cnt; ++j){
-//            if((*hashlattice)->chains->vessel->armature->entries[(idxlst[j]) & HTMASK] != NULL) {
-//                free((**hashlattice).chains->vessel->armature->entries[(idxlst[j]) & HTMASK]);
-//                entr_cnt++;
-//            }
-//        }
         printf("<<FREED: %d\ncount: %d\n>>",entr_cnt,(*dirchains)->vessel->armature->count);
 
         if (!i){
-            free((*dirchains)->vessel->right);
+            free((*hashlattice)->chains->vessel->right);
         }
+
+        //free((*hashlattice)->chains->vessel->armature->entries->finame);
         free((*hashlattice)->chains->vessel->armature->entries);
         free((*hashlattice)->chains->vessel->armature);
-        (*hashlattice)->chains->vessel = (*dirchains)->vessel->left;
+        (*hashlattice)->chains->vessel = (*hashlattice)->chains->vessel->left;
         free((*hashlattice)->chains->vessel->right->diname);
         free((*hashlattice)->chains->vessel->right);
     }
@@ -100,9 +101,13 @@ void disassemble(Lattice* hashlattice,
     entr_cnt = 0;
     //DOCS
     (*hashlattice)->chains->vessel = (*dirchains)->dir_head->left;
-    cnt = expo_dirbase_cnt((*dirchains)->vessel->did);
+    cnt = expo_basedir_cnt((*hashlattice)->chains->vessel->did);
     goto_chain_tail((*dirchains),0);
+
     for (i = 0; i< cnt; ++i) {
+        if ((*hashlattice)->chains->vessel->did == DGMEDAID || (*dirchains)->vessel->did == DGDOCSID) {
+            break;
+        }
         entr_cnt = 0;
 //        if ((*hashlattice)->chains->vessel->did == DGMEDAID || (*dirchains)->vessel->did == DGDOCSID) {
 //            break;
@@ -130,24 +135,29 @@ void disassemble(Lattice* hashlattice,
     free((*hashlattice)->chains->vessel->right);
     free((*hashlattice)->chains->vessel->left);
     free((*hashlattice)->chains->vessel);
+    free((*hashlattice)->chains);
 
-    ParaBridge parabrg;
+    ParaBridge *parabrg = malloc(sizeof(parabrg));
     ParaBridge* pbmark;
 
     for (i = 0; i<(*hashlattice)->max;i++){
         if((*hashlattice)->bridges[i] != 0){
             if ((*(*hashlattice)->bridges[i]).parabridge != NULL) {
-                parabrg = ((*hashlattice)->bridges[i])->parabridge;
-                while ((parabrg)->parabridge != NULL) {
-                    pbmark = &parabrg;
-                    parabrg = (parabrg)->parabridge;
+                *parabrg = &(*(*hashlattice)->bridges[i]);
+                while (((*parabrg)->parabridge) != NULL) {
+                    pbmark = parabrg;
+                    *parabrg = (*parabrg)->parabridge;
+                    free((*pbmark)->finode->finame);
+                    free((*pbmark)->finode);
                     free(*pbmark);
+                    hb_cnt++;
                 }
             }
             free((*hashlattice)->bridges[i]);
             hb_cnt++;
         }
     }
+    free(parabrg);
 
 
     printf("\n-----\nfreed: %d\ncount: %lu\n-----\n",hb_cnt,(*hashlattice)->count);
@@ -167,13 +177,13 @@ void disassemble(Lattice* hashlattice,
 }
 
 
-void destroy_cmdstructures(Resp_Tbl *rsp_tbl,
-                           InfoFrame *infoFrame,
-                           LttcFlags reqflg_arr,
-                           unsigned char* req_buf,
-                           unsigned char* req_arr_buf,
-                           unsigned char* tmparrbuf,
-                           unsigned char* rsp_buf) {
+void destroy_metastructures(Resp_Tbl *rsp_tbl,
+                            InfoFrame *infoFrame,
+                            LttcFlags reqflg_arr,
+                            unsigned char* req_buf,
+                            unsigned char* req_arr_buf,
+                            unsigned char* tmparrbuf,
+                            unsigned char* rsp_buf) {
     if ((rsp_tbl)->rsp_funcarr != NULL){free(((rsp_tbl)->rsp_funcarr));}
     if (rsp_tbl != NULL){free(rsp_tbl);}
     if (req_arr_buf != NULL) {free(req_buf);}
@@ -390,15 +400,12 @@ StatFrame * spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsign
         (*stsfrm)->status <<= 1;
         clock_t clkd = clock();
 
-        /**
-         * CMD RECEIVED
-         * */
-
-
+/**
+ * CMD RECEIVED
+ * */
         /**
          * PARSE REQUEST
          * */
-
         *infofrm = parse_req(*req_buf,   // <<< Raw Request
                              infofrm,
                              stsfrm,
@@ -436,32 +443,26 @@ StatFrame * spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsign
              * */
             setSts(stsfrm, SHTDN, 0);
             exit_flag = 1;
-        }else{
+        }else {
                 setSts(stsfrm, RESPN, 0);
 
                 /** WRITEOUT REPLY */
                 if (epoll_wait(efd,epINevent,2,1000)){
                     if ((epINevent->events&EPOLLERR) == EPOLLERR) {
-                        stsErno(EPOLLE, stsfrm, errno, epINevent->events, "Issue detected by EPOLLE", "epoll_wait - in", 0);
-                        printf("\n>>>%d\n",epINevent->events);
+                        stsErno(EPOLLE, stsfrm, errno, epINevent->events,
+                                "Issue detected by EPOLLE", "epoll_wait - in", 0);
                    }
                     ret = write(data_socket, *rsp_buf, buf_len);
-                    printf("\n>>>%d\n",epINevent->events);
-
                 }
-
-                if (ret == -1){
-                    printf("\n>>>%d\n",epINevent->events);
-                }
-
         }
         clock_t clkg = clock();
+
 
         /**
          * ACTION:
          *  save received sequence
          * */
-        i++;
+        //TODO: Implement cmd saving
 
         /**
          * CLEAR CONNECTION
@@ -541,9 +542,7 @@ void summon_lattice() {
     unsigned char *req_arr_buf;     // char strings
     unsigned char *rsp_buf;  // Outgoing responses
 
-    LttcFlags reqflg_arr = (LttcFlags) calloc(CMDCNT, sizeof(LttFlg));
-
-
+    LttcFlags reqflg_arr;
     InfoFrame *info_frm;    // Frame for storing request info
     StatFrame *status_frm; // Frame for storing sys info
     status_frm = init_stat_frm(&status_frm);
@@ -586,13 +585,13 @@ void summon_lattice() {
         size_t dn_size = read_conf(&dn_conf, cnfdir_fd);
         if (dn_size == -1) {
             stsErno(BADCNF, &statusFrame, errno, 333, "Failed reading config", NULL, 0);
-            destroy_cmdstructures(NULL,
-                                  info_frm,
-                                  reqflg_arr,
-                                  NULL,
-                                  req_arr_buf,
-                                  tmparrbuf,
-                                  NULL);
+            destroy_metastructures(NULL,
+                                   info_frm,
+                                   reqflg_arr,
+                                   NULL,
+                                   req_arr_buf,
+                                   tmparrbuf,
+                                   NULL);
                                  disassemble(&hashlattice, &dirchains, NULL,
                                  dn_conf, dn_size, NULL, 0,
                                  NULL, NULL, 0, cnfdir_fd);
@@ -604,15 +603,16 @@ void summon_lattice() {
         Armature **tbl_list = (Armature **) calloc(dn_cnt, sizeof(Armature *));
 
 
-
            /* * * * * * * * * *
           *  BUILD LATTICE  *
          * * * * * * * * **/
 
-
         for (i = 0; i < dn_cnt; i++) {
             nm_len = extract_name(*(paths + i), *(lengths + i));
-            //  Build structures and map each DirNode.
+
+            /** BUILD STRUCTURES
+             * AND MAP DIRECTORIES.
+             **/
             if (map_dir((const char *) *(paths + i),
                         nm_len,
                         (*(paths + i) + nm_len),
@@ -620,28 +620,13 @@ void summon_lattice() {
                         dirchains,
                         hashlattice,
                         &(tbl_list[i]))< 0){
-                stsErno(MISMAP, &statusFrame, errno, 333, "Big fail", "map_dir", 0);
-                disassemble(&hashlattice,
-                            &dirchains,
-                            tbl_list,
-                            dn_conf,
-                            dn_size,
-                            NULL,
-                            0,
-                            lengths,
-                            paths,
-                            dn_cnt,
-                            cnfdir_fd);
-                destroy_cmdstructures(NULL,
-                                   info_frm,
-                                   reqflg_arr,
-                                   req_buf,
-                                   req_arr_buf,
-                                   tmparrbuf,
-                                   rsp_buf);
-                return;}
-        }
 
+                stsErno(MISMAP, &statusFrame, errno, 333, "Big fail", "map_dir", 0);
+                disassemble(&hashlattice,&dirchains,tbl_list,dn_conf,dn_size,NULL,0,lengths,paths,dn_cnt,cnfdir_fd);
+                destroy_metastructures(NULL, info_frm, reqflg_arr, req_buf, req_arr_buf, tmparrbuf, rsp_buf);
+                return;
+            }
+        }
          /**
           *  INIT FUNC ARRAY
           * */
@@ -654,10 +639,9 @@ void summon_lattice() {
                     &hashlattice);
 
 
-           /* * * * * * * * * * *
-          *   EXECUTE SERVER   *
-         ** * * * * * * * * **/
-
+         /* * * * * * * * * **
+         *  EXECUTE SERVER  *
+        * * * * * * * * * **/
 
         status_frm = spin_up(&rsp_buf,
                             &req_arr_buf,
@@ -671,25 +655,21 @@ void summon_lattice() {
                             &cnfdir_fd,
                             &tmparrbuf);
 
-
         if (status_frm->err_code) {
-             fprintf(stderr, "Failure:"
-                             "\nCode: %d"
-                             "\nAct id: %d"
-                             "\nModr: %c\n", status_frm->status, status_frm->act_id, status_frm->modr);
+             fprintf(stderr, "Failure:\nCode: %d\nAct id: %d\nModr: %c\n",
+                     status_frm->status, status_frm->act_id, status_frm->modr);
         }
-
 
          /**
           * CLEANUP
           * */
-        destroy_cmdstructures(rsp_tbl,
-                              info_frm,
-                              reqflg_arr,
-                              req_buf,
-                              req_arr_buf,
-                              tmparrbuf,
-                              rsp_buf);
+        destroy_metastructures(rsp_tbl,
+                               info_frm,
+                               reqflg_arr,
+                               req_buf,
+                               req_arr_buf,
+                               tmparrbuf,
+                               rsp_buf);
         disassemble(&hashlattice,
                     &dirchains,
                     tbl_list,
@@ -703,9 +683,11 @@ void summon_lattice() {
                     cnfdir_fd);
 
     }while (status_frm->status != SHTDN);
+
     /* * * * * * *
        *   EXIT   *
          * * * * * **/
+
     stsOut(&status_frm);
     free(status_frm);
 }

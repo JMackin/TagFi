@@ -123,7 +123,6 @@ typedef struct LattStruct{
 
 typedef struct stat* stptr;
 
-
 double long* map_dir(const char* dir_path,
             unsigned int path_len,
             unsigned char* dirname,
@@ -214,9 +213,6 @@ void build_bridge2(
                    unsigned char obuf[16]);
 
 unsigned int finode_idx(unsigned long fhshno);
-
-
-
 
 
 

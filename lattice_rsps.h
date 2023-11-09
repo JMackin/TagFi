@@ -42,13 +42,13 @@ unsigned int respond(Resp_Tbl *rsp_tbl,
                      unsigned char *resp_buf);
 
 
-void destroy_cmdstructures(Resp_Tbl *rsp_tbl,
-                           InfoFrame *infoFrame,
-                           LttcFlags reqflg_arr,
-                           unsigned char* req_buf,
-                           unsigned char* req_arr_buf,
-                           unsigned char* tmparrbuf,
-                           unsigned char* rsp_buf);
+void destroy_metastructures(Resp_Tbl *rsp_tbl,
+                            InfoFrame *infoFrame,
+                            LttcFlags reqflg_arr,
+                            unsigned char* req_buf,
+                            unsigned char* req_arr_buf,
+                            unsigned char* tmparrbuf,
+                            unsigned char* rsp_buf);
 
 
 

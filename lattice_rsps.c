@@ -15,8 +15,7 @@ const LattType csep = (LattType) 0xbddbdbbd;
 
 /*
  *  Response element size aliases:
- *
- *
+ *--------------------------------
  * ltyp_s = sizeof(LattType)
  * rspsz_b = 2*sizeof(LattType)
  * uint_s = sizeof(unsigned int)
@@ -27,10 +26,11 @@ const LattType csep = (LattType) 0xbddbdbbd;
  * Response element positions:
  *----------------------------
  *\elem\:  \start-byte - end-byte\
+ * ------   ----------    -------
  * lead :   0 - ltyp_s
  * item :   ltyp_s - rspsz_b
- * arrsz:   rspsz_b - (rspsz_b)+uint_s
- * arr  :   (rspsz_b)+uint_s - (rspsz_b)+uint_s+(arr_len*uchar_s)
+ * arrsz:   rspsz_b - [rspsz_b + uint_s]
+ * arr  :   [rspsz_b+uint_s] - [rspsz_b+uint_s+arr_len*uchar_s]
  * DONE :   (rspsz_b)+uint_s+(arr_len*uchar_s) - rspsz_b+ltyp_s+uint_s+(arr_len*uchar_s)
  *
  *
@@ -383,9 +383,12 @@ unsigned int rsp_und(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, u
 }
 
 unsigned int rsp_fiid(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, unsigned char **buf) {
-    printf("Response: Filename for ID");
+    printf("Response: Fiid for ID");
     u_long itmID;
     memcpy(&itmID,(*inf_frm)->arr+(rspsz_b),(rspsz_b));
+
+//    memcpy(&itmID,(*inf_frm)->arr+(rspsz_b),(rspsz_b));
+//    (*hltc)->chains->
 //    (*dchns)->vessel->
 //
 //    yield_bridge()
