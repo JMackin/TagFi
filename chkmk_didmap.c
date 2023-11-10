@@ -8,6 +8,7 @@
 #include "fidi_masks.h"
 #include "profiling.h"
 #include "tagfi.h"
+#include "lattice_signals.h"
 #include <sodium.h>
 #include <stdio.h>
 #include <dirent.h>
@@ -16,7 +17,6 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <time.h>
-#include "TestStat.h"
 
 
 // ----------------------------
@@ -327,8 +327,6 @@ FiNode* mk_finnode(unsigned int nlen, unsigned char* finame,
 
     fimap->fiid = fiid;
     fimap->fhshno = finode_idx(fhshno);
-
-    printf("%lu\n",fimap->fhshno);
 
     return fimap;
 }
@@ -726,9 +724,6 @@ double long* map_dir(const char* dir_path,
     //printf("BRIDGE >> %s", bridgefiid);
 
     p_colrat();
-
-    ts1up(3);
-    teststrctfunc(1);
 
 
 /**

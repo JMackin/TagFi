@@ -6,7 +6,6 @@
 #include <string.h>
 #include "lattice_works.h"
 #include "fidi_masks.h"
-#include "TestStat.h"
 
 
 #define DNKEYPATH "/home/ujlm/CLionProjects/TagFI/keys"

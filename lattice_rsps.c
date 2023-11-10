@@ -9,7 +9,6 @@
 #include "lattice_works.h"
 #include "fidi_masks.h"
 #include "lattice_rsps.h"
-#include "TestStat.h"
 
 
 const LattType isep = (LattType) 0xdbdbdbdb;

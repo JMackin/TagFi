@@ -18,7 +18,6 @@
 #include "lattice_rsps.h"
 #include "lattice_signals.h"
 #include "fidi_masks.h"
-#include "TestStat.h"
 
 
 #define CNFIGPTH "/home/ujlm/CLionProjects/TagFI/config"
@@ -647,9 +646,6 @@ void summon_lattice() {
          *  EXECUTE SERVER  *
         * * * * * * * * * **/
 
-        ts1up(2);
-
-        teststrctfunc(2);
 
 
         status_frm = spin_up(&rsp_buf,

@@ -12,6 +12,8 @@
 #define RSPARRLEN 16
 #define INFARRLEN 19
 
+StatFrame statFrame;
+
 /* * * * * * * * * * * * * *
 *  StatusFrame Functions   *
 * * * * * * * * * * * * * */
