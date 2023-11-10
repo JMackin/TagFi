@@ -3,19 +3,22 @@
 //
 #include "fidi_masks.h"
 
-unsigned long clip_to_32(unsigned long num) {
+/*
+ *  FileNode ops
+ * */
 
+unsigned long clip_to_32(unsigned long num) {
     return (num & CLIPHSH);
 }
 
-unsigned long long msk_fino(unsigned long rndm_no, unsigned long ino) {
+unsigned long long msk_fino(unsigned long ino) {
 
-    return FMIDTMPL ^ ( (rndm_no ^ ino) << FINOSHFT);
+    return FIIDTMPL ^ (ino << FINOSHFT);
 }
 
 unsigned long expo_fino(unsigned long key, unsigned long long fiid) {
 
-    return ((fiid^FMIDTMPL)>>FINOSHFT) ^ key;
+    return ((fiid ^ FIIDTMPL) >> FINOSHFT) ^ key;
 }
 
 unsigned long long msk_finmlen(unsigned long fiid, unsigned int fnlen) {
@@ -34,12 +37,11 @@ unsigned int expo_format(unsigned long long fiid) {
     return (fiid & FFRMTMSK) >> FFRMTSHFT;
 }
 
-unsigned long long msk_redir(unsigned long long fiid, unsigned int dirid) {
+unsigned long long msk_resdir(unsigned long long fiid, unsigned int dirid) {
     return fiid ^ ((dirid & FBSGPCLIP) << FRDIRSHFT);
-    //& DBASEMASK) >> DBASESHFT);
 }
 
-unsigned int expo_redir(unsigned long long fiid) {
+unsigned int expo_resdir(unsigned long long fiid) {
     return (fiid & FRDIRMSK) >> FRDIRSHFT;
 }
 
@@ -47,23 +49,45 @@ unsigned long long msk_dirgrp(unsigned long long fiid) {
     return (fiid | (FDCHNGMSK << FDCHNGSHFT));
 }
 
-unsigned int expo_dirgrp(unsigned long long fiid, unsigned int digrp) {
+unsigned int expo_dirgrp(unsigned long long fiid) {
     return (fiid & FDCHNGMSK) >> FDCHNGSHFT;
 }
 
 /*
- *  Dirnode ops
+ *  DirNode ops
  * */
 
 unsigned int expo_dirnmlen(unsigned long long did) {
     return (did & DNAMEMASK) >> DNAMESHFT;
 }
 
+unsigned int msk_dirnmlen(unsigned long long did, unsigned int dirnmln){
+    return did | (dirnmln << DNAMESHFT);
+}
+
 unsigned int expo_dirbase(unsigned long long did) {
     return (did & DBASEMASK) >> DBASESHFT;
 }
 
+/* *Note: Use MEDACHSE or DOCSCHCE for param 'base'*/
+unsigned int msk_dirbase(unsigned long long did, unsigned int base){
+    base = base ? MEDABASEM : DOCSBASEM;
+    return did | base;
+}
 unsigned int expo_dirchnid(unsigned long long did) {
-    return did & DCHNSMASK;
+    return (did & DCHNSMASK) ;
+}
+unsigned int msk_dirchnid(unsigned long long did, unsigned int id){
+    return did | (id&255);
 }
 
+/*
+ *  BaseNode ops
+ * */
+
+unsigned int expo_basedir_cnt(unsigned long long did){
+    return (did & DGCNTMASK) >> DGCNTSHFT;
+}
+unsigned int msk_basedir_cnt(unsigned long long did, unsigned int cnt){
+    return did | (cnt << DNTRYSHFT);
+}

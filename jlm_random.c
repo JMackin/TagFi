@@ -4,6 +4,9 @@
 #include <sys/ioctl.h>
 #include <unistd.h>
 #include <string.h>
+#include "lattice_works.h"
+#include "fidi_masks.h"
+
 
 #define DNKEYPATH "/home/ujlm/CLionProjects/TagFI/keys"
 
@@ -95,6 +98,11 @@ void real_hash_keyfully(unsigned char** in, unsigned char** out, size_t inlen, c
 void dn_hdid_str(unsigned char** dn_hash, char** strout) {
        sodium_bin2hex(*strout, (crypto_generichash_BYTES*2+1), *dn_hash, crypto_generichash_BYTES);
 }
+char* btostr(char* strout[16], unsigned char** dn_hash) {
+
+       sodium_bin2hex(*strout, 16, *dn_hash,8);
+    return *strout;
+}
 
 
 void mk_little_hash_key(unsigned char** kout) {
@@ -174,7 +182,6 @@ void recv_little_hash_key(int dnkeyfd, unsigned char* dirname, unsigned int knml
 
 
 unsigned long long little_hsh_llidx(unsigned char* hkey, unsigned char* tobehshed, unsigned int tbh_len, unsigned long long xno) {
-
     unsigned char* outp = (unsigned char*) sodium_malloc(sizeof (unsigned long));
 
     if (crypto_shorthash(outp, tobehshed, tbh_len, hkey) != 0){
@@ -185,8 +192,48 @@ unsigned long long little_hsh_llidx(unsigned char* hkey, unsigned char* tobehshe
 
     unsigned long outidx = eightchartollong(outp,crypto_shorthash_KEYBYTES) ^ xno;
     sodium_free(outp);
+
     return outidx;
+
+
 }
+
+unsigned long latt_hsh_idx(Armature* armtr, unsigned long fhshno, unsigned char intbuf[16]){
+
+
+    unsigned long outidx=0;
+    unsigned long outidx2=0;
+    unsigned int clk = fhshno&3;
+    unsigned int msk = (3817748711);
+    unsigned char tbuf[8];
+    memcpy(&outidx,&fhshno,8);
+
+    //msk = (clk) ? msk << 2 : msk >> 1;
+    //outidx &= msk;
+//    unsigned int clk = fhshno & 7;
+//    unsigned int msk = (3817748711);
+//    msk = (clk) ? fhshno << 2 : fhshno >> 1;
+//    fhshno &= msk;
+//    fhshno >>= clk;
+//    return fhshno & HTMASK;
+
+    memcpy(tbuf,&outidx,8);
+
+    if (crypto_shorthash(intbuf, tbuf, 8, armtr->lttc_key) != 0){
+        fprintf(stderr, "Something went wrong hashing for an index.\n");
+        return 1;
+    }
+    memcpy(&outidx2,intbuf,8);
+
+    (outidx2 &= 4194303);
+    //(outidx2 >>= clk);
+
+    return outidx2;
+
+}
+
+
+
 
 //unsigned long long noky_lhsh_lidx(unsigned char* tobehshed, unsigned int wlen, unsigned long xno) {
 //
@@ -218,3 +265,4 @@ void get_many_little_salts(unsigned long** saltls, int n)
 
     } while(n--);
 }
+
