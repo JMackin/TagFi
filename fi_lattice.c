@@ -18,6 +18,8 @@
 #include "lattice_rsps.h"
 #include "lattice_signals.h"
 #include "fidi_masks.h"
+#include "TestStat.h"
+
 
 #define CNFIGPTH "/home/ujlm/CLionProjects/TagFI/config"
 #define DNCONFFI "dirnodes"
@@ -262,7 +264,6 @@ int extract_name(const unsigned char* path, int length) {
 }
 
 
-
 StatFrame * spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsigned char **req_buf,
                     StatFrame **stsfrm, InfoFrame **infofrm, Resp_Tbl **rsp_tbl, HashLattice **hashlattice,
                     DiChains **dirchains, LttcFlags *flgsbuf, const int *cnfdir_fd, unsigned char **tmparrbuf) {
@@ -279,7 +280,6 @@ StatFrame * spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsign
     int k, res;
     unsigned int j;
     ssize_t ret;
-
     int resp_len = 0;
 
     /**
@@ -416,11 +416,14 @@ StatFrame * spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsign
         if ((*stsfrm)->err_code) {
             setErr(stsfrm,MALREQ,0);
             serrOut(stsfrm,"Failed to process request.");
+            goto endpoint;
+
              // TODO: replace w/ better option.
         }
 
 
         clock_t clke = clock();
+
         /** DETERMINE RESPONSE */
         if (respond(*rsp_tbl,
                      stsfrm,
@@ -468,6 +471,7 @@ StatFrame * spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsign
          * CLEAR CONNECTION
          * */
 
+        endpoint:
         bzero(*req_buf, buf_len - 1);
         bzero(*flgsbuf,FLGSCNT);
         bzero(*rsp_buf, arrbuf_len-1);
@@ -642,6 +646,11 @@ void summon_lattice() {
          /* * * * * * * * * **
          *  EXECUTE SERVER  *
         * * * * * * * * * **/
+
+        ts1up(2);
+
+        teststrctfunc(2);
+
 
         status_frm = spin_up(&rsp_buf,
                             &req_arr_buf,

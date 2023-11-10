@@ -29,11 +29,11 @@
  *
  * Info Requests must follow this format:
  *
- * @byte  |_______________________________
- *  1:    |       [OR'd lead flags]
- *  4:    |          -> [Arr-Len]
- *  8:    |          -> { Array: ========{ Request subject |x| subject ID/name |x| Misc/Qualifier }
- * 8+len: |          -> [END/DONE flag]
+ * @byte  |_________________________
+ *  1:    | [OR'd lead flags]
+ *  4:    |    -> [Arr-Len]
+ *  8:    |    -> { Array: ========{ Request subject |x| subject ID/name |x| Misc/Qualifier }
+ * 8+len: |    -> [END/DONE flag]
  *
  *       |x| = seperator:
  *                 \ \_ int:  '0xdbdbdbdb' (3688618971)
@@ -200,7 +200,6 @@ InfoFrame *parse_req(const unsigned char *fullreqbuf, //<-- same name in spin up
     unsigned int end;
 
 
-
     /**
      * Parse request sequence-lead and init CMD struct
      * */
@@ -225,7 +224,7 @@ InfoFrame *parse_req(const unsigned char *fullreqbuf, //<-- same name in spin up
      * Check carrier byte
      * */
     if (flag >> 29 != 1) {
-        fprintf(stderr, "Malformed request>\n> %d\n", flag);
+        stsErno(MALREQ,stsfrm,errno,flag,"Request structure malformed","parse_req","misc - carry byte");
        // err_info_frm(*infofrm, stsfrm, MALREQ, 'l'); //
         return *infofrm;
     }
@@ -245,7 +244,6 @@ InfoFrame *parse_req(const unsigned char *fullreqbuf, //<-- same name in spin up
          * Check tail byte
          * */
         if (end != END) {
-
             stsErno(MALREQ,stsfrm,errno,end,"Request structure malformed","parse_req","misc - tail byte");
             return (NULL);
         }
@@ -277,18 +275,14 @@ InfoFrame *parse_req(const unsigned char *fullreqbuf, //<-- same name in spin up
         memcpy(&end, (fullreqbuf + (UISiZ * 2) + (UCSiZ * (*infofrm)->arr_len)), UISiZ); //Calc request endpoint
 
 
-
         if (end != END) {
             stsErno(MALREQ,stsfrm,errno,end,"Computed position for tail byte doesnt match that of request tail","parse req","calcd end value");
             return (*infofrm);
         }
 
-
         memcpy(req_arr_buf, fullreqbuf + (UISiZ * 2), (UCSiZ * (*infofrm)->arr_len));
         (*infofrm)->arr = *req_arr_buf;
-
     }
-
 
     (*stsfrm)->status <<= 1;
 

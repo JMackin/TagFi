@@ -6,6 +6,8 @@
 #include <string.h>
 #include "lattice_works.h"
 #include "fidi_masks.h"
+#include "TestStat.h"
+
 
 #define DNKEYPATH "/home/ujlm/CLionProjects/TagFI/keys"
 
@@ -199,15 +201,16 @@ unsigned long long little_hsh_llidx(unsigned char* hkey, unsigned char* tobehshe
 
 unsigned long latt_hsh_idx(Armature* armtr, unsigned long fhshno, unsigned char intbuf[16]){
 
+
     unsigned long outidx=0;
     unsigned long outidx2=0;
     unsigned int clk = fhshno&3;
     unsigned int msk = (3817748711);
     unsigned char tbuf[8];
     memcpy(&outidx,&fhshno,8);
+
     //msk = (clk) ? msk << 2 : msk >> 1;
     //outidx &= msk;
-
 //    unsigned int clk = fhshno & 7;
 //    unsigned int msk = (3817748711);
 //    msk = (clk) ? fhshno << 2 : fhshno >> 1;

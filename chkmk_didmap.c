@@ -16,6 +16,8 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <time.h>
+#include "TestStat.h"
+
 
 // ----------------------------
 
@@ -326,6 +328,8 @@ FiNode* mk_finnode(unsigned int nlen, unsigned char* finame,
     fimap->fiid = fiid;
     fimap->fhshno = finode_idx(fhshno);
 
+    printf("%lu\n",fimap->fhshno);
+
     return fimap;
 }
 
@@ -349,26 +353,28 @@ unsigned int finode_idx(unsigned long fhshno)
 void add_entry(FiNode* finode, Armature* armatr) {
     int x = 0;
     timr_st();
-
+    NodeEntries ne;
 
     if ((armatr->entries[getidx(finode->fhshno)]).hshno != 0) {
-
 
         while (((armatr->entries)[getidx(finode->fhshno)].hshno) != 0) {
             (finode->fhshno) = finode_idx((finode->fhshno));
             printf("EC! X:%lu\n",HTMASK&(finode->fhshno));
             coll_upup();
-            x++;
+            if(++x > 3){
+                rando_sf(&finode->fhshno);
+                if (x > 9){
+                    return;
+                }
+            }
         }
-        finode->fiid = ((finode->fhshno)>>1);
+        //finode->fiid = ((finode->fhshno)>>1);
     }
 
-    NodeEntries ne;
     ne.hshno = finode->fhshno;
-    ne.finame = finode->finame;
+    ne.fiid = finode->fiid;
     armatr->entries[getidx(finode->fhshno)] = ne;
     armatr->count++;
-
     inc_collcntr();
     timr_hlt();
 }
@@ -424,9 +430,51 @@ void build_bridge2(Armature* armatr, FiNode* fiNode, DiNode* dnode, HashLattice*
     }
     hashlattice->count++;
 
-
     //printf("[%.2ld]\n",cb-ca);
     timr_hlt();
+}
+
+HashBridge *yield_bridge_for_fihsh(Lattice lattice,unsigned long fiHsh){
+
+    HashBridge * hshBrdg;
+    unsigned int fflg = 0;
+    unsigned char oBuf [16] = {0};
+    unsigned char idBuf [8] = {0};
+    unsigned long long int biidBufL;
+
+    unsigned long long int biid = lattice->chains->vessel->armature->entries[getidx(fiHsh)].fiid;
+    if (biid == 0){
+        return NULL;
+    }else {
+        biid ^= lattice->chains->vessel->did;
+    }
+
+
+    unsigned long brdgIdx = latt_hsh_idx(lattice->chains->vessel->armature,fiHsh,oBuf);
+    hshBrdg = lattice->bridges[brdgIdx];
+
+
+    memcpy(&biidBufL,&(hshBrdg->unid),8);
+
+    if (biidBufL != biid){
+        while (hshBrdg->parabridge != NULL){
+            hshBrdg = hshBrdg->parabridge;
+            memcpy(&biidBufL,hshBrdg->unid,8);
+            if (biidBufL == biid){
+                fflg = 1;
+                break;
+            }
+        }
+    }else{
+        fflg = 1;
+    }
+
+    if (!fflg){
+        return NULL;
+        //TODO: implament global status frame.
+    }else{
+        return hshBrdg;
+    }
 }
 
 /*
@@ -663,7 +711,11 @@ double long* map_dir(const char* dir_path,
         travel_dchains(&(hashlattice->chains->vessel), 1, 1);
         printf("%s\n", hashlattice->chains->vessel->diname);
         printf("^^%llu\n", (hashlattice->chains->vessel->did));
+        printf("^^%u\n", expo_dirnmlen(hashlattice->chains->vessel->did));
         printf("%u\n",   expo_dirchnid(hashlattice->chains->vessel->did));
+        printf("%u\n",   expo_dirbase(hashlattice->chains->vessel->did));
+        printf("%u\n",   expo_basedir_cnt(hashlattice->chains->vessel->did));
+
     }
 
     printf("\n\n");
@@ -674,6 +726,10 @@ double long* map_dir(const char* dir_path,
     //printf("BRIDGE >> %s", bridgefiid);
 
     p_colrat();
+
+    ts1up(3);
+    teststrctfunc(1);
+
 
 /**
  * -------------------------------

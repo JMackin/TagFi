@@ -9,6 +9,8 @@
 #include "lattice_works.h"
 #include "fidi_masks.h"
 #include "lattice_rsps.h"
+#include "TestStat.h"
+
 
 const LattType isep = (LattType) 0xdbdbdbdb;
 const LattType csep = (LattType) 0xbddbdbbd;
@@ -85,16 +87,22 @@ unsigned int rsparr_addsep(unsigned char** buf,unsigned int offset,unsigned int 
 unsigned int rsparr_add_lt(LattType lt, unsigned char** buf, unsigned int offset)
 {memcpy(rsparr_pos(buf)+offset+ltyp_s,&lt,ltyp_s);return rsparr_addsep(buf,offset,1)+ltyp_s;}
 
-unsigned int rsparr_add_replobj(unsigned char** buf, LattReply obj){
+unsigned int rsparr_add_obj(unsigned char** buf, LattType obj){
     return rsparr_add_lt((LattType) obj, buf, 0);
+}
+
+unsigned int rsparr_add_lng(unsigned int offset, unsigned long long int lli, unsigned char** buf){
+    {memcpy(rsparr_pos(buf)+offset+(sizeof(unsigned long long int)),&lli,sizeof(unsigned long long int));
+        return rsparr_addsep(buf,offset,1)+sizeof(unsigned long long int);}
 }
 
 unsigned int rsparr_add_msg(unsigned char **buf, char* msg, unsigned int len, unsigned int offst)
 {memcpy(rsparr_pos(buf)+offst+ltyp_s,msg,len);return rsparr_addsep(buf,offst,0)+len;}
 
+unsigned int rsparr_add_chrstr(unsigned char **buf, unsigned char* msg, unsigned int len, unsigned int offst)
+{memcpy(rsparr_pos(buf)+offst+ltyp_s,msg,len);return rsparr_addsep(buf,offst,0)+len;}
+
 // lead | item | arrsz | arr | DONE
-
-
 
 
 /* * * * * * * * * * * * * * *
@@ -123,8 +131,29 @@ unsigned int inf_LTTC(unsigned char **buf, LattType lattItm, LattStruct lattStru
 
 }
 unsigned int inf_BRDG(unsigned char **buf, LattType lattItm, LattStruct lattStruct){
+    uint bcnt;
     lattItm.obj = BRDG;
-    return 0;
+    bcnt = rsparr_add_obj(buf,lattItm);
+    unsigned long *brdg_id = lattStruct.itmID;
+
+    HashBridge * hshBrdg = yield_bridge_for_fihsh(lattStruct.lattice, *brdg_id);
+    if(hshBrdg == NULL){
+        return 1;
+    }
+
+    bcnt += rsparr_add_msg(buf, "UID",4,bcnt);
+    bcnt+= rsparr_add_chrstr(buf,hshBrdg->unid,(UISiZ*4),bcnt);
+
+    bcnt += rsparr_add_msg(buf, "FID",4,bcnt);
+    bcnt+= rsparr_add_lng(bcnt,hshBrdg->finode->fiid,buf);
+
+    bcnt += rsparr_add_msg(buf, "UID",4,bcnt);
+    bcnt+= rsparr_add_lng(bcnt,hshBrdg->dirnode->did,buf);
+
+    return bcnt;
+
+
+    //TODO error response
 
 }
 unsigned int inf_DIRN(unsigned char **buf, LattType lattItm, LattStruct lattStruct){
@@ -287,21 +316,8 @@ unsigned int rsp_nfo(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, u
 
     infofuncarr = (InfoFunc*) malloc(sizeof(InfoFunc));
 
-
-
-//    lattStruct.dirChains =  *dchns;
     lattStruct.lattice = *hltc;
-
-    char* dnhshstr;
-
-
-//    (lattStruct.fiTbl) =
-//            ((yield_bridge(*hltc,       // HashLattice* hashlattice
-//                           (unsigned char*) dnhshstr,  // uchar* filename
-//                           HASHSTRLEN,                         // uint namelength
-//                           (*dchns)->vessel))          // DiNode* residentDirnode
-//                    ->fitable);
-
+    lattStruct.statFrame = **sts_frm;
 
     gen_infofunc_arr(&infofuncarr);
 
@@ -310,7 +326,7 @@ unsigned int rsp_nfo(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, u
     //
     // Fail if no code found
 
-    memcpy(&itmID,((*inf_frm)->arr),ltyp_s);
+    memcpy(&lattItm.obj,((*inf_frm)->arr),ltyp_s);
     //TODO: Fail on malformed request
 
     if (lattItm.obj>FIDE || (lattItm.nui & (lattItm.nui-1)) ){
@@ -334,7 +350,7 @@ unsigned int rsp_nfo(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, u
 
 
     // return of 0 means the object is there but failed to be queried.
-    // return of 1 means the object is tmissing entirely.
+    // return of 1 means the object is missing entirely.
     if (!respsz){
         stsErno(MISSNG,sts_frm,errno,0,"Info requested couldn't be retrieved.","resp::info",NULL);
         return 0;
@@ -379,11 +395,13 @@ unsigned int rsp_sts(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, u
 }
 
 unsigned int rsp_und(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, unsigned char **buf) {
+
+
     return 0;
 }
 
 unsigned int rsp_fiid(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, unsigned char **buf) {
-    printf("Response: Fiid for ID");
+    printf("Response: Fiid for hashno");
     u_long itmID;
     memcpy(&itmID,(*inf_frm)->arr+(rspsz_b),(rspsz_b));
 
@@ -410,7 +428,8 @@ unsigned int rsp_gond(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, 
 }
 
 unsigned int rsp_fyld(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, unsigned char **buf) {
-    printf("Response: Yield object");}
+    printf("Response: Yield object");
+}
 
 unsigned int rsp_jjjj(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, unsigned char **buf) {
     printf("Response: Empty");

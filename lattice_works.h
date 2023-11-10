@@ -16,7 +16,7 @@
 typedef unsigned char LatticeKey[LKEYSZ];
 
 typedef struct NodeEntries{
-    unsigned char* finame;
+    unsigned long long fiid;
     unsigned long hshno;
 
 }NodeEntries;
@@ -115,8 +115,7 @@ InfoFrame *init_info_frm(InfoFrame **info_frm);
 
 typedef struct LattStruct{
     Lattice lattice;
-    DChains chains;
-    Armature* armatr;
+    StatFrame statFrame;
     unsigned long* itmID;
 }LattStruct;
 
@@ -168,6 +167,8 @@ HashBridge* yield_bridge(HashLattice* hashLattice,
                          unsigned char* filename,
                          unsigned int n_len,
                          DiNode* root_dnode);
+
+HashBridge * yield_bridge_for_fihsh(Lattice lattice,unsigned long fiHsh);
 
 void destoryhashbridge(HashBridge hashbridge);
 
