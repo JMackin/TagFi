@@ -16,7 +16,6 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <time.h>
-#include "TestStat.h"
 
 
 // ----------------------------
@@ -726,9 +725,6 @@ double long* map_dir(const char* dir_path,
     //printf("BRIDGE >> %s", bridgefiid);
 
     p_colrat();
-
-    ts1up(3);
-    teststrctfunc(1);
 
 
 /**
