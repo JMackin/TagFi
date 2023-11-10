@@ -264,7 +264,7 @@ int extract_name(const unsigned char* path, int length) {
 
 
 StatFrame * spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsigned char **req_buf,
-                    StatFrame **stsfrm, InfoFrame **infofrm, Resp_Tbl **rsp_tbl, HashLattice **hashlattice,
+                    StatFrame **statusFrame, InfoFrame **infofrm, Resp_Tbl **rsp_tbl, HashLattice **hashlattice,
                     DiChains **dirchains, LttcFlags *flgsbuf, const int *cnfdir_fd, unsigned char **tmparrbuf) {
 
     /**
@@ -272,8 +272,9 @@ StatFrame * spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsign
      * */
 
     *infofrm = init_info_frm(infofrm); // Request/Response Info Frame
-    (*infofrm)->vessel = (*dirchains)->vessel;
-
+    (*dirchains)->vessel = (*dirchains)->dir_head;
+    (*infofrm)->vessel = &(*dirchains)->vessel;
+    
     int exit_flag = 0;
     int i = 0;
     int k, res;
@@ -307,9 +308,9 @@ StatFrame * spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsign
     connection_socket = socket(AF_UNIX, SOCK_SEQPACKET, 0);
     if (connection_socket == -1) {
         perror("socket");
-        setErr(stsfrm, BADCON, 'I');
-        setAct(stsfrm, GBYE, 0, 0);
-        return *stsfrm;
+        setErr(statusFrame, BADCON, 'I');
+        setAct(statusFrame, GBYE, 0, 0);
+        return *statusFrame;
     }
     memset(&name, 0, sizeof(name));
     name.sun_family = AF_UNIX;
@@ -321,9 +322,9 @@ StatFrame * spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsign
     ret = bind(connection_socket, (const struct sockaddr *) &name, sizeof(name));
     if (ret == -1) {
         perror("bind");
-        setErr(stsfrm, BADCON, 'B');// 76 = B -> bind step
-        setAct(stsfrm, GBYE, 0, 0);
-        return *stsfrm;
+        setErr(statusFrame, BADCON, 'B');// 76 = B -> bind step
+        setAct(statusFrame, GBYE, 0, 0);
+        return *statusFrame;
     }
 
     /**
@@ -332,8 +333,8 @@ StatFrame * spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsign
     int efd = epoll_create(1);
     if (efd == -1) {
         perror("epoll");
-        setErr(stsfrm, EPOLLE, 'C');
-        return *stsfrm;
+        setErr(statusFrame, EPOLLE, 'C');
+        return *statusFrame;
     }
      struct epoll_event *epINevent;
      epINevent = (struct epoll_event*) malloc(sizeof(struct epoll_event)*3);
@@ -345,9 +346,9 @@ StatFrame * spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsign
     ret = listen(connection_socket, 10);    // LISTEN 'L'
     if (ret == -1) {
         perror("listen: ");
-        setErr(stsfrm, BADCON, 'L'); // 76 = L -> listen step
-        setAct(stsfrm, GBYE, 0, 0);
-        return *stsfrm;
+        setErr(statusFrame, BADCON, 'L'); // 76 = L -> listen step
+        setAct(statusFrame, GBYE, 0, 0);
+        return *statusFrame;
     }
 
       /* * * * * * * * *
@@ -355,12 +356,12 @@ StatFrame * spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsign
     * * * * * * * * */
     while (!exit_flag) {
         i = 0;
-        stsReset(stsfrm);
+        stsReset(statusFrame);
 
         /**
          * ATTACH EPOLL
          * */
-        setSts(stsfrm, LISTN, 0);
+        setSts(statusFrame, LISTN, 0);
         clock_t clka = clock();
         /**
          * RECIEVE
@@ -370,10 +371,10 @@ StatFrame * spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsign
 
         if (data_socket == -1) {
             perror("accept: ");
-            setErr(stsfrm, BADCON, 'B');// 65 = 'A' -> accept step
-            return *stsfrm;
+            setErr(statusFrame, BADCON, 'B');// 65 = 'A' -> accept step
+            return *statusFrame;
         }
-        (*stsfrm)->status <<= 1;
+        (*statusFrame)->status <<= 1;
         clock_t clkb = clock();
 
 
@@ -383,7 +384,7 @@ StatFrame * spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsign
          * */
         if (epoll_wait(efd,epINevent,3,500) > 0){
             if ((epINevent->events&EPOLLERR) == EPOLLERR) {
-                stsErno(EPOLLE, stsfrm, errno, epINevent->events, "Issue detected by EPOLLE", "epoll_wait - in", 0);
+                stsErno(EPOLLE, statusFrame, errno, epINevent->events, "Issue detected by EPOLLE", "epoll_wait - in", 0);
             }
         }
         clock_t clkc = clock();
@@ -393,10 +394,10 @@ StatFrame * spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsign
          * */
         ret = read(data_socket, *req_buf, buf_len);  // READ 'R'
         if (ret == -1) {
-            stsErno(BADSOK, stsfrm, errno, 0, "Issue reading from data socket", "read", 0);
-            return *stsfrm;
+            stsErno(BADSOK, statusFrame, errno, 0, "Issue reading from data socket", "read", 0);
+            return *statusFrame;
         }
-        (*stsfrm)->status <<= 1;
+        (*statusFrame)->status <<= 1;
         clock_t clkd = clock();
 
 /**
@@ -407,51 +408,50 @@ StatFrame * spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsign
          * */
         *infofrm = parse_req(*req_buf,   // <<< Raw Request
                              infofrm,
-                             stsfrm,
+                             statusFrame,
                              flgsbuf,
                              *tmparrbuf,
                              req_arr_buf); // >>> Extracted array
 
-        if ((*stsfrm)->err_code) {
-            setErr(stsfrm,MALREQ,0);
-            serrOut(stsfrm,"Failed to process request.");
+        if ((*statusFrame)->err_code) {
+            setErr(statusFrame,MALREQ,0);
+            serrOut(statusFrame,"Failed to process request.");
             goto endpoint;
 
              // TODO: replace w/ better option.
         }
 
-
         clock_t clke = clock();
 
         /** DETERMINE RESPONSE */
         if (respond(*rsp_tbl,
-                     stsfrm,
+                     statusFrame,
                      infofrm,
                      dirchains,
                      hashlattice,
                      *rsp_buf)){
-            setErr(stsfrm,MISSPK,0);
-            serrOut(stsfrm,"Failed to stage a response");
+            setErr(statusFrame,MISSPK,0);
+            serrOut(statusFrame,"Failed to stage a response");
             // TODO: replace w/ better option.
         }
         //TODO: Optimize response processing time
         clock_t clkf = clock();
 
 
-        if ((*stsfrm)->act_id == GBYE) {
+        if ((*statusFrame)->act_id == GBYE) {
             /**
              * ACTION:
              *  shutdown
              * */
-            setSts(stsfrm, SHTDN, 0);
+            setSts(statusFrame, SHTDN, 0);
             exit_flag = 1;
         }else {
-                setSts(stsfrm, RESPN, 0);
+                setSts(statusFrame, RESPN, 0);
 
                 /** WRITEOUT REPLY */
                 if (epoll_wait(efd,epINevent,2,1000)){
                     if ((epINevent->events&EPOLLERR) == EPOLLERR) {
-                        stsErno(EPOLLE, stsfrm, errno, epINevent->events,
+                        stsErno(EPOLLE, statusFrame, errno, epINevent->events,
                                 "Issue detected by EPOLLE", "epoll_wait - in", 0);
                    }
                     ret = write(data_socket, *rsp_buf, buf_len);
@@ -479,9 +479,9 @@ StatFrame * spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsign
         /**
          * CLOSE ON SHTDN CMD
          * */
-        if ((*stsfrm)->err_code && (*stsfrm)->act_id == GBYE) {
+        if ((*statusFrame)->err_code && (*statusFrame)->act_id == GBYE) {
             exit_flag = 1;
-            serrOut(stsfrm, NULL);
+            serrOut(statusFrame, NULL);
         }
         clock_t clkh = clock();
 
@@ -491,9 +491,6 @@ StatFrame * spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsign
         printf("parse:%ld\n",(clke-clkd));
         printf("respond:%ld\n",(clkf-clke));
         printf("clearout:%ld\n",(clkg-clkf));
-
-
-
     }// END WHILE !EXITFLAG
 
     epoll_ctl(efd, EPOLL_CTL_DEL, data_socket, epINevent);
@@ -501,7 +498,7 @@ StatFrame * spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsign
     free(epINevent);
 
     unlink(SOCKET_NAME);
-    return *stsfrm;
+    return *statusFrame;
 }   /* * * * *
       * CLOSE *
        * * * * */
@@ -629,6 +626,7 @@ void summon_lattice() {
                 destroy_metastructures(NULL, info_frm, reqflg_arr, req_buf, req_arr_buf, tmparrbuf, rsp_buf);
                 return;
             }
+
         }
          /**
           *  INIT FUNC ARRAY
@@ -645,8 +643,6 @@ void summon_lattice() {
          /* * * * * * * * * **
          *  EXECUTE SERVER  *
         * * * * * * * * * **/
-
-
 
         status_frm = spin_up(&rsp_buf,
                             &req_arr_buf,

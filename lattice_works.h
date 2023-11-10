@@ -107,7 +107,7 @@ typedef struct InfoFrame {
     unsigned int flg_cnt;
     LttcFlags *flags;
     unsigned char *arr;
-    DiNode* vessel;
+    Vessel* vessel;
 } InfoFrame;
 
 InfoFrame *init_info_frm(InfoFrame **info_frm);

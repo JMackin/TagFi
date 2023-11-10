@@ -73,10 +73,6 @@ long stsErno(LattErr ltcerr, StatFrame **sts_frm, int erno, long misc, char *msg
     (*sts_frm)->status = STERR;
     (*sts_frm)->modr = erno;
 
-
-
-
-
     if ((*sts_frm)->act_id == GBYE || (misc == 333)) {
         (*sts_frm)->status = SHTDN;
         return 1;
@@ -84,7 +80,6 @@ long stsErno(LattErr ltcerr, StatFrame **sts_frm, int erno, long misc, char *msg
     {
         return 0;
     }
-
 
 }
 
