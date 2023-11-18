@@ -9,15 +9,14 @@
 #include "lattice_works.h"
 #include "fidi_masks.h"
 #include "lattice_rsps.h"
+#include "consts.h"
 
 
-const LattType isep = (LattType) 0xdbdbdbdb;
-const LattType csep = (LattType) 0xbddbdbbd;
 
 /*
  *  Response element size aliases:
  *--------------------------------
- * ltyp_s = sizeof(LattType)
+ * lattyp_sz = sizeof(LattType)
  * rspsz_b = 2*sizeof(LattType)
  * uint_s = sizeof(unsigned int)
  * uchar_s = sizeof(unsigned char)
@@ -28,11 +27,11 @@ const LattType csep = (LattType) 0xbddbdbbd;
  *----------------------------
  *\elem\:  \start-byte - end-byte\
  * ------   ----------    -------
- * lead :   0 - ltyp_s
- * item :   ltyp_s - rspsz_b
+ * lead :   0 - lattyp_sz
+ * item :   lattyp_sz - rspsz_b
  * arrsz:   rspsz_b - [rspsz_b + uint_s]
  * arr  :   [rspsz_b+uint_s] - [rspsz_b+uint_s+arr_len*uchar_s]
- * DONE :   (rspsz_b)+uint_s+(arr_len*uchar_s) - rspsz_b+ltyp_s+uint_s+(arr_len*uchar_s)
+ * DONE :   (rspsz_b)+uint_s+(arr_len*uchar_s) - rspsz_b+lattyp_sz+uint_s+(arr_len*uchar_s)
  *
  *
  * Note:
@@ -49,27 +48,27 @@ const LattType csep = (LattType) 0xbddbdbbd;
 *  RESPONSE CONSTRUCTION *
 * * * * * * * * * * * * **/
 
-unsigned char* rsparr_pos(unsigned char** buf)
+unsigned char* rsparr_pos(buff_arr buf)
 {return *buf+arr_b;}
 
-unsigned int prpbuf(unsigned char **buf,LattType lattItm) {
+uint prpbuf(buff_arr buf,LattType lattItm) {
     lattItm.flg.uflg =  STRT;
-    memcpy(*buf,&lattItm,ltyp_s);
-    return ltyp_s;
+    memcpy(*buf,&lattItm,lattyp_sz);
+    return lattyp_sz;
 }
 
-unsigned int endbuf(unsigned char **buf,LattType lattItm, unsigned int rsplen) {
+uint endbuf(buff_arr buf,LattType lattItm, uint rsplen) {
     lattItm.flg.uflg =  DONE;
-    memcpy((*buf)+rsplen,&lattItm,ltyp_s);
-    return ltyp_s;
+    memcpy((*buf)+rsplen,&lattItm,lattyp_sz);
+    return lattyp_sz;
 }
 
-unsigned int rsparr_len_inc(void* itm, unsigned int cnt, unsigned int mlti)
+uint rsparr_len_inc(void* itm, uint cnt, uint mlti)
 {return mlti ? ((mlti*sizeof(*itm))+cnt) : sizeof(*itm)+cnt;}
 
-void rsparr_len_set(unsigned int sz, unsigned char **buf){memcpy(*buf+rspsz_b,&sz,UISiZ);}
+void rsparr_len_set(uint sz, buff_arr buf){memcpy(*buf+rspsz_b,&sz,uint_sz);}
 
-void rsparr_out(unsigned char **buf, unsigned int arrlen){
+void rsparr_out(buff_arr buf, uint arrlen){
     uint n = 0;
     while(putchar_unlocked(*(*buf + n))) {
         if (n == arrlen) {
@@ -80,26 +79,37 @@ void rsparr_out(unsigned char **buf, unsigned int arrlen){
 }
 
 // iorc =  0 : char,  1 : int
-unsigned int rsparr_addsep(unsigned char** buf,unsigned int offset,unsigned int iorc)
-{memcpy(rsparr_pos(buf)+offset,(iorc ? &isep : &csep),ltyp_s);return ltyp_s;}
+uint rsparr_addsep(buff_arr buf,uint offset,uint iorc)
+{memcpy(rsparr_pos(buf)+offset,(iorc ? &isep : &csep),lattyp_sz);return lattyp_sz;}
 
-unsigned int rsparr_add_lt(LattType lt, unsigned char** buf, unsigned int offset)
-{memcpy(rsparr_pos(buf)+offset+ltyp_s,&lt,ltyp_s);return rsparr_addsep(buf,offset,1)+ltyp_s;}
+uint rsparr_add_lt(LattType lt, buff_arr buf, uint offset)
+{memcpy(rsparr_pos(buf)+offset+lattyp_sz,&lt,lattyp_sz);return rsparr_addsep(buf,offset,1)+lattyp_sz;}
 
-unsigned int rsparr_add_obj(unsigned char** buf, LattType obj){
+uint rsparr_add_obj(buff_arr buf, LattType obj){
     return rsparr_add_lt((LattType) obj, buf, 0);
 }
 
-unsigned int rsparr_add_lng(unsigned int offset, unsigned long long int lli, unsigned char** buf){
-    {memcpy(rsparr_pos(buf)+offset+(sizeof(unsigned long long int)),&lli,sizeof(unsigned long long int));
+uint rsparr_add_lng(uint offset, LattLong lli, buff_arr buf){
+    {memcpy(rsparr_pos(buf)+offset+(sizeof(LattLong)),&lli,sizeof(LattLong));
         return rsparr_addsep(buf,offset,1)+sizeof(unsigned long long int);}
 }
 
-unsigned int rsparr_add_msg(unsigned char **buf, char* msg, unsigned int len, unsigned int offst)
-{memcpy(rsparr_pos(buf)+offst+ltyp_s,msg,len);return rsparr_addsep(buf,offst,0)+len;}
+uint rsparr_add_msg(buff_arr buf, char* msg, uint len, uint offst)
+{memcpy(rsparr_pos(buf)+offst+lattyp_sz,msg,len);return rsparr_addsep(buf,offst,0)+len;}
 
-unsigned int rsparr_add_chrstr(unsigned char **buf, unsigned char* msg, unsigned int len, unsigned int offst)
-{memcpy(rsparr_pos(buf)+offst+ltyp_s,msg,len);return rsparr_addsep(buf,offst,0)+len;}
+uint rsparr_add_chrstr(buff_arr buf, uchar_arr msg, uint len, uint offst)
+{memcpy(rsparr_pos(buf)+offst+lattyp_sz,msg,len);return rsparr_addsep(buf,offst,0)+len;}
+
+uint pull_objid(InfoFrame** infoFrame, LattLong** itmId){
+
+
+    memcpy((*itmId),(*infoFrame)->arr+(rspsz_b),(rspsz_b));
+
+    return (*itmId)->l_ulonglong_ptr == NULL;
+
+}
+
+
 
 // lead | item | arrsz | arr | DONE
 
@@ -108,46 +118,47 @@ unsigned int rsparr_add_chrstr(unsigned char **buf, unsigned char* msg, unsigned
  * INFO RESPONSE FUNCTIONS  *
  * * * * * * * * * * * * * **/
 
-unsigned int inf_NADA(unsigned char **buf, LattType lattItm, LattStruct lattStruct){
+uint inf_NADA(buff_arr buf, LattType lattItm, LattStruct lattStruct){
 
     return 0;
 
 }
-unsigned int inf_LTTC(unsigned char **buf, LattType lattItm, LattStruct lattStruct){
+uint inf_LTTC(buff_arr buf, LattType lattItm, LattStruct lattStruct){
     uint bcnt;
     lattItm.obj = LTTC;
     bcnt = rsparr_add_lt(lattItm,buf,0);
 
     bcnt += rsparr_add_msg(buf,"CNT",4,bcnt);
-    lattItm.nui = lattStruct.lattice->count;
+    lattItm.n_uint = lattStruct.lattice->count;
     bcnt += rsparr_add_lt(lattItm,buf,bcnt);
 
     bcnt += rsparr_add_msg(buf,"MAX",4,bcnt);
-    lattItm.nui = lattStruct.lattice->max;
+    lattItm.n_uint = lattStruct.lattice->max;
     bcnt += rsparr_add_lt(lattItm,buf,bcnt);
 
     return bcnt;
 
 }
-unsigned int inf_BRDG(unsigned char **buf, LattType lattItm, LattStruct lattStruct){
+uint inf_BRDG(buff_arr buf, LattType lattItm, LattStruct lattStruct){
     uint bcnt;
     lattItm.obj = BRDG;
     bcnt = rsparr_add_obj(buf,lattItm);
-    unsigned long *brdg_id = lattStruct.itmID;
+    LattLong brdg_id;
+    brdg_id.l_ulong_ptr= lattStruct.itmID;
 
-    HashBridge * hshBrdg = yield_bridge_for_fihsh(lattStruct.lattice, *brdg_id);
+    HashBridge * hshBrdg = yield_bridge_for_fihsh(lattStruct.lattice, *brdg_id.l_ulong_ptr);
     if(hshBrdg == NULL){
         return 1;
     }
 
     bcnt += rsparr_add_msg(buf, "UID",4,bcnt);
-    bcnt+= rsparr_add_chrstr(buf,hshBrdg->unid,(UISiZ*4),bcnt);
+    bcnt+= rsparr_add_chrstr(buf,hshBrdg->unid,(uint_sz*4),bcnt);
 
     bcnt += rsparr_add_msg(buf, "FID",4,bcnt);
-    bcnt+= rsparr_add_lng(bcnt,hshBrdg->finode->fiid,buf);
+    bcnt+= rsparr_add_lng(bcnt,(LattLong) hshBrdg->finode->fiid,buf);
 
     bcnt += rsparr_add_msg(buf, "UID",4,bcnt);
-    bcnt+= rsparr_add_lng(bcnt,hshBrdg->dirnode->did,buf);
+    bcnt+= rsparr_add_lng(bcnt,(LattLong) hshBrdg->dirnode->did,buf);
 
     return bcnt;
 
@@ -155,80 +166,80 @@ unsigned int inf_BRDG(unsigned char **buf, LattType lattItm, LattStruct lattStru
     //TODO error response
 
 }
-unsigned int inf_DIRN(unsigned char **buf, LattType lattItm, LattStruct lattStruct){
+uint inf_DIRN(buff_arr buf, LattType lattItm, LattStruct lattStruct){
     lattItm.obj = DIRN;
     rsparr_add_lt(lattItm,buf,0);
 
     return 0;
 }
-unsigned int inf_FTBL(unsigned char **buf, LattType lattItm, LattStruct lattStruct){
+uint inf_FTBL(buff_arr buf, LattType lattItm, LattStruct lattStruct){
     lattItm.obj = FTBL;
     rsparr_add_lt(lattItm,buf,0);
     return 0;
 }
-unsigned int inf_FIMP(unsigned char **buf, LattType lattItm, LattStruct lattStruct){
+uint inf_FIMP(buff_arr buf, LattType lattItm, LattStruct lattStruct){
     lattItm.obj = FIMP;
 
 
     rsparr_add_lt(lattItm,buf,0);
     return 0;
 }
-unsigned int inf_LFLG(unsigned char **buf, LattType lattItm, LattStruct lattStruct){
+uint inf_LFLG(buff_arr buf, LattType lattItm, LattStruct lattStruct){
     lattItm.obj = LFLG;
     rsparr_add_lt(lattItm,buf,0);
     return 0;
 }
-unsigned int inf_SFRM(unsigned char **buf, LattType lattItm, LattStruct lattStruct){
+uint inf_SFRM(buff_arr buf, LattType lattItm, LattStruct lattStruct){
     lattItm.obj = SFRM;
     rsparr_add_lt(lattItm,buf,0);
     return 0;
 }
-unsigned int inf_IFRM(unsigned char **buf, LattType lattItm, LattStruct lattStruct){
+uint inf_IFRM(buff_arr buf, LattType lattItm, LattStruct lattStruct){
     lattItm.obj = IFRM;
     rsparr_add_lt(lattItm,buf,0);
     return 0;
 }
-unsigned int inf_SEQT(unsigned char **buf, LattType lattItm, LattStruct lattStruct){
+uint inf_SEQT(buff_arr buf, LattType lattItm, LattStruct lattStruct){
     lattItm.obj = SEQT;
     rsparr_add_lt(lattItm,buf,0);
     return 0;
 }
-unsigned int inf_CMSQ(unsigned char **buf, LattType lattItm, LattStruct lattStruct){
+uint inf_CMSQ(buff_arr buf, LattType lattItm, LattStruct lattStruct){
     lattItm.obj = CMSQ;
     rsparr_add_lt(lattItm,buf,0);
     return 0;
 }
-unsigned int inf_ICAR(unsigned char **buf, LattType lattItm, LattStruct lattStruct){
+uint inf_ICAR(buff_arr buf, LattType lattItm, LattStruct lattStruct){
     lattItm.obj = ICAR;
     rsparr_add_lt(lattItm,buf,0);
     return 0;
 }
-unsigned int inf_VSSL(unsigned char **buf, LattType lattItm, LattStruct lattStruct){
+uint inf_VSSL(buff_arr buf, LattType lattItm, LattStruct lattStruct){
     lattItm.obj = VSSL;
     rsparr_add_lt(lattItm,buf,0);
     return 0;
 }
-unsigned int inf_FIOB(unsigned char **buf, LattType lattItm, LattStruct lattStruct){
+uint inf_FIOB(buff_arr buf, LattType lattItm, LattStruct lattStruct){
     lattItm.obj = FIOB;
     rsparr_add_lt(lattItm,buf,0);
     return 0;
 }
-unsigned int inf_IDID(unsigned char **buf, LattType lattItm, LattStruct lattStruct){
+uint inf_IDID(buff_arr buf, LattType lattItm, LattStruct lattStruct){
     lattItm.obj = IDID;
     rsparr_add_lt(lattItm,buf,0);
     return 0;
 }
-unsigned int inf_NMNM(unsigned char **buf, LattType lattItm, LattStruct lattStruct){
+uint inf_NMNM(buff_arr buf, LattType lattItm, LattStruct lattStruct){
     lattItm.obj = NMNM;
     rsparr_add_lt(lattItm,buf,0);
     return 0;
 }
-unsigned int inf_FIDE(unsigned char **buf, LattType lattItm, LattStruct lattStruct){
+uint inf_FIDE(buff_arr buf, LattType lattItm, LattStruct lattStruct){
     lattItm.obj = FIDE;
     rsparr_add_lt(lattItm,buf,0);
     return 0;
 }
-unsigned int inf_DCHN(unsigned char **buf, LattType lattItm, LattStruct lattStruct){
+uint inf_DCHN(buff_arr buf, LattType lattItm, LattStruct lattStruct){
     lattItm.obj = DCHN;
     rsparr_add_lt(lattItm,buf,0);
     return 0;
@@ -241,24 +252,24 @@ unsigned int inf_DCHN(unsigned char **buf, LattType lattItm, LattStruct lattStru
  * Generate function array for info response operations */
 void gen_infofunc_arr(InfoFunc** infofuncarr){
 
-    unsigned int (*nada)(unsigned char **buf, LattType lattItm, LattStruct lattStruct);
-    unsigned int (*seqt)(unsigned char **buf, LattType lattItm, LattStruct lattStruct);
-    unsigned int (*lttc)(unsigned char **buf, LattType lattItm, LattStruct lattStruct);
-    unsigned int (*cmsq)(unsigned char **buf, LattType lattItm, LattStruct lattStruct);
-    unsigned int (*brdg)(unsigned char **buf, LattType lattItm, LattStruct lattStruct);
-    unsigned int (*icar)(unsigned char **buf, LattType lattItm, LattStruct lattStruct);
-    unsigned int (*dirn)(unsigned char **buf, LattType lattItm, LattStruct lattStruct);
-    unsigned int (*vssl)(unsigned char **buf, LattType lattItm, LattStruct lattStruct);
-    unsigned int (*ftbl)(unsigned char **buf, LattType lattItm, LattStruct lattStruct);
-    unsigned int (*fiob)(unsigned char **buf, LattType lattItm, LattStruct lattStruct);
-    unsigned int (*fimp)(unsigned char **buf, LattType lattItm, LattStruct lattStruct);
-    unsigned int (*idid)(unsigned char **buf, LattType lattItm, LattStruct lattStruct);
-    unsigned int (*lflg)(unsigned char **buf, LattType lattItm, LattStruct lattStruct);
-    unsigned int (*nmnm)(unsigned char **buf, LattType lattItm, LattStruct lattStruct);
-    unsigned int (*sfrm)(unsigned char **buf, LattType lattItm, LattStruct lattStruct);
-    unsigned int (*fide)(unsigned char **buf, LattType lattItm, LattStruct lattStruct);
-    unsigned int (*ifrm)(unsigned char **buf, LattType lattItm, LattStruct lattStruct);
-    unsigned int (*dchn)(unsigned char **buf, LattType lattItm, LattStruct lattStruct);
+    uint (*nada)(buff_arr buf, LattType lattItm, LattStruct lattStruct);
+    uint (*seqt)(buff_arr buf, LattType lattItm, LattStruct lattStruct);
+    uint (*lttc)(buff_arr buf, LattType lattItm, LattStruct lattStruct);
+    uint (*cmsq)(buff_arr buf, LattType lattItm, LattStruct lattStruct);
+    uint (*brdg)(buff_arr buf, LattType lattItm, LattStruct lattStruct);
+    uint (*icar)(buff_arr buf, LattType lattItm, LattStruct lattStruct);
+    uint (*dirn)(buff_arr buf, LattType lattItm, LattStruct lattStruct);
+    uint (*vssl)(buff_arr buf, LattType lattItm, LattStruct lattStruct);
+    uint (*ftbl)(buff_arr buf, LattType lattItm, LattStruct lattStruct);
+    uint (*fiob)(buff_arr buf, LattType lattItm, LattStruct lattStruct);
+    uint (*fimp)(buff_arr buf, LattType lattItm, LattStruct lattStruct);
+    uint (*idid)(buff_arr buf, LattType lattItm, LattStruct lattStruct);
+    uint (*lflg)(buff_arr buf, LattType lattItm, LattStruct lattStruct);
+    uint (*nmnm)(buff_arr buf, LattType lattItm, LattStruct lattStruct);
+    uint (*sfrm)(buff_arr buf, LattType lattItm, LattStruct lattStruct);
+    uint (*fide)(buff_arr buf, LattType lattItm, LattStruct lattStruct);
+    uint (*ifrm)(buff_arr buf, LattType lattItm, LattStruct lattStruct);
+    uint (*dchn)(buff_arr buf, LattType lattItm, LattStruct lattStruct);
 
     nada = &inf_NADA; seqt = &inf_SEQT;
     lttc = &inf_LTTC; cmsq = &inf_CMSQ;
@@ -282,27 +293,24 @@ void gen_infofunc_arr(InfoFunc** infofuncarr){
 
 }
 
-
-
 /* * * * * * * * * * * * * * * *
  * RESPONSE AVENUES AND ACTION *
  * * * * * * * * * * * * * * * */
 
 
+uint rsp_err(StatFrame **sts_frm, InfoFrame **inf_frm,  Lattice* hltc, buff_arr buf) {
 
-unsigned int rsp_err(StatFrame **sts_frm, InfoFrame **inf_frm,  Lattice* hltc, unsigned char **buf) {
-
-    unsigned int ercode = (*sts_frm)->err_code;
+    uint ercode = (*sts_frm)->err_code;
     memcpy(buf,&ercode,sizeof(LattErr));
 
     return sizeof(LattErr);
 }
 
 /** Info funcs */
-unsigned int rsp_nfo(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, unsigned char** buf) {
+uint rsp_nfo(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, buff_arr buf) {
 
     LattType lattItm;
-    lattItm.nui = 0;
+    lattItm.n_uint = 0;
     printf("Response: info");
     size_t bcnt = arr_b;
     u_long itmID;
@@ -325,18 +333,19 @@ unsigned int rsp_nfo(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, u
     //
     // Fail if no code found
 
-    memcpy(&lattItm.obj,((*inf_frm)->arr),ltyp_s);
+
+    memcpy(&lattItm.obj,((*inf_frm)->arr),lattyp_sz);
     //TODO: Fail on malformed request
 
-    if (lattItm.obj>FIDE || (lattItm.nui & (lattItm.nui-1)) ){
-        stsErno(MALREQ,sts_frm,errno,lattItm.nui,"Invalid object ID provided.","response::info","object id value");
+    if (lattItm.obj>FIDE || (lattItm.n_uint & (lattItm.n_uint - 1)) ){
+        stsErno(MALREQ, sts_frm, errno, lattItm.n_uint, "Invalid object ID provided.", "response::info", "object id value");
         return 1;
         //TODO: Better error value for failed response processing.
     }
 
     // query requested object and return response size in bytes.
 
-    i = __builtin_ctz(lattItm.nui)+1;   // Info Req subject index = count of its values trailing zeros.
+    i = __builtin_ctz(lattItm.n_uint) + 1;   // Info Req subject index = count of its values trailing zeros.
     if (i > 18){
         respsz = 1;
     }else {
@@ -346,7 +355,6 @@ unsigned int rsp_nfo(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, u
         respsz = ((*infofuncarr)[i](buf, lattItm, lattStruct));
     }
     free(*infofuncarr);
-
 
     // return of 0 means the object is there but failed to be queried.
     // return of 1 means the object is missing entirely.
@@ -365,27 +373,27 @@ unsigned int rsp_nfo(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, u
 //uint bcnt;
 //lattItm.obj = LTTC;
 //bcnt = rsparr_add_lt(lattItm,buf,0);
-unsigned int rsp_sts(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, unsigned char **buf) {
+uint rsp_sts(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, buff_arr buf) {
     printf("Response: Status frame");
     uint bcnt;
     LattType lattitm;
     lattitm.obj = SFRM;
     bcnt = rsparr_add_lt(lattitm,buf,0);
 
-    bcnt += rsparr_add_msg(buf,"STS",ltyp_s,bcnt);
+    bcnt += rsparr_add_msg(buf,"STS",lattyp_sz,bcnt);
     lattitm.sts =(*sts_frm)->status;
     bcnt += rsparr_add_lt(lattitm,buf,bcnt);
 
-    bcnt += rsparr_add_msg(buf,"ERR",ltyp_s,bcnt);
+    bcnt += rsparr_add_msg(buf,"ERR",lattyp_sz,bcnt);
     lattitm.err = (*sts_frm)->err_code;
     bcnt += rsparr_add_lt(lattitm,buf,bcnt);
 
-    bcnt += rsparr_add_msg(buf,"ACT",ltyp_s,bcnt);
+    bcnt += rsparr_add_msg(buf,"ACT",lattyp_sz,bcnt);
     lattitm.act = (*sts_frm)->act_id;
     bcnt += rsparr_add_lt(lattitm,buf,bcnt);
 
-    bcnt += rsparr_add_msg(buf,"MOD",ltyp_s,bcnt);
-    lattitm.nui = (*sts_frm)->modr;
+    bcnt += rsparr_add_msg(buf,"MOD",lattyp_sz,bcnt);
+    lattitm.n_uint = (*sts_frm)->modr;
     bcnt += rsparr_add_lt(lattitm,buf,bcnt);
 
     return bcnt;
@@ -393,68 +401,108 @@ unsigned int rsp_sts(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, u
     //TODO: Test and verify this function
 }
 
-unsigned int rsp_und(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, unsigned char **buf) {
+uint rsp_und(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, buff_arr buf) {
 
 
     return 0;
 }
 
-unsigned int rsp_fiid(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, unsigned char **buf) {
+uint rsp_fiid(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, buff_arr buf) {
     printf("Response: Fiid for hashno");
-    u_long itmID;
-    memcpy(&itmID,(*inf_frm)->arr+(rspsz_b),(rspsz_b));
 
-//    memcpy(&itmID,(*inf_frm)->arr+(rspsz_b),(rspsz_b));
-//    (*hltc)->chains->
-//    (*dchns)->vessel->
-//
-//    yield_bridge()
-//
-//    yield_bridge(hltc,)
 
+
+    LattLong* itmID = malloc(ulong_sz);
+    LattType lattitm;
+    lattitm.obj = IDID;
+    uint bcnt;
+
+    bcnt = rsparr_add_lt(lattitm,buf,0);
+    memcpy(itmID,(*inf_frm)->arr+(rspsz_b),(rspsz_b));
+
+
+    if (pull_objid(inf_frm, &(itmID))){
+        stsErno(MALREQ, sts_frm, errno, itmID->l_ulong, "Given fiID is invalid or mangled.", "rsp_fiid", "parsed id");
+        return 1;
+    }
+
+    Armatr armatr = (*hltc)->chains->vessel->armature;
+
+    if (armatr == NULL){
+        stsErno(NOINFO,sts_frm,errno,(*hltc)->chains->vessel->did,"Vessel is likely located in a base node.","rsp_fiid","vessel diID");
+        return 1;
+    }
+
+    itmID->l_ulong = armatr->entries[getidx(itmID->l_ulong)].fiid;
+
+    bcnt += rsparr_add_lng(bcnt,*itmID,buf);
+
+    free(itmID);
+
+    return bcnt;
 }
 
-unsigned int rsp_diid(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, unsigned char **buf) {
+uint rsp_diid(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, buff_arr buf) {
     printf("Response: Dir ID");
+
+    LattLong* itmID = malloc(sizeof(unsigned long));
+    LattType lattitm;
+    lattitm.obj = DIRN;
+    uint bcnt;
+
+    bcnt = rsparr_add_lt(lattitm,buf,0);
+
+    memcpy(&itmID->l_ulong, (*inf_frm)->arr + (rspsz_b), (rspsz_b));
+
+    if (pull_objid(inf_frm, &(itmID))){
+        stsErno(MALREQ, sts_frm, errno, itmID->l_ulong, "Given dirID is invalid or mangled.", "rsp_diid", "parsed id");
+        return 1;
+    }
+
+    LattLong diID;
+    diID.l_ulonglong = (*hltc)->chains->vessel->did;
+    bcnt += rsparr_add_lng(bcnt, diID, buf);
+    free(itmID);
+    return bcnt;
 }
 
-unsigned int rsp_frdn(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, unsigned char **buf) {
+uint rsp_frdn(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, buff_arr buf) {
     printf("Response: Resident Dir");
 }
 
-unsigned int rsp_gond(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, unsigned char **buf) {
+uint rsp_gond(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, buff_arr buf) {
     printf("Response: Goto node");
 }
 
-unsigned int rsp_fyld(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, unsigned char **buf) {
+uint rsp_fyld(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, buff_arr buf) {
     printf("Response: Yield object");
 }
 
-unsigned int rsp_jjjj(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, unsigned char **buf) {
+uint rsp_jjjj(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, buff_arr buf) {
     printf("Response: Empty");
 }
 
-unsigned int rsp_dsch(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, unsigned char **buf) {
+uint rsp_dsch(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, buff_arr buf) {
     printf("Response: Search for object");
 }
 
-unsigned int rsp_iiii(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, unsigned char **buf) {
+uint rsp_iiii(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, buff_arr buf) {
     printf("Response: Empty");
 }
 
-unsigned int rsp_dcls(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, unsigned char **buf) {
+uint rsp_dcls(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf) {
     printf("Response: List chain nodes");
 }
 
-unsigned int rsp_gohd(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, unsigned char **buf) {
+uint rsp_gohd(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf) {
     printf("Response: Go to chain head");
 }
 
-unsigned int rsp_dnls(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, unsigned char **buf) {
+uint rsp_dnls(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf) {
     printf("Response: List dir ");
 }
 
-unsigned int rsp_vvvv(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, unsigned char **buf) {
+uint rsp_vvvv(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf) {
     printf("Response: Empty");
 }
 
@@ -475,25 +523,25 @@ RspFunc *rsp_act(
         RspFunc *funarr){
 
 //Info
-    unsigned int  (*und)(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, unsigned char **buf);
-    unsigned int (*err)(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, unsigned char**buf);
-    unsigned int (*nfo)(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, unsigned char**buf);
-    unsigned int (*sts)(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, unsigned char**buf);
+    uint(*und)(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
+    uint(*err)(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
+    uint(*nfo)(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
+    uint(*sts)(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
 //Travel*
-    unsigned int (*fiid)(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, unsigned char **buf);
-    unsigned int (*diid)(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, unsigned char **buf);
-    unsigned int (*frdn)(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, unsigned char **buf);
-    unsigned int (*gond)(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, unsigned char **buf);
+    uint (*fiid)(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
+    uint (*diid)(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
+    uint (*frdn)(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
+    uint (*gond)(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
 //Dir*
-    unsigned int (*fyld)(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, unsigned char **buf);
-    unsigned int (*jjjj)(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, unsigned char **buf);
-    unsigned int (*dsch)(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, unsigned char **buf);
-    unsigned int (*iiii)(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, unsigned char **buf);
+    uint (*fyld)(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
+    uint (*jjjj)(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
+    uint (*dsch)(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
+    uint (*iiii)(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
 //File*
-    unsigned int (*dcls)(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, unsigned char **buf);
-    unsigned int (*gohd)(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, unsigned char **buf);
-    unsigned int (*dnls)(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, unsigned char **buf);
-    unsigned int (*vvvv)(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, unsigned char **buf);
+    uint (*dcls)(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
+    uint (*gohd)(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
+    uint (*dnls)(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
+    uint (*vvvv)(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
 
     und = &rsp_und;
     err = &rsp_err;
@@ -550,8 +598,8 @@ RspFunc *rsp_act(
  */
 void
 init_rsptbl(int cnfg_fd, Resp_Tbl **rsp_tbl, StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc) {
-    unsigned int *rsp_map;
-    unsigned int fcnt = RSPARRLEN;
+    uint *rsp_map;
+    uint fcnt = RSPARRLEN;
     RspFunc *rsp_func;
 
     *rsp_tbl = (Resp_Tbl*) malloc(sizeof(Resp_Tbl));
@@ -571,8 +619,8 @@ LattType dtrm_rsp(StatFrame **sts_frm,
                   InfoFrame **inf_frm,
                   LattType reply) {
 
-    reply.nui = 0; //LattReply to determine response avenues
-    unsigned int sys; //Request is a system op
+    reply.n_uint = 0; //LattReply to determine response avenues
+    uint sys = 0; //Request is a system op
 
 
     if ((*inf_frm)->trfidi[0]) {
@@ -583,58 +631,60 @@ LattType dtrm_rsp(StatFrame **sts_frm,
         } else {
             if (!(*inf_frm)->trfidi[1]) {    //Not a file op.
                 if ((*inf_frm)->sys_op) {
-                    reply.rpl = OINFO;    // Info op -> masked with bits #3 and #4 : 1100
-
+                    if ((*inf_frm)->qual == DFLT) {
+                        reply.rpl = STATS;  // Info op + DFLT flag -> status frame
+                    } else {
+                        reply.rpl = OINFO;    // Info op -> masked with bits #3 and #4 : 1100
+                    }
                 } else {
                     sys = 1;    // System op -> unique handling. : 0110/1010
                 }
-            }else{// File op, bit #1 stays False, and no more than 1 bit set True : 0000
+            } else {// File op, bit #1 stays False, and no more than 1 bit set True : 0000
                 reply.rpl = ((1<<((*inf_frm)->cat_pfx))&~1);
             }
         }
     }
 
-    if(reply.nui > 15 || reply.ni < 0){
+    if(reply.n_uint > 15 || reply.n_int < 0){
         setErr(sts_frm,MISCLC,reply.rpl);
         serrOut(sts_frm,"Response determination failed.");
         reply.rpl = ERRCD;
     }
-    printf("Action: %d\n", reply.nui);
+
     return reply;
 }
-
 
 /**
  * \ProcessResponse
  */
-unsigned int respond(Resp_Tbl *rsp_tbl,
+uint respond(Resp_Tbl *rsp_tbl,
                      StatFrame **sts_frm,
                      InfoFrame **inf_frm,
                      DChains *dchns,
                      Lattice *hltc,
-                     unsigned char *rsp_buf) {
+                     uchar_arr rsp_buf) {
 
     //TODO: Reset infoframe, implement and include.
     LattType lattItm;
-    lattItm.nui =  0;
+    lattItm.n_uint =  0;
 
     prpbuf(&rsp_buf,lattItm);
     /** Determine response avenue and return a reply object */
     lattItm = dtrm_rsp(sts_frm,inf_frm,lattItm);  // Reply object returned from 'determine response'
 
-    unsigned int rspsz;
-    unsigned int rsparrsz;
+    uint rspsz;
+    uint rsparrsz;
     // Update status and return 1 on failure
     // if the value of reply object is > the
     // num of function in the array.
-    if (lattItm.nui > rsp_tbl->fcnt) {
-        setErr(sts_frm, MISCLC, lattItm.nui);
+    if (lattItm.n_uint > rsp_tbl->fcnt) {
+        setErr(sts_frm, MISCLC, lattItm.n_uint);
         serrOut(sts_frm, "LattReply for response processing outside defined functionality.");
         return 1;
     }
 
     // Insert reply object into buffer at +sizeof(LattTyp) offset
-    memcpy(rsp_buf+UISiZ,&lattItm,ltyp_s);
+    memcpy(rsp_buf+uint_sz,&lattItm,lattyp_sz);
 
     // Call function at index 'rsp' (the reply object value) from function array.
     rspsz = (*rsp_tbl->rsp_funcarr)[lattItm.rpl](sts_frm, inf_frm, hltc, &rsp_buf);
@@ -644,7 +694,7 @@ unsigned int respond(Resp_Tbl *rsp_tbl,
     rspsz += endbuf(&rsp_buf,lattItm,rspsz);
 
     // Get array len from response sequence
-    rsparrsz = rspsz - (4*ltyp_s);
+    rsparrsz = rspsz - (4*lattyp_sz);
 
     rsparr_len_set(rsparrsz,&rsp_buf);
 

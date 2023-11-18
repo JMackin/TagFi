@@ -4,8 +4,7 @@
 #ifndef TAGFI_FI_LATTICE_H
 #define TAGFI_FI_LATTICE_H
 
-#define UISiZ 4
-#define UCSiZ 1
+
 #define ltyp_s 4
 #define rspsz_b 8
 #define arr_b 12
@@ -13,21 +12,11 @@
 
 #include "lattice_signals.h"
 #include "lattice_works.h"
-
-typedef union LattType{
-    LattErr err;
-    LattReply rpl;
-    LattAct act;
-    LattObj obj;
-    LattStts sts;
-    LttFlg flg;
-    int ni;
-    unsigned int nui;
-    unsigned char nuc;
-}LattType;
+#include "consts.h"
 
 
-//const unsigned long UISiZ = sizeof(unsigned int);
+
+//const unsigned long uint_sz = sizeof(unsigned int);
 //const unsigned long UCSiZ = sizeof(unsigned char);
 //const unsigned long LTYPsz = sizeof(LattType) + sizeof(unsigned int);
 //const unsigned long ltyp_s = sizeof(LattType);

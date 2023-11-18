@@ -53,29 +53,86 @@
  *      <br>(0 = TravelOps, 1 = FileOps, 2 = DirNode Ops)
  *</sub>
  */
-unsigned int split_cats(const unsigned int *lead_flags,
-                        LttcFlags* flag_list,
-                        LttFlg *flg_itr,
-                        unsigned int s_itr,
-                        unsigned int l_itr,
-                        unsigned int cnt,
-                        unsigned int trfidi,
-                        unsigned int *subflg);
+//unsigned int split_cats(const unsigned int *lead_flags,
+//                        LttcFlags* flag_list,
+//                        LttFlg *flg_itr,
+//                        unsigned int s_itr,
+//                        unsigned int l_itr,
+//                        unsigned int cnt,
+//                        unsigned int trfidi,
+//                        unsigned int *subflg);
+//
+///**
+//* \DivideFlags
+//*  Receives each combined flag value from SplitCategories and recursively apply
+//*      each of the 4 flag values in that category as an AND mask. If the AND operation results true,
+//*      the flag is appended to an array of ReqFlags point to by 'flag_list'.
+//**/
+//unsigned int div_flgs(const unsigned int *lead_flags,
+//                      LttcFlags* flag_list,
+//                      LttFlg *flg_itr,
+//                      unsigned int s_itr,
+//                      unsigned int l_itr,
+//                      unsigned int cnt,
+//                      unsigned int trfidi,
+//                      unsigned int *subflg) {
+//
+//    if (s_itr > 3) {
+//        return cnt;
+//    }
+//    if (*(lead_flags + l_itr) & flg_itr->req) {
+//        ((*flag_list + cnt)->req)  = ((flg_itr)->req);
+//        ++(cnt);
+//        if (*subflg==7) {
+//            (*subflg = s_itr);
+//        }
+//    }
+//    flg_itr->req <<= 1;
+//    div_flgs(lead_flags, flag_list, flg_itr, ++s_itr, l_itr, cnt, trfidi, subflg);
+//
+//}
+//
+//unsigned int split_cats(const unsigned int *lead_flags,
+//                        LttcFlags* flag_list,
+//                        LttFlg *flg_itr,
+//                        unsigned int s_itr,
+//                        unsigned int l_itr,
+//                        unsigned int cnt,
+//                        unsigned int trfidi,
+//                        unsigned int *subflg) {
+//
+//    if (l_itr > 5 || (flg_itr->req) >= UUUU) {
+//        return cnt;
+//    } else {
+//        if (l_itr == 2) {
+//            if (*subflg == 15) {
+//                *subflg >>= 1;
+//            }
+//            if (trfidi) {
+//                flg_itr->req <<= (4 * trfidi);
+//            }
+//        } else if (l_itr == 3) {
+//            flg_itr->req = SAVE;
+//        }
+//        cnt = div_flgs(lead_flags, flag_list, flg_itr, s_itr, l_itr, cnt, trfidi, subflg);
+//        (++l_itr);
+//        split_cats(lead_flags, flag_list, flg_itr, 0, l_itr, cnt, trfidi, subflg);
+//
+//    }
+//    //TODO: Implement return 0 in default cases, and flgcnt updatted with '+=' rather than assignment.
+//}
 
-/**
-* \DivideFlags
-*  Receives each combined flag value from SplitCategories and recursively apply
-*      each of the 4 flag values in that category as an AND mask. If the AND operation results true,
-*      the flag is appended to an array of ReqFlags point to by 'flag_list'.
-**/
-unsigned int div_flgs(const unsigned int *lead_flags,
-                      LttcFlags* flag_list,
-                      LttFlg *flg_itr,
-                      unsigned int s_itr,
-                      unsigned int l_itr,
-                      unsigned int cnt,
-                      unsigned int trfidi,
-                      unsigned int *subflg) {
+/*
+ * AI GENERATED
+ */
+uint div_flgs(ptr_uint lead_flags,
+              LttcFlags* flag_list,
+              LttFlg *flg_itr,
+              uint s_itr,
+              uint l_itr,
+              uint cnt,
+              uint trfidi,
+              ptr_uint subflg) {
 
     if (s_itr > 3) {
         return cnt;
@@ -88,18 +145,18 @@ unsigned int div_flgs(const unsigned int *lead_flags,
         }
     }
     flg_itr->req <<= 1;
-    div_flgs(lead_flags, flag_list, flg_itr, ++s_itr, l_itr, cnt, trfidi, subflg);
+    return div_flgs(lead_flags, flag_list, flg_itr, ++s_itr, l_itr, cnt, trfidi, subflg);
 
 }
 
-unsigned int split_cats(const unsigned int *lead_flags,
-                        LttcFlags* flag_list,
-                        LttFlg *flg_itr,
-                        unsigned int s_itr,
-                        unsigned int l_itr,
-                        unsigned int cnt,
-                        unsigned int trfidi,
-                        unsigned int *subflg) {
+uint split_cats(ptr_uint lead_flags,
+                LttcFlags* flag_list,
+                LttFlg *flg_itr,
+                uint s_itr,
+                uint l_itr,
+                uint cnt,
+                uint trfidi,
+                ptr_uint subflg) {
 
     if (l_itr > 5 || (flg_itr->req) >= UUUU) {
         return cnt;
@@ -115,34 +172,34 @@ unsigned int split_cats(const unsigned int *lead_flags,
             flg_itr->req = SAVE;
         }
         cnt = div_flgs(lead_flags, flag_list, flg_itr, s_itr, l_itr, cnt, trfidi, subflg);
-        (++l_itr);
-        split_cats(lead_flags, flag_list, flg_itr, 0, l_itr, cnt, trfidi, subflg);
-
+        return split_cats(lead_flags, flag_list, flg_itr, s_itr, ++l_itr, cnt, trfidi, subflg);
     }
-    //TODO: Implement return 0 in default cases, and flgcnt updatted with '+=' rather than assignment.
-}
 
+    //TODO: Implement return 0 in default cases, and flgcnt updated with '+=' rather than assignment.
+}
 /**
  *\ParseLead
  * Convert request-lead to an array of flags using bit-masking and return the flag count.
  */
-unsigned int parse_lead(const unsigned int lead,
-                        LttcFlags *flg_list,
-                        StatFrame **sts_frm,
-                        InfoFrame **inf_frm) {
-    unsigned int k = 1920;
-    unsigned int i = 0;
-    unsigned int flg_suffx = 15;
-    unsigned int flgcnt = 0;
+uint parse_lead(cnst_uint lead,
+                LttcFlags *flg_list,
+                StatFrame **sts_frm,
+                InfoFrame **inf_frm) {
+
+    uint k = 1920;
+    uint i = 0;
+    uint flg_suffx = 15;
+    uint flgcnt = 0;
 
     /** Alloc buffer to hold OR'd category flag values
      * and an array for the final parsed flag list.
      * */
-    unsigned int *lead_flags = (unsigned int *) calloc(4,UISiZ);    // [ quals | trvl/fiops/dirops/ | sysops | arrsigs ]
+    ptr_uint lead_flags = (ptr_uint ) calloc(4,uint_sz);    // [ quals | trvl/fiops/dirops/ | sysops | arrsigs ]
     //*flg_list = (ReqFlag *) (calloc(CMDCNT,sizeof(ReqFlag)));
 
     /** Extract qualifier flags */
     *lead_flags = lead & QUALIFIR;
+
     (*inf_frm)->qual = *lead_flags;
 
     /** Extract array op flags*/
@@ -163,6 +220,7 @@ unsigned int parse_lead(const unsigned int lead,
 
     /** Extract system op flags */
     *(lead_flags + 3) = lead & SYSTMOPS;
+
     (*inf_frm)->sys_op = *(lead_flags + 3);
 
     /** Call for further processing to divide the OR'd category values into their individual flags  */
@@ -184,33 +242,37 @@ unsigned int parse_lead(const unsigned int lead,
  */
 
 
-InfoFrame *parse_req(const unsigned char *fullreqbuf, //<-- same name in spin up
+InfoFrame *parse_req(uchar_arr fullreqbuf, //<-- same name in spin up
                      InfoFrame **infofrm,
                      StatFrame **stsfrm,
                      LttcFlags* rqflgsbuf,       //<-- flgsbuf in spin up
-                     unsigned char* tmparrbuf,
-                     unsigned char **req_arr_buf) //<-- req_arr_buf in spin up
+                     uchar_arr tmparrbuf,
+                     buff_arr req_arr_buf) //<-- req_arr_buf in spin up
 {
 
-    unsigned int exit_flg = 1;
+    uint exit_flg = 1;
     int k = 0;
-    unsigned int is_arr = 0; //1 = char, 2 = int
-    unsigned int flag;
-    unsigned int flgcnt;
-    unsigned int end;
-
+    uint is_arr = 0; //1 = char, 2 = int
+    uint flag;
+    uint flgcnt;
+    uint end;
+    uint dflt_flg = 0;
 
     /**
      * Parse request sequence-lead and init CMD struct
      * */
-    memcpy(&flag, fullreqbuf, UISiZ);
+    memcpy(&flag, fullreqbuf, uint_sz);
 
     flgcnt = parse_lead(flag, rqflgsbuf, stsfrm, infofrm);
 
     if (!flgcnt) {
-        fprintf(stderr, "Malformed request: Error parsing lead.\n");
+        stsErno(MALREQ,stsfrm,errno,flag,"Malformed request, error parsing lead","parse_req->parse_lead","misc - lead");
       //  err_info_frm(*infofrm, stsfrm, MALREQ, 'l'); // l = parsing lead
         return *infofrm;
+    }
+
+    if ((*infofrm)->qual == 2){
+        dflt_flg = 1;
     }
 
     /**
@@ -224,7 +286,7 @@ InfoFrame *parse_req(const unsigned char *fullreqbuf, //<-- same name in spin up
      * Check carrier byte
      * */
     if (flag >> 29 != 1) {
-        stsErno(MALREQ,stsfrm,errno,flag,"Request structure malformed","parse_req","misc - carry byte");
+        stsErno(MALREQ,stsfrm,errno,flag,"Malformed request, bad carry flag","parse_req","misc - lead");
        // err_info_frm(*infofrm, stsfrm, MALREQ, 'l'); //
         return *infofrm;
     }
@@ -233,12 +295,10 @@ InfoFrame *parse_req(const unsigned char *fullreqbuf, //<-- same name in spin up
      * Check for Int arr
      * */
     if ((*infofrm)->arr_type == INTARR) {
-        memcpy(&((*infofrm)->arr_len), (fullreqbuf + UISiZ), UISiZ); // Set InfoFrame -> arr length
+        memcpy(&((*infofrm)->arr_len), (fullreqbuf + uint_sz), uint_sz); // Set InfoFrame -> arr length
 
-        memcpy(&end, (fullreqbuf + (UISiZ * 2) + (UISiZ * (*infofrm)->arr_len)), UISiZ);  // Calc request endpoint
-
-        exit_flg = (*infofrm)->arr_len == 1 ? (exit_flg << 1) : 1; // EXIT trigger 1
-
+        // 4B + 4b + 4B + 8B + (misc len) + 4B
+        memcpy(&end, (fullreqbuf + (uint_sz * 2) + (uint_sz * (*infofrm)->arr_len)), uint_sz);  // Calc request endpoint
 
         /**
          * Check tail byte
@@ -248,22 +308,23 @@ InfoFrame *parse_req(const unsigned char *fullreqbuf, //<-- same name in spin up
             return (NULL);
         }
 
-        exit_flg = flag == ENDBYTES ? (exit_flg << 1) : 1; //   EXIT trigger 2
+        exit_flg = flag == ENDBYTES ? (exit_flg << 1) : 1; //   EXIT trigger 1
 
         /**
          * Alloc and populate int buffer with the cmd sequence
          * */
-//        memcpy(tmparrbuf, fullreqbuf + (UISiZ * 2), (UISiZ * (*infofrm)->arr_len));
-        tmparrbuf = (fullreqbuf + (UISiZ * 2));
+//        memcpy(tmparrbuf, fullreqbuf + (uint_sz * 2), (uint_sz * (*infofrm)->arr_len));
+        tmparrbuf = (fullreqbuf + (uint_sz * 2));
         (*infofrm)->arr = tmparrbuf;
 
+        exit_flg = *((*infofrm)->arr+(2*uint_sz)) == 255 ? (exit_flg << 1) : 1; // EXIT trigger 2
         exit_flg = *tmparrbuf == SHTDN ? (exit_flg << 1) : 1;    //  EXIT trigger 3
 
         /**
          * Exit for shutdown upon receiving three shutdown triggers
          * */
         if (exit_flg == 8) {
-            setAct(stsfrm, GBYE, SHTDN, SELFRESET);
+            setAct(stsfrm, GBYE, SHTDN, ESHTDN);
             return (*infofrm);
         }
     }
@@ -271,16 +332,15 @@ InfoFrame *parse_req(const unsigned char *fullreqbuf, //<-- same name in spin up
          * Check for char arr
          * */
     else if ((*infofrm)->arr_type == CHRARR) {
-        memcpy(&((*infofrm)->arr_len), (fullreqbuf + UISiZ), UISiZ);
-        memcpy(&end, (fullreqbuf + (UISiZ * 2) + (UCSiZ * (*infofrm)->arr_len)), UISiZ); //Calc request endpoint
-
+        memcpy(&((*infofrm)->arr_len), (fullreqbuf + uint_sz), uint_sz);
+        memcpy(&end, (fullreqbuf + (uint_sz * 2) + (uchar_sz * (*infofrm)->arr_len)), uint_sz); //Calc request endpoint
 
         if (end != END) {
             stsErno(MALREQ,stsfrm,errno,end,"Computed position for tail byte doesnt match that of request tail","parse req","calcd end value");
             return (*infofrm);
         }
 
-        memcpy(req_arr_buf, fullreqbuf + (UISiZ * 2), (UCSiZ * (*infofrm)->arr_len));
+        memcpy(req_arr_buf, fullreqbuf + (uint_sz * 2), (uchar_sz * (*infofrm)->arr_len));
         (*infofrm)->arr = *req_arr_buf;
     }
 

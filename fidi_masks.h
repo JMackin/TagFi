@@ -46,10 +46,10 @@
  * DIR NODES:
  */
 #define DCHNSMASK 255              // 0b00000000000000000000011111111 - ID under group-base
-#define DBASEMASK 768              // 0b00000000000000000001100000000 - Base ID: 01=media, 10=docs - abs:2
-#define MEDABASEM 256              // 0b00000000000000000000100000000 - OR Mask: ID for MEDIA base derived from: (did & DBASEMASK)
-#define DOCSBASEM 512              // 0b00000000000000000001000000000 - OR Mask: ID for DOCS base derived from: (did & DBASEMASK
-#define DBASESHFT 8                // 0b000000000000000000011xxxxxxxx - Trailing bits after group-base flag: baseID = (DBASEMASK & did) >> DBASESHFT
+#define DBASEMASK 768              // 0b00000000000000000001100000000 - Base ID: 10=media, 01=docs - abs:2
+#define MEDABASEM 512              // 0b00000000000000000000100000000 - OR Mask: ID for MEDIA base derived from: (did & DBASEMASK)
+#define DOCSBASEM 256              // 0b00000000000000000001000000000 - OR Mask: ID for DOCS base derived from: (did & DBASEMASK
+#define DBASESHFT 9                // 0b000000000000000000011xxxxxxxx - Trailing bits after group-base flag: baseID = (DBASEMASK & did) >> DBASESHFT
 #define DNAMEMASK 130048           // 0b00000000000011111110000000000 - Str len of directory name - abs:7
 #define DNAMESHFT 10               // 0b0000000000001111111xxxxxxxxxx - Trailing bits after dir str-len flag - abs:7
 #define DENTRYCNT 1073676288       // 0b11111111111100000000000000000 -
@@ -185,7 +185,7 @@ unsigned long long msk_format(unsigned long long fiid, unsigned int fform);
 unsigned int expo_format(unsigned long long fiid);
 unsigned long long msk_resdir(unsigned long long fiid, unsigned int dirid);
 unsigned int expo_resdir(unsigned long long fiid);
-unsigned long long msk_dirgrp(unsigned long long fiid);
+unsigned long long msk_dirgrp(unsigned long long fiid, unsigned int dirid);
 unsigned int expo_dirgrp(unsigned long long fiid);
 
 /* *

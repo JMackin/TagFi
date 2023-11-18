@@ -21,6 +21,8 @@ typedef struct NodeEntries{
 
 }NodeEntries;
 
+typedef NodeEntries * NEntry;
+
 typedef struct FiNode{
     unsigned long long fiid;
     unsigned long fhshno;
@@ -84,7 +86,6 @@ typedef union LttFlg{
 
 typedef LttFlg* LttcFlags;
 
-
 /**
  *<h4>
  * \InformationFrame
@@ -112,23 +113,22 @@ typedef struct InfoFrame {
 
 InfoFrame *init_info_frm(InfoFrame **info_frm);
 
-
 typedef struct LattStruct{
     Lattice lattice;
     StatFrame statFrame;
     unsigned long* itmID;
 }LattStruct;
 
-
 typedef struct stat* stptr;
 
-double long* map_dir(const char* dir_path,
-            unsigned int path_len,
-            unsigned char* dirname,
-            unsigned int dnlen,
-            DiChains* dirchains,
-            HashLattice* hashlattice,
-            Armature** fitbl);
+double long* map_dir(StatFrame** statusFrame,
+                     const char* dir_path,
+                     unsigned int path_len,
+                     unsigned char* dirname,
+                     unsigned int dnlen,
+                     DiChains* dirchains,
+                     HashLattice* hashlattice,
+                     Armature** fitbl);
 
 DiChains* init_dchains();
 
@@ -193,7 +193,7 @@ void yield_dnhsh(DiNode** dirnode, unsigned char** dn_hash);
 char *yield_dnhstr(DiNode** dirnode);
 
 
-InfoFrame * parse_req(const unsigned char* fullreqbuf,
+InfoFrame * parse_req(unsigned char* fullreqbuf,
                       InfoFrame **infofrm,
                       StatFrame** stsfrm,
                       LttcFlags* rqflgsbuf,

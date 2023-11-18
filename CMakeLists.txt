@@ -25,6 +25,10 @@ add_executable(TagFI test_tagfiles.c /usr/local/include/sodium.h
         lattice_signals.c
         lattice_signals.h
         profiling.c
+        consts.c
+        consts.h
+        consts.c
+        consts.h
 
 )
 include_directories(/usr/local/include/sodium)

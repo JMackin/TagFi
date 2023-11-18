@@ -38,27 +38,30 @@ void setSts(StatFrame **sts_frm, LattStts ltcst, unsigned int modr) {
 }
 
 //TODO: OPTIMIZE THIS
-long stsErno(LattErr ltcerr, StatFrame **sts_frm, int erno, long misc, char *msg, char *function, char *miscdesc) {
+long stsErno(LattErr ltcerr, StatFrame **sts_frm, int erno, unsigned long misc, char *msg, char *function, char *miscdesc) {
     clock_t ca = clock();
     fprintf(stderr,"\n\t---------- Error ----------\n\t");
     (*sts_frm)->err_code = ltcerr;
-    perror(" ");
-    fprintf(stderr, "\t : %s"
+
+    if(erno){perror(" ");}
+
+    fprintf(stderr, ":%s"
                     "\n\t\t------------------\n", msg);
     fprintf(stderr, "\t\t [ LttcErr: %d ]", (*sts_frm)->err_code);
-    fprintf(stderr, "\n\t\t   [ Errno: %d ]", erno);
+
+    if(erno) {fprintf(stderr, "\n\t\t   [ Errno: %d ]", erno);}
 
     fprintf(stderr, "\n\t\t------------------");
 
     fprintf(stderr, "\n\t\\status:\n\t\t\t  [ %d ]\n", (*sts_frm)->status);
     if (misc){
-        fprintf(stderr,"\t\\note:\n\t\t\t  [ %ld ]\n", misc);
+        fprintf(stderr,"\t\\misc:\n\t\t\t  [ %ld ]\n", misc);
     }
     if ((*sts_frm)->modr){
         fprintf(stderr, "\t\\modr:\n\t\t\t  [ %d ]\n", (*sts_frm)->modr);
     }
     if (function != NULL){
-        fprintf(stderr,"\t\\function:\n\t\t> %s", function);
+        fprintf(stderr,"\t\\function:\n\t\t> %s\n", function);
     }
     if (miscdesc){
         fprintf(stderr, "\n\t\t------------------\n");
@@ -80,7 +83,6 @@ long stsErno(LattErr ltcerr, StatFrame **sts_frm, int erno, long misc, char *msg
     {
         return 0;
     }
-
 }
 
 /** Set action id*/
@@ -94,6 +96,9 @@ void setAct(StatFrame **sts_frm, LattAct lttact, LattStts ltsts, unsigned int mo
     }
     if (modr == SELFRESET) {
         (*sts_frm)->modr = 0;
+    }
+    if (modr == ESHTDN){
+        (*sts_frm)->err_code=ESHTDN;
     }
 }
 
@@ -119,7 +124,6 @@ void stsOut(StatFrame **sts_frm) {
     printf("[ Status: %d ]\n", (*sts_frm)->status);
     if ((*sts_frm)->status == SHTDN) {
         fprintf(stdout, "\n<< GoodBye >>\n");
-
     }
 }
 
