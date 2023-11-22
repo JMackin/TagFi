@@ -6,8 +6,7 @@ set(CMAKE_C_STANDARD 17)
 add_executable(TagFI test_tagfiles.c /usr/local/include/sodium.h
         tagfi.h
         tagfi.c
-        chkmk_didmap.c
-        chkmk_didmap.h
+        lattice_works.c
         jlm_random.c
         jlm_random.h
         fiforms.c
@@ -20,7 +19,6 @@ add_executable(TagFI test_tagfiles.c /usr/local/include/sodium.h
         lattice_rsps.h
         lattice_reqs.c
         lattice_reqs.h
-        lattice_works.c
         lattice_works.h
         lattice_signals.c
         lattice_signals.h
