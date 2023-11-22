@@ -9,7 +9,7 @@ typedef union LattType{
     LattAct act;
     LattObj obj;
     LattStts sts;
-    LttFlg flg;
+    LattFlag flg;
     int n_int;
     unsigned int n_uint;
     unsigned char n_uchar;
@@ -31,12 +31,21 @@ typedef const unsigned int cnst_uint;
 typedef unsigned char** buff_arr;
 typedef unsigned char* uchar_arr;
 typedef unsigned int* ptr_uint;
+typedef InfoFrame** Info_F;
+typedef StatFrame** Status_F;
 
-extern const unsigned int uint_sz;
-extern const unsigned int uchar_sz;
-extern const unsigned int ulong_sz;
-extern const unsigned int lattyp_sz;
-extern const LattType isep;
-extern const LattType csep;
+extern const unsigned int UINT_SZ;
+extern const unsigned int UCHAR_SZ;
+extern const unsigned int ULONG_SZ;
+extern const unsigned int LATTTYP_SZ;
+extern const unsigned int FLAG_SZ;
+
+extern const unsigned int ARR_POS;
+extern const unsigned int ARRSZ_POS;
+extern const unsigned int ITEM_POS;
+
+extern const LattType INT_SEP;
+extern const LattType CHAR_SEP;
+extern const LattType LONG_SEP;
 
 #endif

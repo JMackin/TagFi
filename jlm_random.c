@@ -198,7 +198,7 @@ unsigned long long little_hsh_llidx(unsigned char* hkey, unsigned char* tobehshe
 
 }
 
-unsigned long latt_hsh_idx(Armature* armtr, unsigned long fhshno, unsigned char intbuf[16]){
+unsigned long latt_hsh_idx(LattcKey lattkey, unsigned long fhshno, unsigned char intbuf[16]){
 
 
     unsigned long outidx=0;
@@ -219,7 +219,7 @@ unsigned long latt_hsh_idx(Armature* armtr, unsigned long fhshno, unsigned char 
 
     memcpy(tbuf,&outidx,8);
 
-    if (crypto_shorthash(intbuf, tbuf, 8, armtr->lttc_key) != 0){
+    if (crypto_shorthash(intbuf, tbuf, 8, lattkey) != 0){
         fprintf(stderr, "Something went wrong hashing for an index.\n");
         return 1;
     }

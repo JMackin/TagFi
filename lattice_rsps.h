@@ -44,11 +44,12 @@ unsigned int respond(Resp_Tbl *rsp_tbl,
 
 void destroy_metastructures(Resp_Tbl *rsp_tbl,
                             InfoFrame *infoFrame,
-                            LttcFlags reqflg_arr,
+                            LttFlgs reqflg_arr,
                             unsigned char* req_buf,
                             unsigned char* req_arr_buf,
                             unsigned char* tmparrbuf,
                             unsigned char* rsp_buf);
+
 
 
 
@@ -72,6 +73,7 @@ unsigned int rsp_fiid(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice* hltc, u
 unsigned int rsp_frdn(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice* hltc, unsigned char **buf);
 unsigned int rsp_iiii(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice* hltc, unsigned char **buf);
 unsigned int rsp_fyld(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice* hltc, unsigned char **buf);
+
 
 
 

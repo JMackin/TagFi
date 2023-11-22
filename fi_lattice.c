@@ -81,7 +81,7 @@ void disassemble(Lattice* hashlattice,
     entr_cnt = 0;
     for (i = 0; i< cnt; ++i){
 
-        if ((*hashlattice)->chains->vessel->did == DGMEDAID || (*dirchains)->vessel->did == DGDOCSID) {
+        if (check_base((*hashlattice)->chains->vessel->did)) {
             printf("bb");
             break;
         }
@@ -180,7 +180,7 @@ void disassemble(Lattice* hashlattice,
 
 void destroy_metastructures(Resp_Tbl *rsp_tbl,
                             InfoFrame *infoFrame,
-                            LttcFlags reqflg_arr,
+                            LttFlgs reqflg_arr,
                             unsigned char* req_buf,
                             unsigned char* req_arr_buf,
                             unsigned char* tmparrbuf,
@@ -264,7 +264,7 @@ int extract_name(const unsigned char* path, int length) {
 
 
 int spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsigned char **req_buf, InfoFrame **infofrm, Resp_Tbl **rsp_tbl, HashLattice **hashlattice,
-                    DiChains **dirchains, LttcFlags *flgsbuf, const int *cnfdir_fd, unsigned char **tmparrbuf) {
+            DiChains **dirchains, LttFlgs *flgsbuf, const int *cnfdir_fd, unsigned char **tmparrbuf) {
 
     /**
      * INFO AND STATUS VARS
@@ -289,7 +289,7 @@ int spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsigned char 
     *req_buf = (unsigned char *) calloc(buf_len, sizeof(unsigned char));     // client request -> buffer
     *req_arr_buf = (unsigned char *) calloc(arrbuf_len, sizeof(unsigned char));
     *rsp_buf = (unsigned char *) calloc(arrbuf_len, sizeof(unsigned char));
-    *flgsbuf = (LttcFlags) calloc(arrbuf_len, sizeof(LttFlg));
+    *flgsbuf = (LttFlgs) calloc(arrbuf_len, sizeof(LattFlag));
 
     /**
      * SOCKET INIT
@@ -525,9 +525,17 @@ void summon_lattice() {
     unsigned char *req_arr_buf;     // char strings
     unsigned char *rsp_buf;  // Outgoing responses
 
-    LttcFlags reqflg_arr;
+    LttFlgs reqflg_arr;
     InfoFrame *info_frm;    // Frame for storing request info
-    statusFrame = init_stat_frm(&statusFrame);
+
+    LattcKey latticeKey = malloc(sizeof(LattcKey));
+    unsigned char* headname = malloc(sizeof(unsigned char)*5);
+    unsigned char headnm[5] = {'H','E','A','D','\0'};
+    memcpy(headname,headnm,5);
+
+    mk_little_hash_key(&latticeKey);
+    dump_little_hash_key(latticeKey,headname,4);
+    free(headname);
 
 
        /* * * * * * *
@@ -541,7 +549,7 @@ void summon_lattice() {
         //  DirNode chains
         DiChains *dirchains = init_dchains();
         //  HashBridge lattice
-        HashLattice *hashlattice = init_hashlattice(&dirchains);
+        HashLattice *hashlattice = init_hashlattice(&dirchains,latticeKey);
         //  Size of config file in bytes
 
 
@@ -601,7 +609,8 @@ void summon_lattice() {
                         (*(lengths + i) - nm_len),
                         dirchains,
                         hashlattice,
-                        &(tbl_list[i]))< 0){
+                        &(tbl_list[i]),
+                        latticeKey)< 0){
 
                 stsErno(MISMAP, &statusFrame, errno, 333, "Big fail", "map_dir", 0);
                 disassemble(&hashlattice,&dirchains,tbl_list,dn_conf,dn_size,NULL,0,lengths,paths,dn_cnt,cnfdir_fd);
@@ -672,4 +681,5 @@ void summon_lattice() {
 
     stsOut(&statusFrame);
     free(statusFrame);
+    free(latticeKey);
 }

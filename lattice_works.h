@@ -14,6 +14,7 @@
 
 
 typedef unsigned char LatticeKey[LKEYSZ];
+typedef unsigned char* LattcKey;
 
 typedef struct NodeEntries{
     unsigned long long fiid;
@@ -67,6 +68,7 @@ typedef struct HashLattice {
     HashBridge** bridges;
     unsigned long count;
     unsigned long max;
+    LattcKey lattcKey;
 } HashLattice;
 
 typedef HashLattice* Lattice;
@@ -74,17 +76,6 @@ typedef DiChains* DChains;
 typedef Armature* Armatr;
 typedef RspFlag* RspArr;
 typedef ReqFlag* ReqArr;
-
-
-typedef union LttFlg{
-    ReqFlag req;
-    RspFlag rsp;
-    int flg;
-    unsigned int uflg;
-}LttFlg;
-//SPLITTO works
-
-typedef LttFlg* LttcFlags;
 
 /**
  *<h4>
@@ -106,7 +97,7 @@ typedef struct InfoFrame {
     unsigned int arr_type; //0: none, 1: char, 2: int
     unsigned int arr_len;
     unsigned int flg_cnt;
-    LttcFlags *flags;
+    LttFlgs *flags;
     unsigned char *arr;
     Vessel* vessel;
 } InfoFrame;
@@ -128,11 +119,12 @@ double long* map_dir(StatFrame** statusFrame,
                      unsigned int dnlen,
                      DiChains* dirchains,
                      HashLattice* hashlattice,
-                     Armature** fitbl);
+                     Armature** fitbl,
+                     LatticeKey latticeKey);
 
 DiChains* init_dchains();
 
-HashLattice * init_hashlattice(DChains * diChains);
+HashLattice * init_hashlattice(DChains * diChains, LattcKey lattcKey);
 
 FiNode* mk_finnode(unsigned int nlen,
                    unsigned char* finame,
@@ -155,6 +147,14 @@ void travel_dchains(Vessel* vessel,
 
 void goto_chain_tail(DiChains* dirChains,
                      unsigned int lor);
+
+void goto_base(DChains dchns);
+
+inline void switch_base(DChains dchns);
+
+
+unsigned int findby_chnid(unsigned long chn_id, DiChains* dchns);
+
 
 DiNode* add_dnode(unsigned long long did,
                   unsigned char* dname,
@@ -196,7 +196,7 @@ char *yield_dnhstr(DiNode** dirnode);
 InfoFrame * parse_req(unsigned char* fullreqbuf,
                       InfoFrame **infofrm,
                       StatFrame** stsfrm,
-                      LttcFlags* rqflgsbuf,
+                      LttFlgs* rqflgsbuf,
                       unsigned char* tmparrbuf,
                       unsigned char** req_arr_buf);
 
@@ -207,7 +207,7 @@ clock_t build_bridge(Armature* armatr,
                   unsigned char buf[16]);
 
 void build_bridge2(
-                   Armature* armatr,
+                   LatticeKey lattkey,
                    FiNode* fiNode,
                    DiNode* dnode,
                    HashLattice* hashlattice,

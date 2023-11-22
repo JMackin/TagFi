@@ -32,10 +32,10 @@ typedef enum RspFlag {
     CODE = 16,
     // Next response
     CINT = 32,
-    //
-    DDDD = 64,
-    //
-    EEEE = 128,
+    // Response arr is a char string
+    IARR = 64,
+    // Response arr is a int arr.
+    CARR = 128,
     //
     GGGG = 255,
     //
@@ -454,6 +454,16 @@ typedef enum LattReply{
     //-  Empty
     IIIII = 8,
 } LattReply;
+
+typedef union LattFlag{
+    ReqFlag req;
+    RspFlag rsp;
+    int int_flg;
+    unsigned int uflg_flg;
+}LattFlag;
+//SPLITTO works
+
+typedef LattFlag* LttFlgs;
 
 /**
  *<h4>

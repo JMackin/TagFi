@@ -10,29 +10,14 @@
 #include "fidi_masks.h"
 #include "lattice_rsps.h"
 #include "consts.h"
+#include "reply_tools.h"
 
 
 
 /*
  *  Response element size aliases:
  *--------------------------------
- * lattyp_sz = sizeof(LattType)
- * rspsz_b = 2*sizeof(LattType)
- * uint_s = sizeof(unsigned int)
- * uchar_s = sizeof(unsigned char)
- * arr_b = (2*sizeof(LattType))+sizeof(uint)
- *
- *
- * Response element positions:
- *----------------------------
- *\elem\:  \start-byte - end-byte\
- * ------   ----------    -------
- * lead :   0 - lattyp_sz
- * item :   lattyp_sz - rspsz_b
- * arrsz:   rspsz_b - [rspsz_b + uint_s]
- * arr  :   [rspsz_b+uint_s] - [rspsz_b+uint_s+arr_len*uchar_s]
- * DONE :   (rspsz_b)+uint_s+(arr_len*uchar_s) - rspsz_b+lattyp_sz+uint_s+(arr_len*uchar_s)
- *
+
  *
  * Note:
  *      Items are seperated with 4 bytes of two kinds,
@@ -42,73 +27,18 @@
  *      char:   '0xbddbdbbd' (3185302461)
  */
 
+/*
+ * [ lead -> reply item -> arrsz -> {arr} -> DONE ]
+ *                                 \__-> { LattObj | (sep) | content }
+ *
+* */
 
 
 /* * * * * * * * * * * * *
 *  RESPONSE CONSTRUCTION *
 * * * * * * * * * * * * **/
 
-unsigned char* rsparr_pos(buff_arr buf)
-{return *buf+arr_b;}
-
-uint prpbuf(buff_arr buf,LattType lattItm) {
-    lattItm.flg.uflg =  STRT;
-    memcpy(*buf,&lattItm,lattyp_sz);
-    return lattyp_sz;
-}
-
-uint endbuf(buff_arr buf,LattType lattItm, uint rsplen) {
-    lattItm.flg.uflg =  DONE;
-    memcpy((*buf)+rsplen,&lattItm,lattyp_sz);
-    return lattyp_sz;
-}
-
-uint rsparr_len_inc(void* itm, uint cnt, uint mlti)
-{return mlti ? ((mlti*sizeof(*itm))+cnt) : sizeof(*itm)+cnt;}
-
-void rsparr_len_set(uint sz, buff_arr buf){memcpy(*buf+rspsz_b,&sz,uint_sz);}
-
-void rsparr_out(buff_arr buf, uint arrlen){
-    uint n = 0;
-    while(putchar_unlocked(*(*buf + n))) {
-        if (n == arrlen) {
-            break;
-        }
-        ++n;
-    }
-}
-
-// iorc =  0 : char,  1 : int
-uint rsparr_addsep(buff_arr buf,uint offset,uint iorc)
-{memcpy(rsparr_pos(buf)+offset,(iorc ? &isep : &csep),lattyp_sz);return lattyp_sz;}
-
-uint rsparr_add_lt(LattType lt, buff_arr buf, uint offset)
-{memcpy(rsparr_pos(buf)+offset+lattyp_sz,&lt,lattyp_sz);return rsparr_addsep(buf,offset,1)+lattyp_sz;}
-
-uint rsparr_add_obj(buff_arr buf, LattType obj){
-    return rsparr_add_lt((LattType) obj, buf, 0);
-}
-
-uint rsparr_add_lng(uint offset, LattLong lli, buff_arr buf){
-    {memcpy(rsparr_pos(buf)+offset+(sizeof(LattLong)),&lli,sizeof(LattLong));
-        return rsparr_addsep(buf,offset,1)+sizeof(unsigned long long int);}
-}
-
-uint rsparr_add_msg(buff_arr buf, char* msg, uint len, uint offst)
-{memcpy(rsparr_pos(buf)+offst+lattyp_sz,msg,len);return rsparr_addsep(buf,offst,0)+len;}
-
-uint rsparr_add_chrstr(buff_arr buf, uchar_arr msg, uint len, uint offst)
-{memcpy(rsparr_pos(buf)+offst+lattyp_sz,msg,len);return rsparr_addsep(buf,offst,0)+len;}
-
-uint pull_objid(InfoFrame** infoFrame, LattLong** itmId){
-
-
-    memcpy((*itmId),(*infoFrame)->arr+(rspsz_b),(rspsz_b));
-
-    return (*itmId)->l_ulonglong_ptr == NULL;
-
-}
-
+// [ lead -> item -> arrsz -> arr -> DONE ]
 
 
 // lead | item | arrsz | arr | DONE
@@ -142,7 +72,7 @@ uint inf_LTTC(buff_arr buf, LattType lattItm, LattStruct lattStruct){
 uint inf_BRDG(buff_arr buf, LattType lattItm, LattStruct lattStruct){
     uint bcnt;
     lattItm.obj = BRDG;
-    bcnt = rsparr_add_obj(buf,lattItm);
+    bcnt = rsp_add_arrobj(lattItm.obj,buf);
     LattLong brdg_id;
     brdg_id.l_ulong_ptr= lattStruct.itmID;
 
@@ -152,7 +82,7 @@ uint inf_BRDG(buff_arr buf, LattType lattItm, LattStruct lattStruct){
     }
 
     bcnt += rsparr_add_msg(buf, "UID",4,bcnt);
-    bcnt+= rsparr_add_chrstr(buf,hshBrdg->unid,(uint_sz*4),bcnt);
+    bcnt+= rsparr_add_chrstr(buf, hshBrdg->unid, (UINT_SZ * 4), bcnt);
 
     bcnt += rsparr_add_msg(buf, "FID",4,bcnt);
     bcnt+= rsparr_add_lng(bcnt,(LattLong) hshBrdg->finode->fiid,buf);
@@ -334,7 +264,7 @@ uint rsp_nfo(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, buff_arr 
     // Fail if no code found
 
 
-    memcpy(&lattItm.obj,((*inf_frm)->arr),lattyp_sz);
+    memcpy(&lattItm.obj, ((*inf_frm)->arr), LATTTYP_SZ);
     //TODO: Fail on malformed request
 
     if (lattItm.obj>FIDE || (lattItm.n_uint & (lattItm.n_uint - 1)) ){
@@ -377,23 +307,30 @@ uint rsp_sts(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, buff_arr 
     printf("Response: Status frame");
     uint bcnt;
     LattType lattitm;
-    lattitm.obj = SFRM;
-    bcnt = rsparr_add_lt(lattitm,buf,0);
+    bcnt = rsp_add_arrobj(SFRM,buf);
 
-    bcnt += rsparr_add_msg(buf,"STS",lattyp_sz,bcnt);
-    lattitm.sts =(*sts_frm)->status;
+    bcnt += rsparr_addsep(bcnt, CHAR_SEP, buf);
+    bcnt += rsparr_add_msg(buf, "STS", LATTTYP_SZ, bcnt);
+    lattitm.sts = (*sts_frm)->status;
+    bcnt += rsparr_addsep(bcnt, INT_SEP, buf);
     bcnt += rsparr_add_lt(lattitm,buf,bcnt);
 
-    bcnt += rsparr_add_msg(buf,"ERR",lattyp_sz,bcnt);
+    bcnt += rsparr_addsep(bcnt, CHAR_SEP, buf);
+    bcnt += rsparr_add_msg(buf, "ERR", LATTTYP_SZ, bcnt);
     lattitm.err = (*sts_frm)->err_code;
+    bcnt += rsparr_addsep(bcnt, INT_SEP, buf);
     bcnt += rsparr_add_lt(lattitm,buf,bcnt);
 
-    bcnt += rsparr_add_msg(buf,"ACT",lattyp_sz,bcnt);
+    bcnt += rsparr_addsep(bcnt, CHAR_SEP, buf);
+    bcnt += rsparr_add_msg(buf, "ACT", LATTTYP_SZ, bcnt);
     lattitm.act = (*sts_frm)->act_id;
+    bcnt += rsparr_addsep(bcnt, INT_SEP, buf);
     bcnt += rsparr_add_lt(lattitm,buf,bcnt);
 
-    bcnt += rsparr_add_msg(buf,"MOD",lattyp_sz,bcnt);
+    bcnt += rsparr_addsep(bcnt, CHAR_SEP, buf);
+    bcnt += rsparr_add_msg(buf, "MOD", LATTTYP_SZ, bcnt);
     lattitm.n_uint = (*sts_frm)->modr;
+    bcnt += rsparr_addsep(bcnt, INT_SEP, buf);
     bcnt += rsparr_add_lt(lattitm,buf,bcnt);
 
     return bcnt;
@@ -409,69 +346,128 @@ uint rsp_und(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, buff_arr 
 
 uint rsp_fiid(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, buff_arr buf) {
     printf("Response: Fiid for hashno");
-
-
-
-    LattLong* itmID = malloc(ulong_sz);
+    LattLong* itmID = malloc(ULONG_SZ);
     LattType lattitm;
-    lattitm.obj = IDID;
     uint bcnt;
 
-    bcnt = rsparr_add_lt(lattitm,buf,0);
-    memcpy(itmID,(*inf_frm)->arr+(rspsz_b),(rspsz_b));
+    memcpy(&lattitm, ((*inf_frm)->arr)+arr_b, LATTTYP_SZ);
+    bcnt = rsp_add_arrobj(lattitm.obj,buf);
 
-
-    if (pull_objid(inf_frm, &(itmID))){
+    if (pull_objid(inf_frm, (*itmID),8).l_ulong == 0){
         stsErno(MALREQ, sts_frm, errno, itmID->l_ulong, "Given fiID is invalid or mangled.", "rsp_fiid", "parsed id");
         return 1;
     }
 
     Armatr armatr = (*hltc)->chains->vessel->armature;
-
     if (armatr == NULL){
         stsErno(NOINFO,sts_frm,errno,(*hltc)->chains->vessel->did,"Vessel is likely located in a base node.","rsp_fiid","vessel diID");
         return 1;
     }
 
-    itmID->l_ulong = armatr->entries[getidx(itmID->l_ulong)].fiid;
+    if (lattitm.obj == NMNM){
+        stsErno(NOINFO,sts_frm,errno,0,"Can't produce a filename this way at present.","rsp_fiid",NULL);
+        return 1;
+    } else if (lattitm.obj == IDID){
+        itmID->l_ulong = armatr->entries[getidx(itmID->l_ulong)].fiid;
+    } else {
+        stsErno(NOINFO,sts_frm,errno,lattitm.n_uint,"Invalid itm specified in exchange for fihash.","rsp_fiid","misc: resp-itm");
+        return 1;
+    }
 
+    bcnt += rsparr_addsep(bcnt, LONG_SEP, buf);
     bcnt += rsparr_add_lng(bcnt,*itmID,buf);
 
     free(itmID);
-
     return bcnt;
 }
 
 uint rsp_diid(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, buff_arr buf) {
-    printf("Response: Dir ID");
+    printf("Response: DirID for chain number");
 
     LattLong* itmID = malloc(sizeof(unsigned long));
     LattType lattitm;
-    lattitm.obj = DIRN;
+    LattLong diID;
+    rsplead_addflg(IARR,buf);
+
+    lattitm.obj = DIRN | IDID;
     uint bcnt;
+    bcnt = rsp_add_arrobj(lattitm.obj,buf);
+    bcnt+= rsparr_addsep(bcnt,INT_SEP,buf);
 
-    bcnt = rsparr_add_lt(lattitm,buf,0);
+    if ((*inf_frm)->qual == 2){
+        diID.l_ulonglong = (*hltc)->chains->vessel->did;
+        bcnt += rsparr_add_lng(bcnt, diID, buf);
+    } else {
+        if (pull_objid(inf_frm, (*itmID), 8).l_ulong == 0){
+            stsErno(MALREQ, sts_frm, errno, itmID->l_ulong, "Given dirID is invalid or mangled.", "rsp_diid", "parsed id");
+            return 1;
+        }
 
-    memcpy(&itmID->l_ulong, (*inf_frm)->arr + (rspsz_b), (rspsz_b));
+        if (findby_chnid(itmID->l_ulong,(*hltc)->chains)){
+            stsErno(NOINFO, sts_frm, errno, itmID->l_ulong, "Provided chain ID not found","rsp_diid" , "misc - chain id");
+            return 1;
+        }
 
-    if (pull_objid(inf_frm, &(itmID))){
-        stsErno(MALREQ, sts_frm, errno, itmID->l_ulong, "Given dirID is invalid or mangled.", "rsp_diid", "parsed id");
-        return 1;
+        diID.l_ulonglong = (*hltc)->chains->vessel->did;
+
+        bcnt += rsparr_add_lng(bcnt,diID,buf);
+
     }
 
-    LattLong diID;
-    diID.l_ulonglong = (*hltc)->chains->vessel->did;
-    bcnt += rsparr_add_lng(bcnt, diID, buf);
     free(itmID);
     return bcnt;
 }
 
 uint rsp_frdn(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, buff_arr buf) {
-    printf("Response: Resident Dir");
+    printf("Response: Resident Dir for fihashno");
+    LattType lattitm;
+    LattLong fiID;
+    fiID.l_ulong = (unsigned long) malloc(ULONG_SZ);
+    uint bcnt;
+
+    fiID.l_ulong = pull_objid(inf_frm, (fiID), 8).l_ulong;
+
+    if (fiID.l_ulong == 0){
+        stsErno(MALREQ, sts_frm, errno, fiID.l_ulong, "Given fiID is invalid or mangled.", "rsp_frdn", "parsed id");
+        return 1;
+    }
+    lattitm.obj = DIRN;
+    bcnt = rsparr_add_lt(lattitm,buf,0);
+
+    HashBridge* hashbridge = (yield_bridge_for_fihsh(*hltc,fiID.l_ulong));
+
+    if (hashbridge == NULL){
+        stsErno(BADHSH,sts_frm,errno,fiID.l_ulong,"Hashing did not yield a bridge for given fihashno.","rsp_frdn/yield_bridge_for_fihsh","misc: fiID");
+        return 1;
+    }
+
+    memcpy(&lattitm.obj, (*inf_frm)->arr, LATTTYP_SZ);
+
+    if (lattitm.obj == NMNM){
+        rsplead_addflg(CARR,buf);
+        bcnt += rsparr_add_msg(buf, (char*) hashbridge->dirnode->diname, expo_dirnmlen(hashbridge->dirnode->did), ULONG_SZ);
+
+    } else if (lattitm.obj == IDID){
+        rsplead_addflg(IARR,buf);
+        bcnt += rsparr_add_lnglng(bcnt,hashbridge->dirnode->did,buf);
+
+    } else {
+        stsErno(NOINFO,sts_frm,errno,lattitm.n_uint,"Invalid itm specified in exchange for fihash.","rsp_frdn","misc: resp-itm");
+        return 1;
+    }
+
+    return bcnt;
+
 }
 
 uint rsp_gond(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, buff_arr buf) {
     printf("Response: Goto node");
+    LattType lattitm;
+    uint bcnt;
+
+
+
+
 }
 
 uint rsp_fyld(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, buff_arr buf) {
@@ -543,22 +539,22 @@ RspFunc *rsp_act(
     uint (*dnls)(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
     uint (*vvvv)(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
 
-    und = &rsp_und;
-    err = &rsp_err;
-    nfo = &rsp_nfo;
-    sts = &rsp_sts;
-    fiid = &rsp_fiid;
-    diid = &rsp_diid;
-    frdn = &rsp_frdn;
-    gond = &rsp_gond;
-    fyld = &rsp_fyld;
-    jjjj = &rsp_jjjj;
-    dsch = &rsp_dsch;
-    iiii = &rsp_iiii;
-    dcls = &rsp_dcls;
-    gohd = &rsp_gohd;
-    dnls = &rsp_dnls;
-    vvvv = &rsp_vvvv;
+und = &rsp_und;
+err = &rsp_err;
+nfo = &rsp_nfo;
+sts = &rsp_sts;
+fiid = &rsp_fiid;
+diid = &rsp_diid;
+frdn = &rsp_frdn;
+gond = &rsp_gond;
+fyld = &rsp_fyld;
+jjjj = &rsp_jjjj;
+dsch = &rsp_dsch;
+iiii = &rsp_iiii;
+dcls = &rsp_dcls;
+gohd = &rsp_gohd;
+dnls = &rsp_dnls;
+vvvv = &rsp_vvvv;
 
 /* Info ops*/
     (*funarr)[0] = fiid; // File id
@@ -658,7 +654,7 @@ LattType dtrm_rsp(StatFrame **sts_frm,
  * \ProcessResponse
  */
 uint respond(Resp_Tbl *rsp_tbl,
-                     StatFrame **sts_frm,
+                     SttsFrm *sts_frm,
                      InfoFrame **inf_frm,
                      DChains *dchns,
                      Lattice *hltc,
@@ -671,9 +667,9 @@ uint respond(Resp_Tbl *rsp_tbl,
     prpbuf(&rsp_buf,lattItm);
     /** Determine response avenue and return a reply object */
     lattItm = dtrm_rsp(sts_frm,inf_frm,lattItm);  // Reply object returned from 'determine response'
+    printf("%u",(*sts_frm)->err_code);
 
-    uint rspsz;
-    uint rsparrsz;
+    uint rspsz=12;
     // Update status and return 1 on failure
     // if the value of reply object is > the
     // num of function in the array.
@@ -683,23 +679,23 @@ uint respond(Resp_Tbl *rsp_tbl,
         return 1;
     }
 
-    // Insert reply object into buffer at +sizeof(LattTyp) offset
-    memcpy(rsp_buf+uint_sz,&lattItm,lattyp_sz);
-
+    // Insert reply item into buffer at +sizeof(LattTyp) offset
+    rsp_add_replyitm(&rsp_buf,lattItm.rpl);
     // Call function at index 'rsp' (the reply object value) from function array.
-    rspsz = (*rsp_tbl->rsp_funcarr)[lattItm.rpl](sts_frm, inf_frm, hltc, &rsp_buf);
+    rspsz += (*rsp_tbl->rsp_funcarr)[lattItm.rpl](sts_frm, inf_frm, hltc, &rsp_buf);
     if (!rspsz){
         return 1;
     }
+
+
     rspsz += endbuf(&rsp_buf,lattItm,rspsz);
 
     // Get array len from response sequence
-    rsparrsz = rspsz - (4*lattyp_sz);
 
-    rsparr_len_set(rsparrsz,&rsp_buf);
+    rsparr_len_set(rspsz,&rsp_buf);
 
     // Update InfoFrame
-    (*inf_frm)->arr_len = rsparrsz;
+    (*inf_frm)->arr_len = rspsz;
     (*inf_frm)->rsp_size = rspsz;
 
     // Update status and return 0 on success

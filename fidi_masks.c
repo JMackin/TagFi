@@ -91,3 +91,21 @@ unsigned int expo_basedir_cnt(unsigned long long did){
 unsigned int msk_basedir_cnt(unsigned long long did, unsigned int cnt){
     return did | (cnt << DNTRYSHFT);
 }
+unsigned int check_base(unsigned long long int did){
+    if ((did & BASEMASK) == DGMEDAID) {
+        return MEDASHID;
+    } else if ((did & BASEMASK) == DGDOCSID) {
+        return DOCSSHID;
+    } else if ((did & BASEMASK) == DHEADDID) {
+        return HEADSHID;
+    }else{
+        return 0;
+    }
+}
+
+inline unsigned int base_chcetosh(unsigned int chce){
+    return 7^(2+(2*chce));
+}
+inline unsigned int base_shtochce(unsigned int shid){
+    return shid>>2;
+}

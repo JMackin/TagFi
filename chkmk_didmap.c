@@ -133,12 +133,68 @@ void goto_chain_tail(DChains dirChains, unsigned int lor){
     }
 }
 
-void traverse_dchains(DiNode* dnode) {
+void goto_base(DChains dchns){
+    if (check_base(dchns->vessel->did)){
+        return;
+    }
+    dchns->vessel = expo_dirbase(dchns->vessel->did) ? dchns->dir_head->left : dchns->dir_head->right;
+}
 
-    while(dnode->did != (DROOTDID)){
+void switch_base(DChains dchns){
+    dchns->vessel = expo_dirbase(dchns->vessel->did) ? dchns->dir_head->left : dchns->dir_head->right;
+}
+
+void traverse_dchains(DiNode* dnode) {
+    while(dnode->did != (DHEADDID)){
         printf("%s\n", dnode->diname);
         dnode = dnode->left;
     }
+}
+
+unsigned int findby_chnid(unsigned long chn_id, DiChains* dchns){
+
+    unsigned int lor = expo_dirbase(dchns->vessel->did);
+    unsigned int steps = chn_id;
+    unsigned int pos_base = 0;
+    unsigned int pos_base2 = 0;
+    goto_base(dchns);
+
+    while(!pos_base) {
+        if (pos_base2){
+            pos_base = 1;
+        }
+        while (dchns->vessel->right->did != 0 && dchns->vessel->left->did != 0) {
+            dchns->vessel = (lor) ? dchns->vessel->left : dchns->vessel->right;
+            if (expo_dirchnid(dchns->vessel->did) == chn_id) {
+                return 0;
+            }
+        }
+        switch_base(dchns);
+        lor = !lor;
+        pos_base2 = 1;
+    }
+
+
+
+
+/*
+  while (cur_chn_pos != chn_id){
+      if (cur_chn_pos > chn_id){
+          dchns->vessel = lor ? dchns ->vessel->left : dchns ->vessel->right;
+      }else {
+          dchns->vessel = lor ? dchns ->vessel->right : dchns ->vessel->left;
+      }
+      if (check_base(dchns->vessel->did)){
+          notfound_cnt++;
+          switch_base(dchns);
+          lor = !lor;
+      }
+      if( notfound_cnt > 1){
+          return 0;
+      }
+  }
+*/
+
 }
 
 unsigned int gotonode(unsigned long long did, DiChains* dchns){
@@ -178,8 +234,8 @@ DiNode* add_dnode(unsigned long long did, unsigned char* dname, unsigned short n
     DiNode *dnode = (DiNode *) (malloc(sizeof(DiNode)));
     DiNode *base = (mord) ? (*lattice)->chains->vessel->right : (*lattice)->chains->vessel->left;
 
-    dnode->diname = (unsigned char *) calloc(1+nlen,uchar_sz);
-    dnode->diname = memcpy(dnode->diname, dname, nlen * uchar_sz);
+    dnode->diname = (unsigned char *) calloc(1+nlen, UCHAR_SZ);
+    dnode->diname = memcpy(dnode->diname, dname, nlen * UCHAR_SZ);
     unsigned long cnt = expo_basedir_cnt(base->did);
 
     dnode->did = (did | ((nlen) << DNAMESHFT) | ((mord) ? MEDABASEM : DOCSBASEM) | ++cnt);
@@ -317,8 +373,8 @@ FiNode* mk_finnode(unsigned int nlen, unsigned char* finame,
 
     FiNode* fimap = (FiNode*) malloc(sizeof(FiNode));
 
-    fimap->finame = (unsigned char*) calloc(nlen+1, uchar_sz);
-    memcpy(fimap->finame,finame,(nlen*uchar_sz));
+    fimap->finame = (unsigned char*) calloc(nlen+1, UCHAR_SZ);
+    memcpy(fimap->finame,finame,(nlen * UCHAR_SZ));
 
     fiid = msk_finmlen(fiid,nlen);
     fiid = msk_format(fiid, grab_ffid(finame,nlen));
@@ -395,7 +451,7 @@ unsigned int goto_dnode(unsigned int basegrp, Vessel* vessel, unsigned int chnID
 
 }
 
-HashLattice * init_hashlattice(DChains * diChains) {
+HashLattice * init_hashlattice(DChains * diChains, LattcKey lattcKey) {
 
 
     HashLattice* hashlattice = (HashLattice *) malloc(sizeof(HashLattice));
@@ -407,10 +463,12 @@ HashLattice * init_hashlattice(DChains * diChains) {
     hashlattice->chains = *diChains;
     hashlattice->chains->vessel = hashlattice->chains->dir_head;
 
+    hashlattice->lattcKey = lattcKey;
+
     return hashlattice;
 }
 
-void build_bridge2(Armature* armatr, FiNode* fiNode, DiNode* dnode, HashLattice* hashlattice, unsigned char obuf[16]){
+void build_bridge2(LatticeKey lattkey, FiNode* fiNode, DiNode* dnode, HashLattice* hashlattice, unsigned char obuf[16]){
 
     timr_st();
     if (hashlattice->count > hashlattice->max-3){
@@ -419,11 +477,11 @@ void build_bridge2(Armature* armatr, FiNode* fiNode, DiNode* dnode, HashLattice*
 
     HashBridge* hshbrg = (HashBridge*) malloc(sizeof(HashBridge));
 
-    unsigned long long int inid = (fiNode->fiid ^ dnode->did);
+    unsigned long long int inid = (fiNode->fiid | dnode->did);
     memcpy(hshbrg->unid,&inid,8);
 
-    unsigned long idx = latt_hsh_idx((armatr), fiNode->fhshno, obuf);
-
+    unsigned long idx = latt_hsh_idx(lattkey, fiNode->fhshno, obuf);
+    //1111411
     hshbrg->dirnode = dnode;
     hshbrg->finode = fiNode;
     hshbrg->parabridge = NULL;
@@ -449,44 +507,31 @@ void build_bridge2(Armature* armatr, FiNode* fiNode, DiNode* dnode, HashLattice*
 HashBridge *yield_bridge_for_fihsh(Lattice lattice,unsigned long fiHsh){
 
     HashBridge * hshBrdg;
-    unsigned int fflg = 0;
+    unsigned int fflg = 1;
     unsigned char oBuf [16] = {0};
     unsigned char idBuf [8] = {0};
     unsigned long long int iid;
     unsigned long long int biidBufL;
 
+    unsigned long brdgIdx = latt_hsh_idx(lattice->lattcKey,fiHsh,oBuf);
+    hshBrdg = lattice->bridges[brdgIdx];
 
-    if (lattice->chains->vessel->armature == NULL){
+    if (hshBrdg == NULL){
         return NULL;
     }
-
-    iid = lattice->chains->vessel->armature->entries[getidx(fiHsh)].fiid;
-    iid ^= lattice->chains->vessel->did;
-
-    unsigned long brdgIdx = latt_hsh_idx(lattice->chains->vessel->armature,fiHsh,oBuf);
-    hshBrdg = lattice->bridges[brdgIdx];
 
     memcpy(&biidBufL,&(hshBrdg->unid),8);
 
-    if (biidBufL != iid){
-        while (hshBrdg->parabridge != NULL){
-            hshBrdg = hshBrdg->parabridge;
-            memcpy(&biidBufL,hshBrdg->unid,8);
-            if (biidBufL == iid){
-                fflg = 1;
-                break;
-            }
+    while (hshBrdg->parabridge != NULL){
+        hshBrdg = hshBrdg->parabridge;
+        memcpy(&biidBufL,hshBrdg->unid,8);
+        if ((biidBufL & fiHsh) == fiHsh){
+            fflg = 1;
+            break;
         }
-    }else{
-        fflg = 1;
     }
 
-    if (!fflg){
-        return NULL;
-        //TODO: implament global status frame.
-    }else{
-        return hshBrdg;
-    }
+    return hshBrdg;
 }
 int filter_dirscan(const struct dirent *entry) {
     return ((entry->d_name[0] == 46)) || (strnlen(entry->d_name, 4) > 3);
@@ -499,7 +544,8 @@ double long* map_dir(StatFrame** statusFrame,
                      unsigned int dnlen,
                      DiChains* dirchains,
                      HashLattice* hashlattice,
-                     Armature** armatr) {
+                     Armature** armatr,
+                     LattcKey latticeKey) {
 
     int i;
     int j=0;
@@ -511,7 +557,7 @@ double long* map_dir(StatFrame** statusFrame,
     int n;
     int dir_cnt = 0;
 
-    unsigned char* hkey = (unsigned char*) sodium_malloc(uchar_sz*crypto_shorthash_KEYBYTES);
+    unsigned char* hkey = (unsigned char*) sodium_malloc(UCHAR_SZ * crypto_shorthash_KEYBYTES);
 
     unsigned long long rootiid;
     unsigned long long roothshno;
@@ -541,10 +587,10 @@ double long* map_dir(StatFrame** statusFrame,
     n = scandir(dir_path, dentrys, NULL, alphasort);
 
     // Alloc arrays for filenames, file ids, entry type, and length of filename
-    unsigned char** farr = (unsigned char **) calloc(n, 256*uchar_sz);
-    unsigned long* idarr = (unsigned long*) calloc(n, ulong_sz);
-    unsigned char* entype = (unsigned char*) calloc(n, uchar_sz);
-    unsigned long* nlens= (unsigned long*) calloc(n, ulong_sz);
+    unsigned char** farr = (unsigned char **) calloc(n, 256 * UCHAR_SZ);
+    unsigned long* idarr = (unsigned long*) calloc(n, ULONG_SZ);
+    unsigned char* entype = (unsigned char*) calloc(n, UCHAR_SZ);
+    unsigned long* nlens= (unsigned long*) calloc(n, ULONG_SZ);
     unsigned char dubbuf[16] = {0};
 
     // For each entry in the directory...
@@ -552,7 +598,7 @@ double long* map_dir(StatFrame** statusFrame,
         // Filename length
         nlens[i] = strnlen((*dentrys)[i]->d_name, FINMMAXL);
         // Filename char arr
-        farr[i] = (unsigned char*) calloc((nlens[i]+1),uchar_sz);
+        farr[i] = (unsigned char*) calloc((nlens[i]+1), UCHAR_SZ);
         memcpy(farr[i], (const unsigned char*)(*dentrys)[i]->d_name,nlens[i]+1);
         // File inode number
         idarr[i] = (*dentrys)[i]->d_ino;
@@ -591,10 +637,15 @@ double long* map_dir(StatFrame** statusFrame,
             fimap_ptr = mk_finnode(nlens[i], farr[i], haidarr[j], dirNode_ptr->did, *fhshno_arr[j]);
             // Add the entry to the file/hash table
             add_entry(fimap_ptr,*armatr);
+
             // Add a lattice bridge to connect filemap object to the dir node
-            build_bridge2(*armatr, fimap_ptr,dirNode_ptr, hashlattice, dubbuf);
+            build_bridge2(latticeKey, fimap_ptr,dirNode_ptr, hashlattice, dubbuf);
             sodium_free(fhshno_arr[j]);
             j++;
+
+            if(i < 10){
+                printf("file: %llu :: %lu\n",fimap_ptr->fiid,fimap_ptr->fhshno);
+            }
 
         }
         free(farr[i]);
@@ -625,6 +676,7 @@ double long* map_dir(StatFrame** statusFrame,
     printf("\n\n");
     printf("%s\n",hashlattice->chains->dir_head->diname);
     printf("%llu\n",hashlattice->chains->dir_head->did);
+
 
     //unsigned char* bridgefiid = (yield_bridge(hashlattice, "sandpit.tar.gpg", 15, dirNode_ptr, "/home/ujlm/CLionProjects/TagFI/keys/Tech.lhsk"))->dirnode->diname;
     //printf("BRIDGE >> %s", bridgefiid);

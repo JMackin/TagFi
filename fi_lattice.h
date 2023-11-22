@@ -5,7 +5,6 @@
 #define TAGFI_FI_LATTICE_H
 
 
-#define ltyp_s 4
 #define rspsz_b 8
 #define arr_b 12
 
@@ -16,7 +15,7 @@
 
 
 
-//const unsigned long uint_sz = sizeof(unsigned int);
+//const unsigned long UINT_SZ = sizeof(unsigned int);
 //const unsigned long UCSiZ = sizeof(unsigned char);
 //const unsigned long LTYPsz = sizeof(LattType) + sizeof(unsigned int);
 //const unsigned long ltyp_s = sizeof(LattType);

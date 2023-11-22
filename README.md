@@ -74,7 +74,7 @@ Exchange Flow:
                /             \
     - Request Meta    - MetaData (flag-count, array length, id)
     - Sequence size   - Request Lead (OR'd flags as single int)
-    - Operations      - Parsed flags (LttcFlags*)
+    - Operations      - Parsed flags (LttFlgs*)
     - Cmd qualifiers  - Request array buffer (uniArr*)
     
 
