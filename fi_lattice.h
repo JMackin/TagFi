@@ -14,7 +14,6 @@
 #include "consts.h"
 
 
-
 //const unsigned long UINT_SZ = sizeof(unsigned int);
 //const unsigned long UCSiZ = sizeof(unsigned char);
 //const unsigned long LTYPsz = sizeof(LattType) + sizeof(unsigned int);

@@ -5,7 +5,7 @@
 #ifndef TAGFI_LATTICE_SIGNALS_H
 #define TAGFI_LATTICE_SIGNALS_H
 
-
+#define LERR_CNT 20
 /**
  * <h4><code>
  * \ResponseCMDs
@@ -49,7 +49,6 @@ typedef enum RspFlag {
     // End sequence / Masking byte
     DONE = 2147483647
 }RspFlag;
-
 
 /**
  *<h4>
@@ -505,7 +504,6 @@ void stsOut(StatFrame** sts_frm);
 void serrOut(StatFrame** sts_frm, char* msg);
 
 long stsErno(LattErr ltcerr, StatFrame **sts_frm, int erno, unsigned long misc, char *msg, char *function, char *miscdesc);
-
 
 
 #endif //TAGFI_LATTICE_SIGNALS_H

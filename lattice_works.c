@@ -188,28 +188,7 @@ unsigned int findby_chnid(unsigned long chn_id, DiChains* dchns){
         lor = !lor;
         pos_base2 = 1;
     }
-
-
-
-
-/*
-  while (cur_chn_pos != chn_id){
-      if (cur_chn_pos > chn_id){
-          dchns->vessel = lor ? dchns ->vessel->left : dchns ->vessel->right;
-      }else {
-          dchns->vessel = lor ? dchns ->vessel->right : dchns ->vessel->left;
-      }
-      if (check_base(dchns->vessel->did)){
-          notfound_cnt++;
-          switch_base(dchns);
-          lor = !lor;
-      }
-      if( notfound_cnt > 1){
-          return 0;
-      }
-  }
-*/
-
+    return 1;
 }
 
 unsigned int gotonode(unsigned long long did, DiChains* dchns){

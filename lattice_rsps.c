@@ -38,9 +38,6 @@
 *  RESPONSE CONSTRUCTION *
 * * * * * * * * * * * * **/
 
-// [ lead -> item -> arrsz -> arr -> DONE ]
-
-
 // lead | item | arrsz | arr | DONE
 
 
@@ -350,17 +347,21 @@ uint rsp_fiid(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, buff_arr
     LattType lattitm;
     uint bcnt;
 
-    memcpy(&lattitm, ((*inf_frm)->arr)+arr_b, LATTTYP_SZ);
+    lattitm.obj = pull_arrObj(inf_frm);
+
     bcnt = rsp_add_arrobj(lattitm.obj,buf);
 
-    if (pull_objid(inf_frm, (*itmID),8).l_ulong == 0){
+    itmID->l_ulong = pull_objid(inf_frm, (*itmID), 8).l_ulong;
+    if ( itmID->l_ulong == 0){
         stsErno(MALREQ, sts_frm, errno, itmID->l_ulong, "Given fiID is invalid or mangled.", "rsp_fiid", "parsed id");
         return 1;
     }
 
-    Armatr armatr = (*hltc)->chains->vessel->armature;
-    if (armatr == NULL){
-        stsErno(NOINFO,sts_frm,errno,(*hltc)->chains->vessel->did,"Vessel is likely located in a base node.","rsp_fiid","vessel diID");
+    HashBridge* hashbridge = (yield_bridge_for_fihsh(*hltc,itmID->l_ulong));
+
+//    Armatr armatr = (*hltc)->chains->vessel->armature;
+    if (hashbridge == NULL){
+        stsErno(NOINFO,sts_frm,errno,itmID->l_ulong,"No bridge found for given fiid","rsp_fiid","fiid");
         return 1;
     }
 
@@ -368,7 +369,8 @@ uint rsp_fiid(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, buff_arr
         stsErno(NOINFO,sts_frm,errno,0,"Can't produce a filename this way at present.","rsp_fiid",NULL);
         return 1;
     } else if (lattitm.obj == IDID){
-        itmID->l_ulong = armatr->entries[getidx(itmID->l_ulong)].fiid;
+//        itmID->l_ulong = fiid->entries[getidx(itmID->l_ulong)].fiid;
+        itmID->l_ulonglong = hashbridge->finode->fiid;
     } else {
         stsErno(NOINFO,sts_frm,errno,lattitm.n_uint,"Invalid itm specified in exchange for fihash.","rsp_fiid","misc: resp-itm");
         return 1;
@@ -385,6 +387,7 @@ uint rsp_diid(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, buff_arr
     printf("Response: DirID for chain number");
 
     LattLong* itmID = malloc(sizeof(unsigned long));
+    LattLong chainID;
     LattType lattitm;
     LattLong diID;
     rsplead_addflg(IARR,buf);
@@ -392,26 +395,25 @@ uint rsp_diid(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, buff_arr
     lattitm.obj = DIRN | IDID;
     uint bcnt;
     bcnt = rsp_add_arrobj(lattitm.obj,buf);
-    bcnt+= rsparr_addsep(bcnt,INT_SEP,buf);
 
+
+    bcnt+= rsparr_addsep(bcnt,LONG_SEP,buf);
     if ((*inf_frm)->qual == 2){
         diID.l_ulonglong = (*hltc)->chains->vessel->did;
         bcnt += rsparr_add_lng(bcnt, diID, buf);
     } else {
-        if (pull_objid(inf_frm, (*itmID), 8).l_ulong == 0){
+        chainID.l_ulong = pull_objid(inf_frm, (*itmID), 8).l_ulong;
+        if (chainID.l_ulong == 0){
             stsErno(MALREQ, sts_frm, errno, itmID->l_ulong, "Given dirID is invalid or mangled.", "rsp_diid", "parsed id");
             return 1;
         }
 
-        if (findby_chnid(itmID->l_ulong,(*hltc)->chains)){
+        if (findby_chnid(chainID.l_ulong,(*hltc)->chains)){
             stsErno(NOINFO, sts_frm, errno, itmID->l_ulong, "Provided chain ID not found","rsp_diid" , "misc - chain id");
             return 1;
         }
-
         diID.l_ulonglong = (*hltc)->chains->vessel->did;
-
         bcnt += rsparr_add_lng(bcnt,diID,buf);
-
     }
 
     free(itmID);
@@ -692,11 +694,12 @@ uint respond(Resp_Tbl *rsp_tbl,
 
     // Get array len from response sequence
 
-    rsparr_len_set(rspsz,&rsp_buf);
 
     // Update InfoFrame
-    (*inf_frm)->arr_len = rspsz;
+    (*inf_frm)->arr_len = rspsz-12;
     (*inf_frm)->rsp_size = rspsz;
+    rsparr_len_set((*inf_frm)->arr_len,&rsp_buf);
+
 
     // Update status and return 0 on success
     setSts(sts_frm, RESPN, 0);

@@ -384,6 +384,7 @@ int spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsigned char 
             }
         }
 
+        clock_t ca = clock();
         /**
          * READ REQUEST INTO BUFFER
          * */
@@ -463,6 +464,8 @@ int spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsigned char 
          * CLEAR CONNECTION
          * */
 
+        clock_t cb = clock();
+        printf("\n<<TIME: %lu>>\n",cb-ca);
         endpoint:
         bzero(*req_buf, buf_len - 1);
         bzero(*flgsbuf,FLGSCNT);

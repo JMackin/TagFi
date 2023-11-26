@@ -3,6 +3,17 @@
 
 #include "fi_lattice.h"
 
+#define LERR_CNT 20
+#define LERR_CHARCNT 8
+#define LERR_LASTELEM 524288
+#define ERRBUFLEN 1024
+
+#define LSTS_CNT 13
+#define LSTS_CHARCNT 6
+#define LSTS_LASTELEM 1024
+
+
+
 typedef union LattType{
     LattErr err;
     LattReply rpl;
@@ -37,6 +48,8 @@ typedef StatFrame** Status_F;
 extern const unsigned int UINT_SZ;
 extern const unsigned int UCHAR_SZ;
 extern const unsigned int ULONG_SZ;
+extern const unsigned int VULONG_SZ;
+
 extern const unsigned int LATTTYP_SZ;
 extern const unsigned int FLAG_SZ;
 
@@ -47,5 +60,10 @@ extern const unsigned int ITEM_POS;
 extern const LattType INT_SEP;
 extern const LattType CHAR_SEP;
 extern const LattType LONG_SEP;
+
+extern const LattErr latt_err_arr[LERR_CNT];
+extern const char latt_err_strs[LERR_CNT][LERR_CHARCNT];
+extern const LattStts latt_sts_arr[LSTS_CNT];
+extern const char latt_stts_strs[LSTS_CNT][LSTS_CHARCNT];
 
 #endif
