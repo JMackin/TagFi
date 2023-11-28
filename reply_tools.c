@@ -46,7 +46,6 @@ LattLong pull_objid(InfoFrame** infoFrame, LattLong itmId, size_t long_sz){
     else{
         itmId.l_ulong = 1;
     }
-
     return itmId;
 }
 
@@ -141,7 +140,23 @@ uint rsparr_add_msg(buff_arr buf, char* msg, uint len, uint offst)
 }
 
 uint rsparr_add_chrstr(buff_arr buf, uchar_arr msg, uint len, uint offst)
-{memcpy(rsparr_pos(buf) + offst + LATTTYP_SZ, msg, len);return len;}
+{memcpy(rsparr_pos(buf) + offst, msg, len);return len;}
+
+uint rsparr_add_travelpath(TravelPath* travelpath, buff_arr buf, uint offst){
+    uint len = offst;
+    unsigned long long origid = travelpath->origin->did;
+    unsigned long long destid = travelpath->destination->did;
+    uchar charstr[17] = {'<','-','-','o','r','i','g',':',':','d','e','s','t','-','-','>','\0',};
+
+    len += rsparr_addsep(len,LONG_SEP,buf);
+    len += rsparr_add_lnglng(len,origid,buf);
+    len += rsparr_addsep(len,CHAR_SEP,buf);
+    len += rsparr_add_chrstr(buf,charstr,17,len);
+    len += rsparr_addsep(len,LONG_SEP,buf);
+    len += rsparr_add_lnglng(len,destid,buf);
+
+    return len;
+}
 
 RspFlag rsplead_addflg(RspFlag flags, buff_arr buf){
     RspFlag o_flgs;
@@ -153,7 +168,7 @@ RspFlag rsplead_addflg(RspFlag flags, buff_arr buf){
 }
 
 char* convertLattErr(const LattErr* _latterr){
-    char* laterrstr = (char*) malloc(LERR_LASTELEM);
+    char* laterrstr = (char*) malloc(ULONG_SZ);
     LattErr _latterr_itr;
     _latterr_itr = LERR_LASTELEM;
     uint i = LERR_CNT;
@@ -162,8 +177,7 @@ char* convertLattErr(const LattErr* _latterr){
         _latterr_itr >>= 1;
         if (!--i) { return NULL; }
     }
-    i=LERR_CNT-i;
-    memcpy(laterrstr,latt_err_strs[i],8);
+    memcpy(laterrstr,latt_err_strs[i-1],8);
     return laterrstr;
 }
 

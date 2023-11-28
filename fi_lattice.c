@@ -77,7 +77,7 @@ void disassemble(Lattice* hashlattice,
     //MEDA
     (*hashlattice)->chains->vessel = (*dirchains)->dir_head->right;
     unsigned int cnt = expo_basedir_cnt((*hashlattice)->chains->vessel->did);
-    goto_chain_tail((*hashlattice)->chains,1);
+    goto_chain_tail((*hashlattice)->chains, 1, NULL);
     entr_cnt = 0;
     for (i = 0; i< cnt; ++i){
 
@@ -103,7 +103,7 @@ void disassemble(Lattice* hashlattice,
     //DOCS
     (*hashlattice)->chains->vessel = (*dirchains)->dir_head->left;
     cnt = expo_basedir_cnt((*hashlattice)->chains->vessel->did);
-    goto_chain_tail((*dirchains),0);
+    goto_chain_tail((*dirchains), 0, NULL);
 
     for (i = 0; i< cnt; ++i) {
         if ((*hashlattice)->chains->vessel->did == DGMEDAID || (*dirchains)->vessel->did == DGDOCSID) {
@@ -213,7 +213,7 @@ size_t read_conf(unsigned char** dnconf_addr, int cnfdir_fd){
 
     *dnconf_addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, dnconf_fd, 0);
     if (*dnconf_addr == MAP_FAILED) {
-        stsErno(EPOLLE, &statusFrame, errno, EPOLLERR, "Issue detected by EPOLLE", "epoll_wait", 0);
+        stsErno(EPOLLE, &statusFrame, "Issue detected by EPOLLE", EPOLLERR, 0, "epoll_wait", NULL, errno);
         return -1;
     }
 
@@ -270,7 +270,7 @@ int spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsigned char 
      * INFO AND STATUS VARS
      * */
 
-    *infofrm = init_info_frm(infofrm); // Request/Response Info Frame
+    *infofrm = init_infofrm(infofrm, 1); // Request/Response Info Frame
     (*dirchains)->vessel = (*dirchains)->dir_head;
     (*infofrm)->vessel = &(*dirchains)->vessel;
     
@@ -380,7 +380,8 @@ int spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsigned char 
          * */
         if (epoll_wait(efd,epINevent,3,500) > 0){
             if ((epINevent->events&EPOLLERR) == EPOLLERR) {
-                stsErno(EPOLLE, &statusFrame, errno, epINevent->events, "Issue detected by EPOLLE", "epoll_wait - in", 0);
+                stsErno(EPOLLE, &statusFrame, "Issue detected by EPOLLE", epINevent->events,
+                        0, "epoll_wait - in", NULL, errno);
             }
         }
 
@@ -390,7 +391,7 @@ int spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsigned char 
          * */
         ret = read(data_socket, *req_buf, buf_len);  // READ 'R'
         if (ret == -1) {
-            stsErno(BADSOK, &statusFrame, errno, 0, "Issue reading from data socket", "read", 0);
+            stsErno(BADSOK, &statusFrame, "Issue reading from data socket", 0, 0, "read", NULL, errno);
             return 1;
         }
         (statusFrame)->status <<= 1;
@@ -447,8 +448,8 @@ int spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsigned char 
                 /** WRITEOUT REPLY */
                 if (epoll_wait(efd,epINevent,2,1000)){
                     if ((epINevent->events&EPOLLERR) == EPOLLERR) {
-                        stsErno(EPOLLE, &statusFrame, errno, epINevent->events,
-                                "Issue detected by EPOLLE", "epoll_wait - in", 0);
+                        stsErno(EPOLLE, &statusFrame,
+                                "Issue detected by EPOLLE", epINevent->events, 0, "epoll_wait - in", NULL, errno);
                    }
                     ret = write(data_socket, *rsp_buf, buf_len);
                 }
@@ -466,7 +467,9 @@ int spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsigned char 
 
         clock_t cb = clock();
         printf("\n<<TIME: %lu>>\n",cb-ca);
+
         endpoint:
+        init_infofrm(infofrm,0);
         bzero(*req_buf, buf_len - 1);
         bzero(*flgsbuf,FLGSCNT);
         bzero(*rsp_buf, arrbuf_len-1);
@@ -504,7 +507,7 @@ void summon_lattice() {
     int naclinit = sodium_init();
     if (naclinit != 0) {
         setAct(&statusFrame,GBYE,NOTHN,0);
-        stsErno(SODIUM, &statusFrame, errno, naclinit, "Sodium init failed", "summon_lattice", 0);
+        stsErno(SODIUM, &statusFrame, "Sodium init failed", naclinit, 0, "summon_lattice", NULL, errno);
     }
 
     /**
@@ -564,7 +567,7 @@ void summon_lattice() {
             perror("Error in fd: cnfdir_fd: %d");
             setAct(&statusFrame,GBYE,NOTHN,0);
             //stsErno(perror, ltcerr, **sts_frm, erno, misc, *msg, *function, *miscdesc);
-            stsErno(BADCNF, &statusFrame, errno, 333, "Failed reading config", NULL, 0);
+            stsErno(BADCNF, &statusFrame, "Failed reading config", 333, 0, NULL, NULL, errno);
             disassemble(&hashlattice, &dirchains, NULL,
                         NULL, 0, NULL, 0,
                         NULL, NULL, 0, 0);
@@ -577,7 +580,7 @@ void summon_lattice() {
          * */
         size_t dn_size = read_conf(&dn_conf, cnfdir_fd);
         if (dn_size == -1) {
-            stsErno(BADCNF, &statusFrame, errno, 333, "Failed reading config", NULL, 0);
+            stsErno(BADCNF, &statusFrame, "Failed reading config", 333, 0, NULL, NULL, errno);
             destroy_metastructures(NULL,
                                    info_frm,
                                    reqflg_arr,
@@ -615,7 +618,7 @@ void summon_lattice() {
                         &(tbl_list[i]),
                         latticeKey)< 0){
 
-                stsErno(MISMAP, &statusFrame, errno, 333, "Big fail", "map_dir", 0);
+                stsErno(MISMAP, &statusFrame, "Big fail", 333, 0, "map_dir", NULL, errno);
                 disassemble(&hashlattice,&dirchains,tbl_list,dn_conf,dn_size,NULL,0,lengths,paths,dn_cnt,cnfdir_fd);
                 destroy_metastructures(NULL, info_frm, reqflg_arr, req_buf, req_arr_buf, tmparrbuf, rsp_buf);
                 return;

@@ -210,7 +210,8 @@ InfoFrame *parse_req(uchar_arr fullreqbuf, //<-- same name in spin up
     flgcnt = parse_lead(uni_flag, rqflgsbuf, stsfrm, infofrm);
 
     if (!flgcnt) {
-        stsErno(MALREQ, stsfrm, errno, uni_flag, "Malformed request, error parsing lead", "parse_req->parse_lead", "misc - lead");
+        stsErno(MALREQ, stsfrm, "Malformed request, error parsing lead", uni_flag,
+                "misc - lead", "parse_req->parse_lead", NULL, errno);
         return *infofrm;
     }
 
@@ -229,7 +230,8 @@ InfoFrame *parse_req(uchar_arr fullreqbuf, //<-- same name in spin up
      * Check carrier byte
      * */
     if (uni_flag >> 29 != 1) {
-        stsErno(MALREQ, stsfrm, errno, uni_flag, "Malformed request, bad carry uni_flag", "parse_req", "misc - lead");return *infofrm;
+        stsErno(MALREQ, stsfrm, "Malformed request, bad carry uni_flag", uni_flag, "misc - lead", "parse_req",
+                NULL, errno);return *infofrm;
         }
     (*infofrm)->arr_len = pull_arrsz(&fullreqbuf); // Set InfoFrame -> arr length
 
@@ -237,7 +239,7 @@ InfoFrame *parse_req(uchar_arr fullreqbuf, //<-- same name in spin up
      * Check tail byte
      * */
     if (check_end_flg(fullreqbuf, infofrm)) {
-        stsErno(MALREQ,stsfrm,errno,0,"Request structure malformed","parse_req",NULL);return (NULL);
+        stsErno(MALREQ, stsfrm, "Request structure malformed", 0, NULL, "parse_req", NULL, errno);return (NULL);
     }
     exit_flg = uni_flag == ENDBYTES ? (exit_flg << 1) : 1; //   EXIT trigger 1
 

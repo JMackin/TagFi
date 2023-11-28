@@ -27,6 +27,7 @@ unsigned int rsparr_add_lng(unsigned int offset, LattLong lli, unsigned char ** 
 unsigned int rsparr_add_lnglng(unsigned int offset, unsigned long long lli, unsigned char ** buf);
 unsigned int rsparr_add_msg(unsigned char ** buf, char* msg, unsigned int len, unsigned int offst);
 unsigned int rsparr_add_chrstr(unsigned char ** buf, unsigned char * msg, unsigned int len, unsigned int offst);
+unsigned int rsparr_add_travelpath(TravelPath* travelpath, buff_arr buf, uint offst);
 
 LattObj pull_arrObj(Info_F inf_frm);
 LattReply pull_replyitm(buff_arr buf);

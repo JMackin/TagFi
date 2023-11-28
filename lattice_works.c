@@ -28,8 +28,8 @@
 #define DNKEYPATH "/home/ujlm/Code/Clang/C/TagFI/keys"
 #define NDENTRYPRFX_SZ 8
 
-InfoFrame *init_info_frm(InfoFrame **info_frm) {
-    *info_frm = (InfoFrame *) malloc(sizeof(InfoFrame));
+InfoFrame *init_infofrm(InfoFrame **info_frm, uint startup) {
+    if (startup){*info_frm = (InfoFrame *) malloc(sizeof(InfoFrame));}
     unsigned int cat_sffx = 0;
     (*info_frm)->rsp_size = 0;
     (*info_frm)->trfidi[0] = 0;
@@ -45,7 +45,6 @@ InfoFrame *init_info_frm(InfoFrame **info_frm) {
 
     return *info_frm;
 }
-
 
 void mk_one_dir_hashes(unsigned long long* iid, unsigned long long* hshno, const unsigned long ino){
     genrandsalt(hshno);
@@ -114,8 +113,28 @@ DiChains* init_dchains() {
     return dirchains;
 }
 
-void travel_dchains(Vessel* vessel, unsigned int lor, unsigned char steps) {
 
+uint return_to_origin(TravelPath* travelPath, DChains dirChains){
+    if (dirChains->vessel->did != travelPath->destination->did){
+        return 1;
+    }
+    dirChains->vessel = travelPath->origin;
+    return 0;
+}
+
+//enroute: 1 = at origin, 0 = at destination
+void chart_travelpath(TravelPath** travelpath, Vessel vessel, int enroute){
+    if (!enroute){
+        (*travelpath) = (TravelPath*) malloc(sizeof(TravelPath));
+        (*travelpath)->origin = vessel;
+    }else{
+        (*travelpath)->destination = vessel;
+    }
+}
+
+void travel_dchains(Vessel *vessel, unsigned int lor, unsigned char steps, TravelPath **travelpath) {
+
+    if (travelpath != NULL){ chart_travelpath(travelpath,*vessel,0);}
     while (steps>0){
         if (lor) {
             if((*vessel)->right->did == 0){
@@ -132,11 +151,13 @@ void travel_dchains(Vessel* vessel, unsigned int lor, unsigned char steps) {
         }
         steps--;
     }
+    if (travelpath != NULL){ chart_travelpath(travelpath,*vessel,1);}
 }
 
-void goto_chain_tail(DChains dirChains, unsigned int lor){
-    (dirChains)->vessel = dirChains->dir_head;
+void goto_chain_tail(DiChains *dirChains, unsigned int lor, TravelPath **travelpath) {
 
+    if (travelpath != NULL){ chart_travelpath(travelpath,dirChains->vessel,0);}
+    (dirChains)->vessel = dirChains->dir_head;
     if (lor) {
         do{
             dirChains->vessel = dirChains->vessel->right;
@@ -146,34 +167,34 @@ void goto_chain_tail(DChains dirChains, unsigned int lor){
             dirChains->vessel = dirChains->vessel->left;
         }while (dirChains->vessel->left->did != 0);
     }
+    if (travelpath != NULL){ chart_travelpath(travelpath,dirChains->vessel,1);}
+
 }
 
-void goto_base(DChains dchns){
+void goto_base(DChains dchns, TravelPath **travelpath) {
+    if (travelpath != NULL){chart_travelpath(travelpath,dchns->vessel,0);}
     if (check_base(dchns->vessel->did)){
+        if (travelpath != NULL){chart_travelpath(travelpath,dchns->vessel,1);}
         return;
     }
+    if (travelpath != NULL){chart_travelpath(travelpath,dchns->vessel,1);}
     dchns->vessel = expo_dirbase(dchns->vessel->did) ? dchns->dir_head->left : dchns->dir_head->right;
 }
 
-void switch_base(DChains dchns){
+void switch_base(DChains dchns, TravelPath **travelpath) {
+    if (travelpath != NULL){ chart_travelpath(travelpath,dchns->vessel,0);}
     dchns->vessel = expo_dirbase(dchns->vessel->did) ? dchns->dir_head->left : dchns->dir_head->right;
+    if (travelpath != NULL){ chart_travelpath(travelpath,dchns->vessel,1);}
 }
 
-void traverse_dchains(DiNode* dnode) {
-    while(dnode->did != (DHEADDID)){
-        printf("%s\n", dnode->diname);
-        dnode = dnode->left;
-    }
-}
-
-unsigned int findby_chnid(unsigned long chn_id, DiChains* dchns){
+unsigned int travel_by_chnid(unsigned long chn_id, DiChains *dchns, TravelPath **travelpath) {
+    if (travelpath != NULL){ chart_travelpath(travelpath,dchns->vessel,0);}
 
     unsigned int lor = expo_dirbase(dchns->vessel->did);
-    unsigned int steps = chn_id;
     unsigned int pos_base = 0;
     unsigned int pos_base2 = 0;
-    goto_base(dchns);
 
+    goto_base(dchns, NULL);
     while(!pos_base) {
         if (pos_base2){
             pos_base = 1;
@@ -181,17 +202,23 @@ unsigned int findby_chnid(unsigned long chn_id, DiChains* dchns){
         while (dchns->vessel->right->did != 0 && dchns->vessel->left->did != 0) {
             dchns->vessel = (lor) ? dchns->vessel->left : dchns->vessel->right;
             if (expo_dirchnid(dchns->vessel->did) == chn_id) {
+                if (travelpath != NULL){ chart_travelpath(travelpath,dchns->vessel,1);}
                 return 0;
+
             }
         }
-        switch_base(dchns);
+        switch_base(dchns, NULL);
         lor = !lor;
         pos_base2 = 1;
     }
+    if (travelpath != NULL){ chart_travelpath(travelpath,dchns->vessel,1);}
     return 1;
 }
 
-unsigned int gotonode(unsigned long long did, DiChains* dchns){
+unsigned int travel_by_diid(unsigned long long did, DiChains *dchns, TravelPath **travelpath) {
+    if (travelpath != NULL){ chart_travelpath(travelpath,dchns->vessel,0);}
+    Vessel origin = (dchns)->vessel;
+    (*travelpath)->origin = origin;
 
     unsigned int lor = expo_dirbase(did);
     unsigned int dnpos = 0;
@@ -204,7 +231,7 @@ unsigned int gotonode(unsigned long long did, DiChains* dchns){
         } while (dchns->vessel->did != did && dchns->vessel->did != 0);
 
         if (!(did && dchns->vessel->did)) {
-            return -1;
+            return 1;
         }
         //DOCS
     }
@@ -215,9 +242,11 @@ unsigned int gotonode(unsigned long long did, DiChains* dchns){
         } while (dchns->vessel->did != did && dchns->vessel->did != 0);
 
         if (!(dchns->vessel->did)) {
-            return -1;
+            return 1;
         }
     }
+
+    if (travelpath != NULL){ chart_travelpath(travelpath,dchns->vessel,1);}
     return dnpos;
 }
 
@@ -237,7 +266,7 @@ DiNode* add_dnode(unsigned long long did, unsigned char* dname, unsigned short n
     base->did += (16);
 
     (*lattice)->chains->vessel = ((*lattice)->chains->dir_head);
-    goto_chain_tail((*lattice)->chains, mord);
+    goto_chain_tail((*lattice)->chains, mord, NULL);
 
     //MEDA
     if (mord) {
@@ -425,25 +454,6 @@ void add_entry(FiNode* finode, Armature* armatr) {
     timr_hlt();
 }
 
-//basegrp = MEDACHSE(1) or DOCSCHCE(0)
-unsigned int goto_dnode(unsigned int basegrp, Vessel* vessel, unsigned int chnID){
-
-    if (basegrp){
-        (*vessel) = (*vessel)->right;
-        for (int i = 0; i < chnID; i++){
-            (*vessel) = (*vessel)->right;
-        }
-    }else
-    {
-        (*vessel) = (*vessel)->left;
-        for (int i = 0; i < chnID; i++){
-            (*vessel) = (*vessel)->left;
-        }
-    }
-
-    return expo_dirchnid((*vessel)->did)!=(chnID);
-
-}
 
 HashLattice * init_hashlattice(DChains * diChains, LattcKey lattcKey) {
 
@@ -548,6 +558,7 @@ double long* map_dir(StatFrame** statusFrame,
     // Open the directory and read in the contents
 
     struct dirent ***dentrys = (struct dirent***) malloc(sizeof(struct dirent**));
+    //struct dirent ***dentrys;
     int n;
     int dir_cnt = 0;
 
@@ -657,7 +668,7 @@ double long* map_dir(StatFrame** statusFrame,
     hashlattice->chains->vessel = hashlattice->chains->dir_head;
     for (i=0;i<7;i++) {
         if (hashlattice->chains->vessel->did == 0){break;}
-        travel_dchains(&(hashlattice->chains->vessel), 1, 1);
+        travel_dchains(&(hashlattice->chains->vessel), 1, 1, NULL);
         printf("%s\n", hashlattice->chains->vessel->diname);
         printf("^^%llu\n", (hashlattice->chains->vessel->did));
         printf("^^%u\n", expo_dirnmlen(hashlattice->chains->vessel->did));
@@ -684,7 +695,7 @@ double long* map_dir(StatFrame** statusFrame,
  */
 
     // Cleanup
-    free(dentrys);
+    //free(dentrys);
     sodium_free(hkey);
     free(farr);
     free(idarr);

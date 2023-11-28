@@ -5,7 +5,6 @@
 #ifndef TAGFI_LATTICE_SIGNALS_H
 #define TAGFI_LATTICE_SIGNALS_H
 
-#define LERR_CNT 20
 /**
  * <h4><code>
  * \ResponseCMDs
@@ -32,18 +31,20 @@ typedef enum RspFlag {
     CODE = 16,
     // Next response
     CINT = 32,
-    // Response arr is a char string
+    // Response arr seg is a char string
     IARR = 64,
-    // Response arr is a int arr.
+    // Response arr seg is an int arr.
     CARR = 128,
-    //
-    GGGG = 255,
+    // Response arr seg is a long arr.
+    LARR = 256,
     //
     HHHH = 2048,
     // NULL
     ZERO = 512,
     // Error occurred, code will follow
     ERRR = 1024,
+    // Vessel traveled
+    TRVL = 2048,
     // Carry byte
     STRT = 536870912,
     // End sequence / Masking byte
@@ -272,7 +273,9 @@ typedef enum LattErr{
     // Response failure
     MISSPK = 262144,
     //SHUTDOWN
-    ESHTDN = 524288
+    ESHTDN = 524288,
+    // Travel Failure
+    MISVEN = 1048576
 } LattErr;
 
 
@@ -317,11 +320,11 @@ typedef enum LattAct {
  * <l_ulong> LFLG = 32 -  Request/response flag
  * <l_ulong> SFRM = 64 -  Status frame
  * <l_ulong> IFRM = 128 -  Info frame
- * <l_ulong> DCHN = 256 - Dir Chains
+ * <l_ulong> DCHN = 256 - Dir Chains or chainID
  * <l_ulong> SEQT = 512 -  Stored seq table
  * <l_ulong> CMSQ = 1024 -   Cmd sequence (response or request)
  * <l_ulong> ICAR = 2048 - Int or Char array
- * <l_ulong> VSSL = 4096 - Dirnode vessel/cursor object
+ * <l_ulong> VSSL = 4096 - Dirnode vessel/cursor object or path traveled
  * <l_ulong> FIOB = 8192 - Actual file object
  * <l_ulong> IDID = 16384 - ID for an object
  * <l_ulong> NMNM = 32768 - Name for an object
@@ -350,7 +353,7 @@ typedef enum LattObj{
     SFRM = 64,
     // Info frame
     IFRM = 128,
-    // Dir Chains
+    // Dir Chains or chainID
     DCHN = 256,
     // Stored seq table
     SEQT = 512,
@@ -358,7 +361,7 @@ typedef enum LattObj{
     CMSQ = 1024,
     // Int or Char array
     ICAR = 2048,
-    // Dirnode vessel/cursor object
+    // Dirnode vessel/cursor object or path traveled
     VSSL = 4096,
     // Actual file object
     FIOB = 8192,
@@ -503,7 +506,9 @@ void stsOut(StatFrame** sts_frm);
 
 void serrOut(StatFrame** sts_frm, char* msg);
 
-long stsErno(LattErr ltcerr, StatFrame **sts_frm, int erno, unsigned long misc, char *msg, char *function, char *miscdesc);
+long
+stsErno(LattErr ltcerr, StatFrame **sts_frm, char *msg, unsigned long misc, char *miscdesc, char *function, char *note,
+        int erno);
 
 
 #endif //TAGFI_LATTICE_SIGNALS_H

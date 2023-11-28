@@ -3,9 +3,9 @@
 
 #include "fi_lattice.h"
 
-#define LERR_CNT 20
+#define LERR_CNT 21
 #define LERR_CHARCNT 8
-#define LERR_LASTELEM 524288
+#define LERR_LASTELEM 1048576
 #define ERRBUFLEN 1024
 
 #define LSTS_CNT 13

@@ -38,7 +38,11 @@ void setSts(StatFrame **sts_frm, LattStts ltcst, unsigned int modr) {
 }
 
 //TODO: OPTIMIZE THIS
-long stsErno(LattErr ltcerr, StatFrame **sts_frm, int erno, unsigned long misc, char *msg, char *function, char *miscdesc) {
+long
+stsErno(LattErr ltcerr, StatFrame **sts_frm, char *msg,
+        unsigned long misc, char *miscdesc,
+        char *function, char *note, int erno) {
+
     char* errmsg = malloc(ERRBUFLEN);
     unsigned int idx = sprintf(errmsg,"\n\n\n\t---------- Error ----------\n\t");
     (*sts_frm)->err_code = ltcerr;
@@ -48,36 +52,37 @@ long stsErno(LattErr ltcerr, StatFrame **sts_frm, int erno, unsigned long misc, 
     idx+=sprintf(errmsg+idx, ":%s"
                     "\n\t\t------------------\n", msg);
 
-    idx+=sprintf(errmsg+idx, "\t\t [ LttcErr: %s ]", convertLattErr(&(*sts_frm)->err_code));
+    idx+=sprintf(errmsg+idx, "\t\t[ LttcErr: %s ]", convertLattErr(&(*sts_frm)->err_code));
 
-    if(erno) {idx+=sprintf(errmsg+idx, "\n\t\t   [ Errno: %d ]", erno);}
+    if(erno) {idx+=sprintf(errmsg+idx, "\n\t\t [ Errno: %d ]", erno);}
 
     idx+=sprintf(errmsg+idx, "\n\t\t------------------");
 
-    idx+=sprintf(errmsg+idx, "\n\t\\status:\n\t\t\t  [ %s ]\n", convertLattSts(&(*sts_frm)->status));
-    if (misc){
-        idx+=sprintf(errmsg+idx,"\t\\misc:\n\t\t\t  [ %ld ]\n", misc);
-    }
+    idx+=sprintf(errmsg+idx, "\n\t\\status:\n\t\t    [ %s ]\n", convertLattSts(&(*sts_frm)->status));
     if ((*sts_frm)->modr){
-        idx+=sprintf(errmsg+idx, "\t\\modr:\n\t\t\t  [ %d ]\n", (*sts_frm)->modr);
+        idx+=sprintf(errmsg+idx, "\t\\modr:\n\t\t   [ %d ]\n", (*sts_frm)->modr);
     }
     if (function != NULL){
-        idx+=sprintf(errmsg+idx,"\t\\function:\n\t\t> %s\n", function);
+        idx+=sprintf(errmsg+idx,"\t\\function:\n\t\t   [ %s ]\n", function);
     }
-    if (miscdesc){
+    if (misc){
+        idx+=sprintf(errmsg+idx,"\t\\%s:\n\t\t[ %ld ]\n", miscdesc, misc);
+    }
+    if (note != NULL){
         idx+=sprintf(errmsg+idx, "\t\t------------------\n");
-        idx+=sprintf(errmsg+idx,"\t NOTE:  \n\t\t\t%s\n", miscdesc);
+        idx+=sprintf(errmsg+idx,"\t NOTE:  \n\t\t\t%s\n", note);
     }
     idx+=sprintf(errmsg+idx, "\t---------------------------\n"
-                    "\t| | | | | | | | | | | | | |\n");
+                    "\t| | | | | | | | | | | | | |\n\n");
 
     unsigned int i = idx;
+
     while(--i){
         putc_unlocked((*(errmsg+(idx-i))),stderr);
     }
 
     (*sts_frm)->status = STERR;
-    (*sts_frm)->modr = erno;
+    if (erno){(*sts_frm)->modr = erno;}
 
 
     if ((*sts_frm)->act_id == GBYE || (misc == 333)) {
@@ -139,5 +144,5 @@ void stsOut(StatFrame **sts_frm) {
  *  for none;
  * */
 void serrOut(StatFrame **sts_frm, char *msg) {
-    stsErno((*sts_frm)->err_code, sts_frm, errno, 0, msg, NULL, NULL);
+    stsErno((*sts_frm)->err_code, sts_frm, msg, 0, NULL, NULL, NULL, errno);
 }

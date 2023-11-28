@@ -19,10 +19,10 @@ const LattType LONG_SEP = (LattType) 0xddddbbbb;
 
 
 const LattErr latt_err_arr[LERR_CNT] = {IMFINE, MALREQ, MISSNG, UNKNWN, NOINFO, BADCON, BADSOK, MISMAP, STFAIL, FIFAIL, MISCLC,
-                                         BADHSH, SODIUM, FULLUP, ADFAIL, COLISN, ILMMOP, EPOLLE, BADCNF,MISSPK};
+                                         BADHSH, SODIUM, FULLUP, ADFAIL, COLISN, ILMMOP, EPOLLE, BADCNF,MISSPK,MISVEN};
 
 const char latt_err_strs[LERR_CNT][LERR_CHARCNT] = {"IMFINE", "MALREQ", "MISSNG", "UNKNWN", "NOINFO", "BADCON", "BADSOK", "MISMAP", "STFAIL", "FIFAIL", "MISCLC",
-                                         "BADHSH", "SODIUM", "FULLUP", "ADFAIL", "COLISN", "ILMMOP", "EPOLLE", "BADCNF", "MISSPK"};
+                                         "BADHSH", "SODIUM", "FULLUP", "ADFAIL", "COLISN", "ILMMOP", "EPOLLE", "BADCNF", "MISSPK", "MISVEN"};
 
 const LattStts latt_sts_arr[LSTS_CNT] = {NOTHN, LISTN, CNNIN, REQST, RCVCM, RESPN, UPDAT, TRVLD, SHTDN, RESET, STERR, SLEEP};
 const char latt_stts_strs[LSTS_CNT][LSTS_CHARCNT] = {"NOTHN","LISTN","CNNIN","REQST","RCVCM","RESPN","UPDAT","TRVLD","SHTDN","RESET","STERR","SLEEP"};

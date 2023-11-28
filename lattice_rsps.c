@@ -265,7 +265,8 @@ uint rsp_nfo(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, buff_arr 
     //TODO: Fail on malformed request
 
     if (lattItm.obj>FIDE || (lattItm.n_uint & (lattItm.n_uint - 1)) ){
-        stsErno(MALREQ, sts_frm, errno, lattItm.n_uint, "Invalid object ID provided.", "response::info", "object id value");
+        stsErno(MALREQ, sts_frm, "Invalid object ID provided.", lattItm.n_uint,
+                "object id value", "response::info", NULL, errno);
         return 1;
         //TODO: Better error value for failed response processing.
     }
@@ -286,11 +287,11 @@ uint rsp_nfo(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, buff_arr 
     // return of 0 means the object is there but failed to be queried.
     // return of 1 means the object is missing entirely.
     if (!respsz){
-        stsErno(MISSNG,sts_frm,errno,0,"Info requested couldn't be retrieved.","resp::info",NULL);
+        stsErno(MISSNG, sts_frm, "Info requested couldn't be retrieved.", 0, NULL, "resp::info", NULL, errno);
         return 0;
     }
     if (respsz == 1) {
-        stsErno(UNKNWN,sts_frm,errno,0,"Info requested for unknown object.","resp::info",NULL);
+        stsErno(UNKNWN, sts_frm, "Info requested for unknown object.", 0, NULL, "resp::info", NULL, errno);
         return 0;
     }
 
@@ -341,11 +342,14 @@ uint rsp_und(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, buff_arr 
     return 0;
 }
 
+
+
 uint rsp_fiid(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, buff_arr buf) {
     printf("Response: Fiid for hashno");
     LattLong* itmID = malloc(ULONG_SZ);
     LattType lattitm;
     uint bcnt;
+    rsplead_addflg(LARR,buf);
 
     lattitm.obj = pull_arrObj(inf_frm);
 
@@ -353,7 +357,8 @@ uint rsp_fiid(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, buff_arr
 
     itmID->l_ulong = pull_objid(inf_frm, (*itmID), 8).l_ulong;
     if ( itmID->l_ulong == 0){
-        stsErno(MALREQ, sts_frm, errno, itmID->l_ulong, "Given fiID is invalid or mangled.", "rsp_fiid", "parsed id");
+        stsErno(MALREQ, sts_frm, "Given fiID is invalid or mangled.", itmID->l_ulong, "parsed id", "rsp_fiid",
+                NULL, errno);
         return 1;
     }
 
@@ -361,18 +366,19 @@ uint rsp_fiid(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, buff_arr
 
 //    Armatr armatr = (*hltc)->chains->vessel->armature;
     if (hashbridge == NULL){
-        stsErno(NOINFO,sts_frm,errno,itmID->l_ulong,"No bridge found for given fiid","rsp_fiid","fiid");
+        stsErno(NOINFO, sts_frm, "No bridge found for given fiid", itmID->l_ulong, "fiid", "rsp_fiid", NULL, errno);
         return 1;
     }
 
     if (lattitm.obj == NMNM){
-        stsErno(NOINFO,sts_frm,errno,0,"Can't produce a filename this way at present.","rsp_fiid",NULL);
+        stsErno(NOINFO, sts_frm, "Can't produce a filename this way at present.", 0, NULL, "rsp_fiid", NULL, errno);
         return 1;
     } else if (lattitm.obj == IDID){
 //        itmID->l_ulong = fiid->entries[getidx(itmID->l_ulong)].fiid;
         itmID->l_ulonglong = hashbridge->finode->fiid;
     } else {
-        stsErno(NOINFO,sts_frm,errno,lattitm.n_uint,"Invalid itm specified in exchange for fihash.","rsp_fiid","misc: resp-itm");
+        stsErno(NOINFO, sts_frm, "Invalid itm specified in exchange for fihash.", lattitm.n_uint,
+                "misc: resp-itm", "rsp_fiid", NULL, errno);
         return 1;
     }
 
@@ -390,12 +396,12 @@ uint rsp_diid(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, buff_arr
     LattLong chainID;
     LattType lattitm;
     LattLong diID;
-    rsplead_addflg(IARR,buf);
+    TravelPath* travelPath;
+    rsplead_addflg(LARR,buf);
 
     lattitm.obj = DIRN | IDID;
     uint bcnt;
     bcnt = rsp_add_arrobj(lattitm.obj,buf);
-
 
     bcnt+= rsparr_addsep(bcnt,LONG_SEP,buf);
     if ((*inf_frm)->qual == 2){
@@ -404,16 +410,28 @@ uint rsp_diid(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, buff_arr
     } else {
         chainID.l_ulong = pull_objid(inf_frm, (*itmID), 8).l_ulong;
         if (chainID.l_ulong == 0){
-            stsErno(MALREQ, sts_frm, errno, itmID->l_ulong, "Given dirID is invalid or mangled.", "rsp_diid", "parsed id");
+
+            stsErno(MALREQ, sts_frm, "Given dirID is invalid or mangled.", itmID->l_ulong,
+                    "parsed id", "rsp_diid", NULL, errno);
             return 1;
         }
 
-        if (findby_chnid(chainID.l_ulong,(*hltc)->chains)){
-            stsErno(NOINFO, sts_frm, errno, itmID->l_ulong, "Provided chain ID not found","rsp_diid" , "misc - chain id");
+        if (travel_by_chnid(chainID.l_ulong, (*hltc)->chains, &travelPath)){
+            free(travelPath);
+            stsErno(NOINFO, sts_frm, "Provided chain ID not found", itmID->l_ulong,
+                    "misc - chain id", "rsp_diid", NULL, errno);
             return 1;
         }
+
         diID.l_ulonglong = (*hltc)->chains->vessel->did;
         bcnt += rsparr_add_lng(bcnt,diID,buf);
+        uint ret_status = return_to_origin(travelPath,(*hltc)->chains);
+        if(ret_status){
+            stsErno(MISVEN, sts_frm, "Return to origin failed", ret_status,
+                    "return status", "rsp_diid::return_to_origin", NULL, 0);
+        }
+
+        free(travelPath);
     }
 
     free(itmID);
@@ -423,38 +441,40 @@ uint rsp_diid(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, buff_arr
 uint rsp_frdn(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, buff_arr buf) {
     printf("Response: Resident Dir for fihashno");
     LattType lattitm;
-    LattLong fiID;
-    fiID.l_ulong = (unsigned long) malloc(ULONG_SZ);
+    LattLong *fiID =(LattLong*) malloc(ULONG_SZ);
     uint bcnt;
 
-    fiID.l_ulong = pull_objid(inf_frm, (fiID), 8).l_ulong;
-
-    if (fiID.l_ulong == 0){
-        stsErno(MALREQ, sts_frm, errno, fiID.l_ulong, "Given fiID is invalid or mangled.", "rsp_frdn", "parsed id");
-        return 1;
-    }
     lattitm.obj = DIRN;
-    bcnt = rsparr_add_lt(lattitm,buf,0);
+    bcnt = rsp_add_arrobj(lattitm.obj,buf);
 
-    HashBridge* hashbridge = (yield_bridge_for_fihsh(*hltc,fiID.l_ulong));
 
+    fiID->l_ulong = pull_objid(inf_frm, (*fiID), 8).l_ulong;
+    if (fiID->l_ulong == 0){
+        stsErno(MALREQ, sts_frm,
+                "Given fiID is invalid or mangled.", fiID->l_ulong, "parsed id", "rsp_frdn", NULL, errno);return 1;}
+
+    HashBridge* hashbridge = (yield_bridge_for_fihsh(*hltc,fiID->l_ulong));
     if (hashbridge == NULL){
-        stsErno(BADHSH,sts_frm,errno,fiID.l_ulong,"Hashing did not yield a bridge for given fihashno.","rsp_frdn/yield_bridge_for_fihsh","misc: fiID");
-        return 1;
-    }
+        stsErno(BADHSH, sts_frm,
+                "Hashing did not yield a bridge for given fihashno.", fiID->l_ulong, "misc: fiID",
+                "rsp_frdn/yield_bridge_for_fihsh", NULL, errno);return 1;}
 
-    memcpy(&lattitm.obj, (*inf_frm)->arr, LATTTYP_SZ);
+    lattitm.obj = pull_arrObj(inf_frm);
 
     if (lattitm.obj == NMNM){
         rsplead_addflg(CARR,buf);
+        bcnt += rsparr_addsep(bcnt,CHAR_SEP,buf);
         bcnt += rsparr_add_msg(buf, (char*) hashbridge->dirnode->diname, expo_dirnmlen(hashbridge->dirnode->did), ULONG_SZ);
 
     } else if (lattitm.obj == IDID){
-        rsplead_addflg(IARR,buf);
+        rsplead_addflg(LARR,buf);
+        bcnt += rsparr_addsep(bcnt,LONG_SEP,buf);
         bcnt += rsparr_add_lnglng(bcnt,hashbridge->dirnode->did,buf);
 
     } else {
-        stsErno(NOINFO,sts_frm,errno,lattitm.n_uint,"Invalid itm specified in exchange for fihash.","rsp_frdn","misc: resp-itm");
+        free(fiID->l_ulong_ptr);
+        stsErno(NOINFO, sts_frm, "Invalid itm specified in exchange for fihash.", lattitm.n_uint,
+                "misc: resp-itm", "rsp_frdn", NULL, errno);
         return 1;
     }
 
@@ -466,9 +486,35 @@ uint rsp_gond(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, buff_arr
     printf("Response: Goto node");
     LattType lattitm;
     uint bcnt;
+    LattLong *dnode = malloc(sizeof(LattLong));
+    TravelPath* travelpath;
 
+    lattitm.obj = VSSL;
+    bcnt = rsp_add_arrobj(lattitm.obj,buf);
 
+    lattitm.obj = pull_arrObj(inf_frm);
 
+    if (lattitm.obj == DCHN){
+        dnode->l_ulong = pull_objid(inf_frm, *dnode, 8).l_ulong;
+        if (travel_by_chnid(dnode->l_ulong, (*hltc)->chains, &travelpath)){
+            free(travelpath);
+            stsErno(MISVEN, sts_frm, "Travel by chain ID failed", dnode->l_ulong, "dnode::chain id", "rsp_gond",
+                    NULL, errno);
+            return 1;
+        }
+        bcnt += rsparr_add_travelpath(travelpath,buf,bcnt);
+    }else if (lattitm.obj == IDID){
+        dnode->l_ulonglong = pull_objid(inf_frm,(*dnode),8).l_ulonglong;
+        if(travel_by_diid(dnode->l_ulonglong, (*hltc)->chains, &travelpath)==1){
+            free(travelpath);
+            stsErno(MISVEN, sts_frm, "Travel by diid failed", dnode->l_ulonglong, "dnode::diid", "rsp_gond",
+                    NULL, errno);
+            return 1;
+        }
+        bcnt += rsparr_add_travelpath(travelpath,buf,bcnt);
+    }
+
+    return bcnt;
 
 }
 
