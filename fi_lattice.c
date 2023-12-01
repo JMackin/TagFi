@@ -54,34 +54,58 @@ void disassemble(Lattice* hashlattice,
                  const int cnfdir_fd) {
     int brdg_cnt = 0;
     int hb_cnt = 0;
-    int entr_cnt = 0;
+    int entr_cnt;
     int i;
-    int j;
+    int k;
+    unsigned int cnt;
 
     munmap(dnconf_addr, dn_size);
     munmap(seqstr_addr, sq_size);
 
-    unsigned long* idxlst = calloc((PARAMX+(*hashlattice)->max),sizeof(unsigned long));
+    //unsigned long* idxlst = calloc((PARAMX+(*hashlattice)->max),sizeof(unsigned long));
 
     for (i =0; i < (*hashlattice)->max; i++){
         if (((*hashlattice)->bridges[i]) != NULL){
-            *(idxlst+brdg_cnt) = (*((((*hashlattice)->bridges)[i]))->finode).fhshno;
+            //*(idxlst+brdg_cnt) = (*((((*hashlattice)->bridges)[i]))->finode).fhshno;
             ++brdg_cnt;
-            free((*(((*hashlattice)->bridges)[i])->finode).finame);
-            free((*((*hashlattice)->bridges)[i]).finode);
-            //free((((*hashlattice)->chains->vessel->armature->entries)[HTMASK&(*idxlst+brdg_cnt)])->finame);
+
+//            free((*(((*hashlattice)->bridges)[i])->finode).finame);
+//            free((*((*hashlattice)->bridges)[i]).finode);
+
+            /*
+             * AI GENERATED ----------------------\
+             */
+            uchar* finm = (*((*hashlattice)->bridges[i])->finode).finame;
+            if(finm != NULL) {
+                free(finm);
+                (*((*hashlattice)->bridges[i])->finode).finame = NULL; // Avoid dangling pointer
+            }
+
+            FiNode* fiode = &(*((*hashlattice)->bridges[i])->finode);
+            if(fiode != NULL) {
+                free(fiode);
+                (((*hashlattice)->bridges[i])->finode) = NULL; // Avoid dangling pointer
+            }
+            /*
+             * * AI GENERATED ----------------------/
+             */
 
         }
     }
 
     //MEDA
-    (*hashlattice)->chains->vessel = (*dirchains)->dir_head->right;
-    unsigned int cnt = expo_basedir_cnt((*hashlattice)->chains->vessel->did);
+    (*hashlattice)->chains->vessel = (*hashlattice)->chains->dir_head->right;
+    cnt = expo_basedir_cnt((*hashlattice)->chains->vessel->did);
     goto_chain_tail((*hashlattice)->chains, 1, NULL);
-    entr_cnt = 0;
-    for (i = 0; i< cnt; ++i){
+    if ((*hashlattice)->chains->vessel->left->tag == 7){
+        free((*hashlattice)->chains->vessel->left);
+    }
 
-        if (check_base((*hashlattice)->chains->vessel->did)) {
+    Armatr armatr_hold;
+
+    entr_cnt = 0;
+    for (i = 0; i< cnt; i++){
+        if (is_base((*hashlattice)->chains->vessel)) {
             printf("bb");
             break;
         }
@@ -91,7 +115,16 @@ void disassemble(Lattice* hashlattice,
             free((*hashlattice)->chains->vessel->right);
         }
 
-        //free((*hashlattice)->chains->vessel->armature->entries->finame);
+        armatr_hold = (*hashlattice)->chains->vessel->armature;
+
+        for (k = 0; k < armatr_hold->totsize; k++){
+            if (armatr_hold->entries[k].tag){
+                free(armatr_hold->entries[k].path);
+                armatr_hold->entries[k].path = NULL;
+                armatr_hold->entries[k].tag = 0;
+            }
+        }
+
         free((*hashlattice)->chains->vessel->armature->entries);
         free((*hashlattice)->chains->vessel->armature);
         (*hashlattice)->chains->vessel = (*hashlattice)->chains->vessel->left;
@@ -103,28 +136,23 @@ void disassemble(Lattice* hashlattice,
     //DOCS
     (*hashlattice)->chains->vessel = (*dirchains)->dir_head->left;
     cnt = expo_basedir_cnt((*hashlattice)->chains->vessel->did);
-    goto_chain_tail((*dirchains), 0, NULL);
+    goto_chain_tail((*hashlattice)->chains, 0, NULL);
+    if ((*hashlattice)->chains->vessel->left->tag == 7){
+        free((*hashlattice)->chains->vessel->left);
+    }
 
-    for (i = 0; i< cnt; ++i) {
-        if ((*hashlattice)->chains->vessel->did == DGMEDAID || (*dirchains)->vessel->did == DGDOCSID) {
+
+    for (i = 0; i< cnt; i++) {
+        if (is_base((*hashlattice)->chains->vessel)){
             break;
         }
-        entr_cnt = 0;
-//        if ((*hashlattice)->chains->vessel->did == DGMEDAID || (*dirchains)->vessel->did == DGDOCSID) {
-//            break;
-//        }
-//        for (int j = 0; j < brdg_cnt; ++j) {
-//            if(((*hashlattice)->chains->vessel->armature->entries)[(idxlst[j]) & HTMASK].hshno != 0) {
-//                free(((*hashlattice)->chains->vessel->armature->entries)[(idxlst[j]) & HTMASK]);
-//                entr_cnt++;
-//            }
-//
-//        }
+
         printf("<<FREED: %d\ncount: %d\n>>", entr_cnt, (*hashlattice)->chains->vessel->armature->count);
 
-        if (!i){
+        if (!i) {
             free((*hashlattice)->chains->vessel->left);
         }
+
         free((*hashlattice)->chains->vessel->armature->entries);
         free((*hashlattice)->chains->vessel->armature);
         (*hashlattice)->chains->vessel = (*hashlattice)->chains->vessel->right;
@@ -133,24 +161,30 @@ void disassemble(Lattice* hashlattice,
     }
 
     (*hashlattice)->chains->vessel = (*hashlattice)->chains->dir_head;
+    free((*hashlattice)->chains->vessel->right->diname);
     free((*hashlattice)->chains->vessel->right);
+    free((*hashlattice)->chains->vessel->left->diname);
     free((*hashlattice)->chains->vessel->left);
     free((*hashlattice)->chains->vessel);
     free((*hashlattice)->chains);
 
-    ParaBridge *parabrg = malloc(sizeof(parabrg));
-    ParaBridge* pbmark;
+    ParaBridge parabrg;
+    ParaBridge pbmark;
 
     for (i = 0; i<(*hashlattice)->max;i++){
         if((*hashlattice)->bridges[i] != 0){
             if ((*(*hashlattice)->bridges[i]).parabridge != NULL) {
-                *parabrg = &(*(*hashlattice)->bridges[i]);
-                while (((*parabrg)->parabridge) != NULL) {
+                parabrg = ((*hashlattice)->bridges[i]);
+                while (((parabrg)->parabridge) != NULL) {
                     pbmark = parabrg;
-                    *parabrg = (*parabrg)->parabridge;
-                    free((*pbmark)->finode->finame);
-                    free((*pbmark)->finode);
-                    free(*pbmark);
+                    parabrg = (parabrg)->parabridge;
+                    if ((pbmark)->finode != NULL){
+                        free((pbmark)->finode->finame);
+                        (pbmark)->finode->finame = NULL;
+                        free((pbmark)->finode);
+                    }
+                    (pbmark)->finode = NULL;
+                    //free(pbmark);
                     hb_cnt++;
                 }
             }
@@ -158,14 +192,13 @@ void disassemble(Lattice* hashlattice,
             hb_cnt++;
         }
     }
-    free(parabrg);
 
 
     printf("\n-----\nfreed: %d\ncount: %lu\n-----\n",hb_cnt,(*hashlattice)->count);
     free((*hashlattice)->bridges);
     free(*hashlattice);
     free(tbl_list);
-    free(idxlst);
+    //free(idxlst);
 
     if (lengths != NULL && paths != NULL) {
         free(lengths);
@@ -534,13 +567,13 @@ void summon_lattice() {
     LttFlgs reqflg_arr;
     InfoFrame *info_frm;    // Frame for storing request info
 
-    LattcKey latticeKey = malloc(sizeof(LattcKey));
+    LattcKey latticeKey = sodium_malloc(ULONG_SZ*2);
     unsigned char* headname = malloc(sizeof(unsigned char)*5);
     unsigned char headnm[5] = {'H','E','A','D','\0'};
     memcpy(headname,headnm,5);
 
     mk_little_hash_key(&latticeKey);
-    dump_little_hash_key(latticeKey,headname,4);
+    dump_little_hash_key(latticeKey,headname,5);
     free(headname);
 
 
@@ -687,5 +720,5 @@ void summon_lattice() {
 
     stsOut(&statusFrame);
     free(statusFrame);
-    free(latticeKey);
+    sodium_free(latticeKey);
 }

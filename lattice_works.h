@@ -16,8 +16,10 @@ typedef unsigned char LatticeKey[LKEYSZ];
 typedef unsigned char* LattcKey;
 
 typedef struct NodeEntries{
-    unsigned long long fiid;
+    //unsigned long long fiid;
     unsigned long hshno;
+    char* path;
+    unsigned int tag;
 }NodeEntries;
 
 typedef NodeEntries * NEntry;
@@ -41,6 +43,7 @@ typedef struct DiNode{
     struct DiNode* right;
     unsigned long long did;
     unsigned char* diname;
+    unsigned long tag;
 }DiNode;
 
 typedef DiNode* Vessel;
@@ -73,6 +76,14 @@ typedef struct HashLattice {
     unsigned long max;
     LattcKey lattcKey;
 } HashLattice;
+
+typedef struct PathParts {
+    unsigned int namelen;
+    unsigned int pathlen;
+    unsigned char* name;
+    const char* parentpath;
+    DiNode* res_dir;
+}PathParts;
 
 typedef HashLattice* Lattice;
 typedef DiChains* DChains;
@@ -142,8 +153,9 @@ typedef unsigned int (*RspFunc[RSPARRLEN])(StatFrame**, InfoFrame**, Lattice*, u
 
 unsigned int getidx(unsigned long fhshno);
 
-void add_entry(FiNode* entry,
-               Armature* fiTbl);
+uint add_entry(FiNode* entry,
+               Armature* fiTbl,
+               PathParts pp);
 
 uint return_to_origin(TravelPath* travelPath, DChains dirChains);
 

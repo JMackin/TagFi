@@ -495,7 +495,7 @@ uint rsp_gond(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, buff_arr
     lattitm.obj = pull_arrObj(inf_frm);
 
     if (lattitm.obj == DCHN){
-        dnode->l_ulong = pull_objid(inf_frm, *dnode, 8).l_ulong;
+        dnode->l_ulong = pull_objid(inf_frm, *dnode, ULONG_SZ).l_ulong;
         if (travel_by_chnid(dnode->l_ulong, (*hltc)->chains, &travelpath)){
             free(travelpath);
             stsErno(MISVEN, sts_frm, "Travel by chain ID failed", dnode->l_ulong, "dnode::chain id", "rsp_gond",
@@ -567,10 +567,10 @@ RspFunc *rsp_act(
         RspFunc *funarr){
 
 //Info
-    uint(*und)(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
-    uint(*err)(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
-    uint(*nfo)(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
-    uint(*sts)(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
+    uint (*und)(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
+    uint (*err)(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
+    uint (*nfo)(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
+    uint (*sts)(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
 //Travel*
     uint (*fiid)(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
     uint (*diid)(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
@@ -587,22 +587,12 @@ RspFunc *rsp_act(
     uint (*dnls)(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
     uint (*vvvv)(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
 
-und = &rsp_und;
-err = &rsp_err;
-nfo = &rsp_nfo;
-sts = &rsp_sts;
-fiid = &rsp_fiid;
-diid = &rsp_diid;
-frdn = &rsp_frdn;
-gond = &rsp_gond;
-fyld = &rsp_fyld;
-jjjj = &rsp_jjjj;
-dsch = &rsp_dsch;
-iiii = &rsp_iiii;
-dcls = &rsp_dcls;
-gohd = &rsp_gohd;
-dnls = &rsp_dnls;
-vvvv = &rsp_vvvv;
+
+    und = &rsp_und; err = &rsp_err; nfo = &rsp_nfo; dnls = &rsp_dnls;
+    sts = &rsp_sts; fiid = &rsp_fiid; diid = &rsp_diid; vvvv = &rsp_vvvv;
+    frdn = &rsp_frdn; gond = &rsp_gond; fyld = &rsp_fyld; jjjj = &rsp_jjjj;
+    dsch = &rsp_dsch; iiii = &rsp_iiii; dcls = &rsp_dcls; gohd = &rsp_gohd;
+
 
 /* Info ops*/
     (*funarr)[0] = fiid; // File id

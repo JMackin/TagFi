@@ -252,16 +252,17 @@ unsigned long latt_hsh_idx(LattcKey lattkey, unsigned long fhshno, unsigned char
 
 void get_many_big_salts(unsigned long long** bigsaltls, int n){
     do{
-        bigsaltls[n] = (unsigned long long*) sodium_malloc(sizeof(unsigned long long));
+        bigsaltls[n] = (unsigned long long*) malloc(sizeof(unsigned long long));
         genrandsalt(bigsaltls[n]);
     } while(n--);
 }
 
-void get_many_little_salts(unsigned long** saltls, int n)
+void get_many_little_salts(unsigned long** saltls, uint n)
 {
+    //*saltls = calloc(n,ULONG_SZ);
     do{
-        saltls[n] = (unsigned long*) sodium_malloc(sizeof(unsigned long));
-        rando_sf(saltls[n]);
+        *(saltls+n) = (unsigned long*) malloc(sizeof(unsigned long));
+        rando_sf(*(saltls+n));
 
     } while(n--);
 }

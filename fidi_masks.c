@@ -103,9 +103,13 @@ unsigned int check_base(unsigned long long int did){
     }
 }
 
-inline unsigned int base_chcetosh(unsigned int chce){
-    return 7^(2+(2*chce));
+unsigned int is_base(DiNode* dinode){
+    return (dinode->tag < 8);
 }
-inline unsigned int base_shtochce(unsigned int shid){
-    return shid>>2;
-}
+
+//inline unsigned int base_chcetosh(unsigned int chce){
+//    return 7^(2+(2*chce));
+//}
+//inline unsigned int base_shtochce(unsigned int shid){
+//    return shid>>2;
+//}

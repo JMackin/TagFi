@@ -212,7 +212,8 @@ unsigned int msk_dirchnid(unsigned long long did, unsigned int id);
 unsigned int expo_basedir_cnt(unsigned long long did);
 unsigned int msk_basedir_cnt(unsigned long long did, unsigned int cnt);
 unsigned int check_base(unsigned long long int did);
-inline unsigned int base_chcetosh(unsigned int chce);
-inline unsigned int base_shtochce(unsigned int shid);
+unsigned int is_base(DiNode* dinode);
+//inline unsigned int base_chcetosh(unsigned int chce);
+//inline unsigned int base_shtochce(unsigned int shid);
 
 #endif //TAGFI_FIDI_MASKS_H
