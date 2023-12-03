@@ -25,7 +25,6 @@
 // ----------------------------
 
 
-#define DNKEYPATH "/home/ujlm/Code/Clang/C/TagFI/keys"
 #define NDENTRYPRFX_SZ 8
 
 InfoFrame *init_infofrm(InfoFrame **info_frm, uint startup) {
@@ -276,6 +275,7 @@ DiNode* add_dnode(unsigned long long did, unsigned char* dname, unsigned short n
     (*lattice)->chains->vessel = ((*lattice)->chains->dir_head);
     goto_chain_tail((*lattice)->chains, mord, NULL);
 
+
     //MEDA
     if (mord) {
         dnode->left = (*lattice)->chains->vessel;
@@ -330,8 +330,36 @@ char* yield_dnhstr(DiNode** dirnode){
     return str_buf;
 }
 
+DNMap chart_node(uint dirpathlen, uint entriesnamelen, char **entriesname, char **dirpath, LattFD entrieslist_lfd, LattFD dirnodefd) {
+    DNMap dnMap = malloc(sizeof(DiNodeMap));
 
-int make_bridgeanchor(DiNode** dirnode, char** path, unsigned int pathlen) {
+    char* pathbuf = calloc(entriesnamelen+dirpathlen+2,UCHAR_SZ);
+    char* pathbufB = calloc(ANCHORNMLEN,UCHAR_SZ);
+
+    dnMap->entrieslist_fd = entrieslist_lfd;
+    dnMap->entrieslist_fd->path = NULL;
+    dnMap->dirnode_fd = dirnodefd;
+    dnMap->dirnode_fd->path = NULL;
+    dnMap->mm_entries = NULL;
+
+    dnMap->entrieslist_fd->dir_fd = cycle_nodeFD(&dirnodefd);
+
+    memcpy(pathbuf,*dirpath,dirpathlen);
+    memset(pathbuf+dirpathlen+1,'/',1);
+    memcpy(pathbuf+dirpathlen+1,*entriesname,64);
+
+    memcpy(pathbufB,*entriesname,entriesnamelen);
+
+    dnMap->entrieslist_fd->path = pathbuf;
+    dnMap->dirnode_fd->path = pathbufB;
+
+    return dnMap;
+}
+
+LattFD make_bridgeanchor(DiNode** dirnode, char** path, unsigned int pathlen) {
+
+    LattFD lattFd_entr;
+    LattFD lattFd_dir;
 
     int dnkeyfd = openat(AT_FDCWD,DNKEYPATH,O_DIRECTORY);
 
@@ -339,59 +367,69 @@ int make_bridgeanchor(DiNode** dirnode, char** path, unsigned int pathlen) {
     {
         perror("make_bridgeanchor/dnkeyfd");
         close(dnkeyfd);
-        return -1;
+        return NULL;
     }
 
-    int dnfd = openat(AT_FDCWD,*path,O_DIRECTORY);
+//    int dnfd = open_node_fd(*path, 0, 0);
+    lattFd_dir = open_dir_lattfd(*path,0,0);
 
 
-    if (dnfd < 0 )
+    if (lattFd_dir->prime_fd < 0 )
     {
         perror("make_bridgeanchor/dnfd");
-
-        close(dnfd);
+        close(lattFd_dir->prime_fd);
+        free(lattFd_dir);
         close(dnkeyfd);
-        return -1;
+        return NULL;
     }
 
     unsigned char* dn_hash = (unsigned char*) sodium_malloc(crypto_generichash_BYTES);
     unsigned char* dkey = (unsigned char*) sodium_malloc(crypto_shorthash_KEYBYTES);
-    char* dn_hdid = (char*) sodium_malloc(crypto_generichash_BYTES*2+1);
+    char* dn_hdid = (char*) malloc(ANCHORNMLEN+1);
 
-    recv_little_hash_key(dnkeyfd,((*dirnode)->diname),expo_dirnmlen((*dirnode)->did),dkey);
-    real_hash_keyfully((&(*dirnode)->diname), &dn_hash, expo_dirnmlen((*dirnode)->did), (const unsigned char **) &dkey, crypto_shorthash_KEYBYTES);
+    recv_little_hash_key(dnkeyfd,
+                         ((*dirnode)->diname),
+                         expo_dirnmlen((*dirnode)->did),
+                         dkey);
+
+    real_hash_keyfully((&(*dirnode)->diname),
+                       &dn_hash, expo_dirnmlen((*dirnode)->did),
+                       (const unsigned char **) &dkey,
+                       crypto_shorthash_KEYBYTES);
+
     dn_hdid_str(&dn_hash, &dn_hdid);
-
 
     sodium_free(dkey);
     sodium_free(dn_hash);
     close(dnkeyfd);
 
-    int diranch = openat(dnfd, (char*) dn_hdid, O_CREAT|O_RDWR, S_IRWXU);
+   // cycle_nodeFD(&lattFd_entr);
+    lattFd_entr = open_lattfd(dn_hdid, cycle_nodeFD(&lattFd_dir), O_CREAT | O_APPEND | O_RDWR, S_IRWXU, 0);
+
+
+    if (lattFd_dir->prime_fd == -1){ perror("Failed to open dir anchor fd.");
+        return NULL;}
 
     //TODO: handle write error for bridge anchor
-    write(diranch, *path, (pathlen+expo_dirnmlen((*dirnode)->did)));
-    fsync(diranch);
+    write(cycle_nodeFD(&lattFd_entr), *path, (pathlen+expo_dirnmlen((*dirnode)->did)));
+    fsync(lattFd_entr->duped_fd);
+    close(lattFd_entr->duped_fd);
+
+    (*dirnode)->armature->nodemap = chart_node(pathlen+expo_dirnmlen((*dirnode)->did)+1, ANCHORNMLEN, &dn_hdid, path, lattFd_entr, lattFd_dir);
+    free(dn_hdid);
 
 
-    if (diranch < 0 )
-    {
-        close(diranch);
-        close(dnfd);
-        sodium_free(dn_hdid);
-        return -1;
-    }
-
-    return 0;
+    return lattFd_entr;
 }
 
 void init_armatr(Armature*** armatr, unsigned int size, unsigned char** hkey){
+
 
     (**armatr) = (Armature*) malloc(sizeof(Armature));
 
     (**armatr)->totsize=size;
     (**armatr)->count=0;
-    ((**armatr)->entries) = (NodeEntries*) calloc(size, sizeof(NodeEntries));
+    ((**armatr)->entries) = (FiEntry*) calloc(size, sizeof(FiEntry));
 
     for(int i = 0; i<(**armatr)->totsize; i++){
         (**armatr)->entries->hshno = 0;
@@ -400,6 +438,7 @@ void init_armatr(Armature*** armatr, unsigned int size, unsigned char** hkey){
     }
 
     memcpy((&(**armatr)->lttc_key),*hkey,LKEYSZ);
+    (**armatr)->nodemap = NULL;
 }
 
 FiNode* mk_finnode(unsigned int nlen, unsigned char* finame,
@@ -440,8 +479,8 @@ unsigned int finode_idx(unsigned long fhshno)
 }
 
 unsigned int cat_path(char** catpath_out, PathParts pp){
-    char* resdir_name = (char*) pp.res_dir->diname;
-    uint resdirname_len = expo_dirnmlen(pp.res_dir->did);
+    char* resdir_name = pp.resdir_name;
+    uint resdirname_len = pp.resdirname_len;
     uint running_len = 0;
 
     /*  Total PathLength =
@@ -450,6 +489,7 @@ unsigned int cat_path(char** catpath_out, PathParts pp){
             + file name-length
             + 2 '/' chars + '\0'.
      */
+
     uint tot_pathlen = pp.pathlen + resdirname_len + pp.namelen + 2;
     *catpath_out = (char*) calloc((tot_pathlen),UCHAR_SZ);
 
@@ -469,13 +509,12 @@ unsigned int cat_path(char** catpath_out, PathParts pp){
     running_len += 1;
 
     return tot_pathlen == running_len ? tot_pathlen : 1;
-
 }
 
 uint add_entry(FiNode* finode, Armature* armatr, PathParts pathparts) {
     int x = 0;
     timr_st();
-    NodeEntries ne;
+    FiEntry ne;
     char* fullfiname;
 
     if(cat_path(&fullfiname,pathparts)==1){
@@ -508,7 +547,6 @@ uint add_entry(FiNode* finode, Armature* armatr, PathParts pathparts) {
     return 0;
 }
 
-
 HashLattice * init_hashlattice(DChains * diChains, LattcKey lattcKey) {
 
     HashLattice* hashlattice = (HashLattice *) malloc(sizeof(HashLattice));
@@ -516,6 +554,9 @@ HashLattice * init_hashlattice(DChains * diChains, LattcKey lattcKey) {
     hashlattice->count = 0;
 
     hashlattice->bridges = (HashBridge **) calloc(LTTCMX, sizeof(HashBridge));
+    for(int i = 0; i <hashlattice->max ;i++){
+        hashlattice->bridges[i] = NULL;
+    }
 
     hashlattice->chains = *diChains;
     hashlattice->chains->vessel = hashlattice->chains->dir_head;
@@ -525,17 +566,19 @@ HashLattice * init_hashlattice(DChains * diChains, LattcKey lattcKey) {
     return hashlattice;
 }
 
-void build_bridge2(LatticeKey lattkey, FiNode* fiNode, DiNode* dnode, HashLattice* hashlattice, unsigned char obuf[16]){
+void build_bridge2(LatticeKey lattkey, FiNode* fiNode, DiNode* dnode, HashLattice* hashlattice, unsigned char* obuf){
 
     timr_st();
     if (hashlattice->count > hashlattice->max-3){
         return;
     }
-
     HashBridge* hshbrg = (HashBridge*) malloc(sizeof(HashBridge));
 
-    unsigned long long int inid = (fiNode->fiid | dnode->did);
-    memcpy(hshbrg->unid,&inid,8);
+    unsigned long long int inid = (clip_to_32(fiNode->fiid) | clip_to_32(dnode->did));
+    uchar* idbuf = (uchar*) calloc(9,UCHAR_SZ);
+
+    memcpy(idbuf,&inid,8);
+    memcpy(hshbrg->unid ,idbuf,8);
 
     unsigned long idx = latt_hsh_idx(lattkey, fiNode->fhshno, obuf);
     //1111411
@@ -543,7 +586,7 @@ void build_bridge2(LatticeKey lattkey, FiNode* fiNode, DiNode* dnode, HashLattic
     hshbrg->finode = fiNode;
     hshbrg->parabridge = NULL;
 
-    if (hashlattice->bridges[idx] == 0){
+    if (hashlattice->bridges[idx] == NULL){
         hashlattice->bridges[idx] = hshbrg;
     }else {
         ParaBridge parabrg = hashlattice->bridges[idx];
@@ -551,11 +594,13 @@ void build_bridge2(LatticeKey lattkey, FiNode* fiNode, DiNode* dnode, HashLattic
         printf("\nBridgeCollision!\n");
         while (((parabrg)->parabridge) != NULL){
             (parabrg) = (parabrg)->parabridge;
-            printf("para-level: %d", x);
+            fprintf(stderr,"para-level: %d", x);
         }
         (parabrg)->parabridge = hshbrg;
     }
     hashlattice->count++;
+
+    free(idbuf);
 
     //printf("[%.2ld]\n",cb-ca);
     timr_hlt();
@@ -594,6 +639,8 @@ HashBridge *yield_bridge_for_fihsh(Lattice lattice,unsigned long fiHsh){
 int filter_dirscan(const struct dirent *entry) {
     return ((entry->d_name[0] == 46)) || (strnlen(entry->d_name, 4) > 3);
 }
+
+
 
 double long* map_dir(StatFrame** statusFrame,
                      const char* dir_path,
@@ -634,15 +681,16 @@ double long* map_dir(StatFrame** statusFrame,
     // A unique hashkey is created and stored for the dir node
     mk_little_hash_key(&hkey);
     dump_little_hash_key(hkey,rootdirname,dnlen);
+
     // Initialize file table assigned to the root
     init_armatr(&armatr,HTSIZE,&hkey);
     dirNode_ptr = add_dnode(rootiid,rootdirname,dnlen,1,&hashlattice,*armatr);
-    pp.res_dir = dirNode_ptr;
+    pp.resdir_name = (char*) dirNode_ptr->diname;
+    pp.resdirname_len = expo_dirnmlen(dirNode_ptr->did);
 
-    if (make_bridgeanchor(&dirNode_ptr, (char **) &dir_path, path_len) < 0)
-    {
-        perror("Failed making bridge anchor\n");
-    }
+    LattFD lattFd  = make_bridgeanchor(&dirNode_ptr, (char **) &dir_path, path_len);
+
+    if (lattFd  == NULL){perror("Failed making bridge anchor\n");exit(EXIT_FAILURE);}
 
     // scandir returns number of entrys in the directory
     n = scandir(dir_path, dentrys, NULL, alphasort);
@@ -652,7 +700,8 @@ double long* map_dir(StatFrame** statusFrame,
     unsigned long* idarr = (unsigned long*) calloc(n, ULONG_SZ);
     unsigned char* entype = (unsigned char*) calloc(n, UCHAR_SZ);
     unsigned long* nlens = (unsigned long*) calloc(n, ULONG_SZ);
-    unsigned char dubbuf[16] = {0};
+    unsigned char* dubbuf = (unsigned char*) calloc(17,UCHAR_SZ);
+
 
     char* fullfipath;
 
@@ -709,15 +758,22 @@ double long* map_dir(StatFrame** statusFrame,
 
             // Add a lattice bridge to connect filemap object to the dir node
             build_bridge2(latticeKey, fimap_ptr,dirNode_ptr, hashlattice, dubbuf);
-            free(fhshno_arr[j]);
+            //free(fhshno_arr[j]);
             j++;
 
             if(i < 10){
                 printf("file: %llu :: %lu\n",fimap_ptr->fiid,fimap_ptr->fhshno);
             }
         }
-        free(farr[i]);
+        //This will be used to mk entry list
+//        free(farr[i]);
     }
+    uint res = mk_node_list(j, lattFd, farr, fhshno_arr);
+    if (res){
+        return NULL;
+    }
+
+
     time_supr();
 
 
@@ -757,7 +813,14 @@ double long* map_dir(StatFrame** statusFrame,
  */
 
     // Cleanup
-    //free(dentrys);
+    free(dentrys);
+    for (i = 0; i < n; i++){
+        if (farr[i] != NULL) {
+            free((farr[i]));
+        }
+    }
+
+
     sodium_free(hkey);
     free(farr);
     free(idarr);
@@ -765,6 +828,7 @@ double long* map_dir(StatFrame** statusFrame,
     free(nlens);
     free(haidarr);
     free(fhshno_arr);
+
 
     return 0;
 

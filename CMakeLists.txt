@@ -29,6 +29,7 @@ add_executable(TagFI test_tagfiles.c /usr/local/include/sodium.h
         consts.h
         reply_tools.c
         reply_tools.h
+        FiOps.h
 
 )
 include_directories(/usr/local/include/sodium)

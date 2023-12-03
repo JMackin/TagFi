@@ -4,9 +4,10 @@
 
 #include "lattice_signals.h"
 #include <sodium.h>
-
 #ifndef TAGFI_LATTICE_WORKS_H
 #define TAGFI_LATTICE_WORKS_H
+#include "FiOps.h"
+
 #define INFARRLEN 18
 #define RSPARRLEN 256
 #define HASHSTRLEN 64
@@ -15,24 +16,33 @@
 typedef unsigned char LatticeKey[LKEYSZ];
 typedef unsigned char* LattcKey;
 
-typedef struct NodeEntries{
+typedef struct FiEntry{
     //unsigned long long fiid;
     unsigned long hshno;
     char* path;
     unsigned int tag;
-}NodeEntries;
+}FiEntry;
 
-typedef NodeEntries * NEntry;
+typedef struct DiNodeMap{
+    LattFD entrieslist_fd;
+    LattFD dirnode_fd;
+    char* mm_entries;
+} DiNodeMap;
+typedef DiNodeMap * DNMap;
+
 
 typedef struct FiNode{
     unsigned long long fiid;
     unsigned long fhshno;
     unsigned char* finame;
 } FiNode;
+typedef FiEntry * NEntries;
+
 
 typedef struct Armature{
     LatticeKey lttc_key;
-    NodeEntries* entries;
+    NEntries entries;
+    DNMap nodemap;
     unsigned long totsize;
     unsigned int count;
 } Armature;
@@ -67,6 +77,7 @@ typedef struct HashBridge {
     ParaBridge parabridge;
     DiNode* dirnode;
     FiNode* finode;
+    u_long tag;
 } HashBridge;
 
 typedef struct HashLattice {
@@ -77,19 +88,14 @@ typedef struct HashLattice {
     LattcKey lattcKey;
 } HashLattice;
 
-typedef struct PathParts {
-    unsigned int namelen;
-    unsigned int pathlen;
-    unsigned char* name;
-    const char* parentpath;
-    DiNode* res_dir;
-}PathParts;
-
 typedef HashLattice* Lattice;
 typedef DiChains* DChains;
 typedef Armature* Armatr;
 typedef RspFlag* RspArr;
 typedef ReqFlag* ReqArr;
+
+
+
 
 /**
  *<h4>
@@ -196,9 +202,9 @@ void destroy_armatr(Armatr fitbl, HashLattice hashLattice);
 
 void destroy_chains(DiChains* dirChains);
 
-int make_bridgeanchor(DiNode** dirnode,
-                      char** path,
-                      unsigned int pathlen);
+LattFD make_bridgeanchor(DiNode** dirnode,
+                         char** path,
+                         unsigned int pathlen);
 
 unsigned int travel_by_diid(unsigned long long did, DiChains *dchns, TravelPath **travelpath);
 

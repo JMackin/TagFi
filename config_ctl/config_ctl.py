@@ -1,10 +1,84 @@
+"""
+Config File Format:
+    -------------------
+    -------------------
+
+    Byte Markers:
+    --------
+    1f001f
+        - Lead header
+        - prefaces item count
+
+    7f0b7f
+        - Lengths-segment head
+        - prefaces list of item lengths
+
+    bddbbd
+        - Lengths-segment tail
+        - iteration terminator when reading in config
+        - conjoins lengths and items segments
+
+    711117
+        - Items-segment head/tail
+        - Encapsulates the items list.
+
+    d1cc1d
+        - config string terminator
+
+    00
+        - list item deliminator
+
+-------------------
+
+ 1f001f
+     Num of items
+    ------
+ 7f0b7f
+     ItmLenA
+     0x00
+     ItmLenB
+     0x00
+     ItmLenZ
+     0x00
+ bddbbd
+    ------
+ 711117
+     ItemA
+     0x00
+     ItemB
+     0x00
+     ItemZ
+     0x00
+ 711117
+    ------
+ d1cc1d
+
+---------------------
+
+    ** Note: Dash marks, new lines, and whitespaces are used only for clarity here.
+             When stored in a file the entirety of the config is
+             stored as a single byte string, segmented by the byte markers.
+
+             Ex. A config that stores 3 text strings each 5 char's long:
+
+                 1f001f37f0b7f500500500bddbbd711117textA00textB00textC00711117d1cc1d
+
+    ---------------------
+
+"""
+
 import os
 import sys
 import re
 import count_file_forms
 
+
 dirnodesconfpath = '/home/ujlm/CLionProjects/TagFI/config/dirnodes'
+confdirpath = '/home/ujlm/CLionProjects/TagFI/config'
+
 excl_set = {'asm','index','h'}
+
+
 
 def add_dirnodes():
     print("Enter filepaths to be added and q when done..\n")
@@ -29,17 +103,20 @@ def add_dirnodes():
         return
 
 
-def blank_conf_templ(config_dirpath: str = None):
+def blank_conf_templ(finame, config_dirpath: str = None):
     if config_dirpath is None:
-        config_dirpath = './config'
+        config_dirpath = confdirpath
         if not os.path.exists(config_dirpath):
-            os.mkdir(config_dirpath)
+            os.mkdir('./config')
+            config_dirpath = './config'
     else:
         if not os.path.exists(config_dirpath):
-            config_dirpath = './config'
-            os.mkdir(config_dirpath)
+            config_dirpath = confdirpath
+            if not os.path.exists(config_dirpath):
+                os.mkdir('./config')
+                config_dirpath = './config'
 
-    with open(os.path.join(config_dirpath), 'wb') as fout:
+    with open(os.path.join(config_dirpath, finame), 'wb') as fout:
         fout.write(bytes.fromhex('1f001f'))
         fout.write(int(0).to_bytes())
         fout.write(bytes.fromhex('7f0b7fbddbbd711117'))
@@ -104,7 +181,7 @@ def eval_dirnodesconf(dirnodes: list = None):
                 print(f"Invalid conf formatting: End rin mark [{rin[j:j+3]}]\n", file=sys.stderr)
                 return -1
 
-            #head_end = ((8 + node_cnt * 2)-1)
+            # head_end = ((8 + node_cnt * 2)-1)
             head_end = j
             if rin[head_end+3:head_end+6] != bytes.fromhex('711117'):
                 print(f"Invalid conf formatting: Path-list start mark [{rin[head_end+3:head_end+6]}]\n", file=sys.stderr)
@@ -134,7 +211,7 @@ def eval_dirnodesconf(dirnodes: list = None):
                 fi_list.append(i)
                 len_list.append(len(i).to_bytes())
             update_dirnodesconf((fi_list,len_list))
-            #./count_file_forms.py "$EXPATH" 7 True 255 "None" True False
+            # ./count_file_forms.py "$EXPATH" 7 True 255 "None" True False
             count_file_forms.main(fi_list, 7, True, 255, excl_set)
         else:
 
@@ -142,9 +219,12 @@ def eval_dirnodesconf(dirnodes: list = None):
             print(len_list)
 
 
-blank_conf_templ(dirnodesconfpath)
-eval_dirnodesconf(['/home/ujlm/Tech','/home/ujlm/Code'])
+# blank_conf_templ(dirnodesconfpath)
+# eval_dirnodesconf(['/home/ujlm/Tech', '/home/ujlm/Code'])
+#
+# eval_dirnodesconf(['/home/ujlm/Vaults'])
+#
+# eval_dirnodesconf()
 
-eval_dirnodesconf(['/home/ujlm/Vaults'])
 
-eval_dirnodesconf()
+

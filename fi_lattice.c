@@ -109,6 +109,7 @@ void disassemble(Lattice* hashlattice,
             printf("bb");
             break;
         }
+
         printf("<<FREED: %d\ncount: %d\n>>",entr_cnt,(*dirchains)->vessel->armature->count);
 
         if (!i){
@@ -116,6 +117,33 @@ void disassemble(Lattice* hashlattice,
         }
 
         armatr_hold = (*hashlattice)->chains->vessel->armature;
+
+        if ((armatr_hold->nodemap->entrieslist_fd->prime_fd) > 2){
+            struct stat statbuf;
+            if (fstat((armatr_hold->nodemap->entrieslist_fd->prime_fd),&statbuf) != -1){
+                close((armatr_hold->nodemap->entrieslist_fd->prime_fd));
+            }
+            (armatr_hold->nodemap->entrieslist_fd->prime_fd) = 0;
+        }
+        if ((armatr_hold->nodemap->dirnode_fd->prime_fd) > 2){
+            struct stat statbuf;
+            if (fstat((armatr_hold->nodemap->dirnode_fd->prime_fd),&statbuf) != -1){
+                close((armatr_hold->nodemap->dirnode_fd->prime_fd));
+            }
+            (armatr_hold->nodemap->dirnode_fd->prime_fd) = 0;
+        }
+
+        if (armatr_hold->nodemap->dirnode_fd->path != NULL){
+            free(armatr_hold->nodemap->dirnode_fd->path);
+        }
+        if (armatr_hold->nodemap->entrieslist_fd->path != NULL){
+            free(armatr_hold->nodemap->entrieslist_fd->path);
+        }
+        free(armatr_hold->nodemap->entrieslist_fd);
+        free(armatr_hold->nodemap->dirnode_fd);
+        //free(armatr_hold->nodemap->path);
+        free(armatr_hold->nodemap);
+        armatr_hold->nodemap = NULL;
 
         for (k = 0; k < armatr_hold->totsize; k++){
             if (armatr_hold->entries[k].tag){
@@ -169,22 +197,28 @@ void disassemble(Lattice* hashlattice,
     free((*hashlattice)->chains);
 
     ParaBridge parabrg;
-    ParaBridge pbmark;
+    ParaBridge pbmark = NULL;
 
     for (i = 0; i<(*hashlattice)->max;i++){
         if((*hashlattice)->bridges[i] != 0){
             if ((*(*hashlattice)->bridges[i]).parabridge != NULL) {
                 parabrg = ((*hashlattice)->bridges[i]);
-                while (((parabrg)->parabridge) != NULL) {
-                    pbmark = parabrg;
+                while (((parabrg)) != NULL) {
                     parabrg = (parabrg)->parabridge;
-                    if ((pbmark)->finode != NULL){
-                        free((pbmark)->finode->finame);
-                        (pbmark)->finode->finame = NULL;
-                        free((pbmark)->finode);
+                    if ((parabrg)->parabridge != NULL){
+                        pbmark = parabrg->parabridge;
+                    } else
+                    {
+                        pbmark = NULL;
                     }
-                    (pbmark)->finode = NULL;
-                    //free(pbmark);
+                    if ((parabrg)->finode != NULL){
+                        free((parabrg)->finode->finame);
+                        (parabrg)->finode->finame = NULL;
+                        free((parabrg)->finode);
+                        (parabrg)->finode = NULL;
+                    }
+                    free(parabrg);
+                    parabrg = pbmark;
                     hb_cnt++;
                 }
             }
@@ -246,13 +280,15 @@ size_t read_conf(unsigned char** dnconf_addr, int cnfdir_fd){
 
     *dnconf_addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, dnconf_fd, 0);
     if (*dnconf_addr == MAP_FAILED) {
-        stsErno(EPOLLE, &statusFrame, "Issue detected by EPOLLE", EPOLLERR, 0, "epoll_wait", NULL, errno);
+        stsErno(MISMAP, &statusFrame, "Config mem map failed", 0, 0, "read_conf", NULL, errno);
+        close(dnconf_fd);
         return -1;
     }
 
     close(dnconf_fd);
     return sb.st_size;
 }
+
 
 
 int nodepaths(unsigned char* dn_conf_addr, int** lengths, unsigned char*** paths){
@@ -294,6 +330,7 @@ int extract_name(const unsigned char* path, int length) {
     }
     return fs_pos + 1;
 }
+
 
 
 int spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsigned char **req_buf, InfoFrame **infofrm, Resp_Tbl **rsp_tbl, HashLattice **hashlattice,
@@ -548,7 +585,6 @@ void summon_lattice() {
      * */
     int i = 0;
 
-
     unsigned int arrbuf_len = 256;
     unsigned int seqtbl_sz;  // Sequence Table size
     unsigned char *seqstr_addr; // Stored sequences memory mapping
@@ -636,13 +672,14 @@ void summon_lattice() {
           *  BUILD LATTICE  *
          * * * * * * * * **/
 
+        /** BUILD STRUCTURES
+         * AND MAP DIRECTORIES.
+         **/
         for (i = 0; i < dn_cnt; i++) {
             nm_len = extract_name(*(paths + i), *(lengths + i));
 
-            /** BUILD STRUCTURES
-             * AND MAP DIRECTORIES.
-             **/
-            if (map_dir(&statusFrame,(const char *) *(paths + i),
+            if (map_dir(&statusFrame,
+                        (const char *) *(paths + i),
                         nm_len,
                         (*(paths + i) + nm_len),
                         (*(lengths + i) - nm_len),
@@ -651,12 +688,11 @@ void summon_lattice() {
                         &(tbl_list[i]),
                         latticeKey)< 0){
 
-                stsErno(MISMAP, &statusFrame, "Big fail", 333, 0, "map_dir", NULL, errno);
+                stsErno(ESHTDN, &statusFrame, "Big fail", 333, 0, "map_dir", NULL, errno);
                 disassemble(&hashlattice,&dirchains,tbl_list,dn_conf,dn_size,NULL,0,lengths,paths,dn_cnt,cnfdir_fd);
                 destroy_metastructures(NULL, info_frm, reqflg_arr, req_buf, req_arr_buf, tmparrbuf, rsp_buf);
                 return;
             }
-
         }
          /**
           *  INIT FUNC ARRAY
