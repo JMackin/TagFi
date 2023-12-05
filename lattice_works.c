@@ -540,6 +540,7 @@ uint add_entry(FiNode* finode, Armature* armatr, PathParts pathparts) {
     //ne.fiid = finode->fiid;
     ne.tag = 1;
     ne.path = fullfiname;
+    //free(fullfiname);
     armatr->entries[getidx(finode->fhshno)] = ne;
     armatr->count++;
     inc_collcntr();
@@ -547,7 +548,7 @@ uint add_entry(FiNode* finode, Armature* armatr, PathParts pathparts) {
     return 0;
 }
 
-HashLattice * init_hashlattice(DChains * diChains, LattcKey lattcKey) {
+HashLattice * init_hashlattice(DChains * dirchains, LattcKey lattcKey) {
 
     HashLattice* hashlattice = (HashLattice *) malloc(sizeof(HashLattice));
     hashlattice->max = LTTCMX;
@@ -558,7 +559,7 @@ HashLattice * init_hashlattice(DChains * diChains, LattcKey lattcKey) {
         hashlattice->bridges[i] = NULL;
     }
 
-    hashlattice->chains = *diChains;
+    hashlattice->chains = *dirchains;
     hashlattice->chains->vessel = hashlattice->chains->dir_head;
 
     hashlattice->lattcKey = lattcKey;
@@ -822,6 +823,7 @@ double long* map_dir(StatFrame** statusFrame,
 
 
     sodium_free(hkey);
+    free(dubbuf);
     free(farr);
     free(idarr);
     free(entype);

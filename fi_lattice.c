@@ -193,6 +193,7 @@ void disassemble(Lattice* hashlattice,
     free((*hashlattice)->chains->vessel->right);
     free((*hashlattice)->chains->vessel->left->diname);
     free((*hashlattice)->chains->vessel->left);
+    free((*hashlattice)->chains->vessel->diname);
     free((*hashlattice)->chains->vessel);
     free((*hashlattice)->chains);
 

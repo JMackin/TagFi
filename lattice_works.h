@@ -22,6 +22,7 @@ typedef struct FiEntry{
     char* path;
     unsigned int tag;
 }FiEntry;
+typedef FiEntry * NEntries;
 
 typedef struct DiNodeMap{
     LattFD entrieslist_fd;
@@ -36,7 +37,6 @@ typedef struct FiNode{
     unsigned long fhshno;
     unsigned char* finame;
 } FiNode;
-typedef FiEntry * NEntries;
 
 
 typedef struct Armature{
@@ -46,9 +46,11 @@ typedef struct Armature{
     unsigned long totsize;
     unsigned int count;
 } Armature;
+typedef Armature* Armatr;
+
 
 typedef struct DiNode{
-    Armature * armature;
+    Armatr armature;
     struct DiNode* left;
     struct DiNode* right;
     unsigned long long did;
@@ -59,15 +61,17 @@ typedef struct DiNode{
 typedef DiNode* Vessel;
 
 typedef struct DiChains{
-    DiNode* dir_head;
+    Vessel dir_head;
     Vessel vessel;
 }DiChains;
+typedef DiChains* DChains;
+
 
 struct HashBridge;
 
 typedef struct TravelPath{
-    DiNode* origin;
-    DiNode* destination;
+    Vessel origin;
+    Vessel destination;
 }TravelPath;
 
 typedef struct HashBridge* ParaBridge;
@@ -75,22 +79,20 @@ typedef struct HashBridge* ParaBridge;
 typedef struct HashBridge {
     unsigned char unid[16];
     ParaBridge parabridge;
-    DiNode* dirnode;
+    Vessel dirnode;
     FiNode* finode;
     u_long tag;
 } HashBridge;
 
 typedef struct HashLattice {
-    DiChains* chains;
+    DChains chains;
     HashBridge** bridges;
     unsigned long count;
     unsigned long max;
     LattcKey lattcKey;
 } HashLattice;
-
 typedef HashLattice* Lattice;
-typedef DiChains* DChains;
-typedef Armature* Armatr;
+
 typedef RspFlag* RspArr;
 typedef ReqFlag* ReqArr;
 
@@ -142,7 +144,7 @@ double long* map_dir(StatFrame** statusFrame,
 
 DiChains* init_dchains();
 
-HashLattice * init_hashlattice(DChains * diChains, LattcKey lattcKey);
+HashLattice * init_hashlattice(DChains * dirchains, LattcKey lattcKey);
 
 FiNode* mk_finnode(unsigned int nlen,
                    unsigned char* finame,
