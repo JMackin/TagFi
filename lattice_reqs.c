@@ -7,6 +7,7 @@
 #include "lattice_works.h"
 #include "lattice_rsps.h"
 #include "lattice_signals.h"
+#include "reply_tools.h"
 #include <errno.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -54,8 +55,8 @@
  *</sub>
  */
 unsigned int split_cats(const unsigned int *lead_flags,
-                        LttcFlags* flag_list,
-                        LttFlg *flg_itr,
+                        LttFlgs* flag_list,
+                        LattFlag *flg_itr,
                         unsigned int s_itr,
                         unsigned int l_itr,
                         unsigned int cnt,
@@ -69,8 +70,8 @@ unsigned int split_cats(const unsigned int *lead_flags,
 *      the flag is appended to an array of ReqFlags point to by 'flag_list'.
 **/
 unsigned int div_flgs(const unsigned int *lead_flags,
-                      LttcFlags* flag_list,
-                      LttFlg *flg_itr,
+                      LttFlgs* flag_list,
+                      LattFlag *flg_itr,
                       unsigned int s_itr,
                       unsigned int l_itr,
                       unsigned int cnt,
@@ -93,8 +94,8 @@ unsigned int div_flgs(const unsigned int *lead_flags,
 }
 
 unsigned int split_cats(const unsigned int *lead_flags,
-                        LttcFlags* flag_list,
-                        LttFlg *flg_itr,
+                        LttFlgs* flag_list,
+                        LattFlag *flg_itr,
                         unsigned int s_itr,
                         unsigned int l_itr,
                         unsigned int cnt,
@@ -126,23 +127,25 @@ unsigned int split_cats(const unsigned int *lead_flags,
  *\ParseLead
  * Convert request-lead to an array of flags using bit-masking and return the flag count.
  */
-unsigned int parse_lead(const unsigned int lead,
-                        LttcFlags *flg_list,
-                        StatFrame **sts_frm,
-                        InfoFrame **inf_frm) {
-    unsigned int k = 1920;
-    unsigned int i = 0;
-    unsigned int flg_suffx = 15;
-    unsigned int flgcnt = 0;
+uint parse_lead(cnst_uint lead,
+                LttFlgs *flg_list,
+                StatFrame **sts_frm,
+                InfoFrame **inf_frm) {
+
+    uint k = 1920;
+    uint i = 0;
+    uint flg_suffx = 15;
+    uint flgcnt = 0;
 
     /** Alloc buffer to hold OR'd category flag values
      * and an array for the final parsed flag list.
      * */
-    unsigned int *lead_flags = (unsigned int *) calloc(4,UISiZ);    // [ quals | trvl/fiops/dirops/ | sysops | arrsigs ]
+    ptr_uint lead_flags = (ptr_uint ) calloc(4, UINT_SZ);    // [ quals | trvl/fiops/dirops/ | sysops | arrsigs ]
     //*flg_list = (ReqFlag *) (calloc(CMDCNT,sizeof(ReqFlag)));
 
     /** Extract qualifier flags */
     *lead_flags = lead & QUALIFIR;
+
     (*inf_frm)->qual = *lead_flags;
 
     /** Extract array op flags*/
@@ -163,10 +166,11 @@ unsigned int parse_lead(const unsigned int lead,
 
     /** Extract system op flags */
     *(lead_flags + 3) = lead & SYSTMOPS;
+
     (*inf_frm)->sys_op = *(lead_flags + 3);
 
     /** Call for further processing to divide the OR'd category values into their individual flags  */
-    LttFlg flg_itr = (LttFlg) TTT;
+    LattFlag flg_itr = (LattFlag) TTT;
     flgcnt = split_cats(lead_flags, flg_list, (&flg_itr), 1, 0, 0, (i - 1), &flg_suffx);
 
     free(lead_flags);
@@ -184,33 +188,36 @@ unsigned int parse_lead(const unsigned int lead,
  */
 
 
-InfoFrame *parse_req(const unsigned char *fullreqbuf, //<-- same name in spin up
+InfoFrame *parse_req(uchar_arr fullreqbuf, //<-- same name in spin up
                      InfoFrame **infofrm,
                      StatFrame **stsfrm,
-                     LttcFlags* rqflgsbuf,       //<-- flgsbuf in spin up
-                     unsigned char* tmparrbuf,
-                     unsigned char **req_arr_buf) //<-- req_arr_buf in spin up
+                     LttFlgs* rqflgsbuf,  //<-- flgsbuf in spin up
+                     uchar_arr tmparrbuf,
+                     buff_arr req_arr_buf) //<-- req_arr_buf in spin up
 {
 
-    unsigned int exit_flg = 1;
-    int k = 0;
-    unsigned int is_arr = 0; //1 = char, 2 = int
-    unsigned int flag;
-    unsigned int flgcnt;
-    unsigned int end;
-
+    int k = 0;          // Iterator
+    uint exit_flg = 1;  // Initiate shutdown after 3 triggers and a final value of 8
+    uint is_arr = 0;    // Request array type. 1 = char, 2 = int
+    uint flgcnt;        // Number of flags in the lead
+    uint dflt_flg = 0;  // Signals DFLT flag present in lead
+    ReqFlag uni_flag;   // OR'd lead flags
 
     /**
      * Parse request sequence-lead and init CMD struct
      * */
-    memcpy(&flag, fullreqbuf, UISiZ);
-
-    flgcnt = parse_lead(flag, rqflgsbuf, stsfrm, infofrm);
+    memcpy(&uni_flag, fullreqbuf, UINT_SZ);
+    flgcnt = parse_lead(uni_flag, rqflgsbuf, stsfrm, infofrm);
 
     if (!flgcnt) {
-        fprintf(stderr, "Malformed request: Error parsing lead.\n");
-      //  err_info_frm(*infofrm, stsfrm, MALREQ, 'l'); // l = parsing lead
+        stsErno(MALREQ, stsfrm, "Malformed request, error parsing lead", uni_flag,
+                "misc - lead", "parse_req->parse_lead", NULL, errno);
         return *infofrm;
+    }
+
+    /** Check for 'default' flag */
+    if ((*infofrm)->qual == DFLT){
+        dflt_flg = 1;
     }
 
     /**
@@ -219,72 +226,89 @@ InfoFrame *parse_req(const unsigned char *fullreqbuf, //<-- same name in spin up
     ((*infofrm)->flags) = (rqflgsbuf); //Note: *((*cmdseq)->flags)+X to access flags
     (*infofrm)->flg_cnt = flgcnt;
 
-
     /**
      * Check carrier byte
      * */
-    if (flag >> 29 != 1) {
-        stsErno(MALREQ,stsfrm,errno,flag,"Request structure malformed","parse_req","misc - carry byte");
-       // err_info_frm(*infofrm, stsfrm, MALREQ, 'l'); //
-        return *infofrm;
-    }
+    if (uni_flag >> 29 != 1) {
+        stsErno(MALREQ, stsfrm, "Malformed request, bad carry uni_flag", uni_flag, "misc - lead", "parse_req",
+                NULL, errno);return *infofrm;
+        }
+    (*infofrm)->arr_len = pull_arrsz(&fullreqbuf); // Set InfoFrame -> arr length
 
     /**
-     * Check for Int arr
+     * Check tail byte
      * */
-    if ((*infofrm)->arr_type == INTARR) {
-        memcpy(&((*infofrm)->arr_len), (fullreqbuf + UISiZ), UISiZ); // Set InfoFrame -> arr length
-
-        memcpy(&end, (fullreqbuf + (UISiZ * 2) + (UISiZ * (*infofrm)->arr_len)), UISiZ);  // Calc request endpoint
-
-        exit_flg = (*infofrm)->arr_len == 1 ? (exit_flg << 1) : 1; // EXIT trigger 1
-
-
-        /**
-         * Check tail byte
-         * */
-        if (end != END) {
-            stsErno(MALREQ,stsfrm,errno,end,"Request structure malformed","parse_req","misc - tail byte");
-            return (NULL);
-        }
-
-        exit_flg = flag == ENDBYTES ? (exit_flg << 1) : 1; //   EXIT trigger 2
-
-        /**
-         * Alloc and populate int buffer with the cmd sequence
-         * */
-//        memcpy(tmparrbuf, fullreqbuf + (UISiZ * 2), (UISiZ * (*infofrm)->arr_len));
-        tmparrbuf = (fullreqbuf + (UISiZ * 2));
-        (*infofrm)->arr = tmparrbuf;
-
-        exit_flg = *tmparrbuf == SHTDN ? (exit_flg << 1) : 1;    //  EXIT trigger 3
-
-        /**
-         * Exit for shutdown upon receiving three shutdown triggers
-         * */
-        if (exit_flg == 8) {
-            setAct(stsfrm, GBYE, SHTDN, SELFRESET);
-            return (*infofrm);
-        }
+    if (check_end_flg(fullreqbuf, infofrm)) {
+        stsErno(MALREQ, stsfrm, "Request structure malformed", 0, NULL, "parse_req", NULL, errno);return (NULL);
     }
-        /**
-         * Check for char arr
-         * */
-    else if ((*infofrm)->arr_type == CHRARR) {
-        memcpy(&((*infofrm)->arr_len), (fullreqbuf + UISiZ), UISiZ);
-        memcpy(&end, (fullreqbuf + (UISiZ * 2) + (UCSiZ * (*infofrm)->arr_len)), UISiZ); //Calc request endpoint
+    exit_flg = uni_flag == ENDBYTES ? (exit_flg << 1) : 1; //   EXIT trigger 1
 
+    /**
+     * Alloc and populate int buffer with the cmd sequence
+     * */
+    tmparrbuf = rsparr_pos(&fullreqbuf);
+    (*infofrm)->arr = tmparrbuf;
 
-        if (end != END) {
-            stsErno(MALREQ,stsfrm,errno,end,"Computed position for tail byte doesnt match that of request tail","parse req","calcd end value");
-            return (*infofrm);
-        }
+    exit_flg = *((*infofrm)->arr+(2 * UINT_SZ)) == 255 ? (exit_flg << 1) : 1; // EXIT trigger 2
+    exit_flg = *tmparrbuf == SHTDN ? (exit_flg << 1) : 1;    //  EXIT trigger 3
 
-        memcpy(req_arr_buf, fullreqbuf + (UISiZ * 2), (UCSiZ * (*infofrm)->arr_len));
-        (*infofrm)->arr = *req_arr_buf;
+    /**
+     * Exit for shutdown upon receiving three shutdown triggers
+     * */
+    if (exit_flg == 8) {
+        setAct(stsfrm, GBYE, SHTDN, ESHTDN);return (*infofrm);
     }
+
+//    /**
+//     * Check for Int arr
+//     * */
+//    if ((*infofrm)->arr_type == INTARR) {
+//
+//        (*infofrm)->arr_len = pull_arrsz(&fullreqbuf); // Set InfoFrame -> arr length
+//
+//        /**
+//         * Check tail byte
+//         * */
+//        if (check_end_flg(fullreqbuf, infofrm)) {
+//            stsErno(MALREQ,stsfrm,errno,0,"Request structure malformed","parse_req",NULL);return (NULL);
+//        }
+//        exit_flg = uni_flag == ENDBYTES ? (exit_flg << 1) : 1; //   EXIT trigger 1
+//
+//        /**
+//         * Alloc and populate int buffer with the cmd sequence
+//         * */
+//        tmparrbuf = rsparr_pos(&fullreqbuf);
+//        (*infofrm)->arr = tmparrbuf;
+//
+//        exit_flg = *((*infofrm)->arr+(2 * UINT_SZ)) == 255 ? (exit_flg << 1) : 1; // EXIT trigger 2
+//        exit_flg = *tmparrbuf == SHTDN ? (exit_flg << 1) : 1;    //  EXIT trigger 3
+//
+//        /**
+//         * Exit for shutdown upon receiving three shutdown triggers
+//         * */
+//        if (exit_flg == 8) {
+//            setAct(stsfrm, GBYE, SHTDN, ESHTDN);return (*infofrm);
+//        }
+//    }
+//        /**
+//         * Check for char arr
+//         * */
+//    else if ((*infofrm)->arr_type == CHRARR) {
+//
+//        memcpy(&((*infofrm)->arr_len), (fullreqbuf + UINT_SZ), UINT_SZ);  // Extract request length
+//        memcpy(&end, (fullreqbuf + (UINT_SZ * 2) + (UCHAR_SZ * (*infofrm)->arr_len)), UINT_SZ); //Calc request endpoint
+//
+//        if (end != END) {
+//            stsErno(MALREQ,stsfrm,errno,end,
+//                    "Computed position for tail byte doesnt match that of request tail","parse req","calcd end value");
+//            return (*infofrm);
+//        }
+//
+//
+//        memcpy(req_arr_buf, fullreqbuf + (UINT_SZ * 2), (UCHAR_SZ * (*infofrm)->arr_len));
+//        (*infofrm)->arr = *req_arr_buf;
+//    }
 
     (*stsfrm)->status <<= 1;
-
     return (*infofrm);
 }

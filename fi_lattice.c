@@ -28,13 +28,8 @@
 #define FLGSCNT 16
 #define PARAMX 65535
 
-//void load_dir_targets(){
-//
-//}
-unsigned long UISZ = sizeof(unsigned int);
-unsigned long UCSZ = sizeof(unsigned char);
 int erno;
-StatFrame* statusFrame;
+SttsFrm statusFrame;
 
 StatFrame* init_stat_frm(StatFrame** status_frm)
 {
@@ -59,44 +54,105 @@ void disassemble(Lattice* hashlattice,
                  const int cnfdir_fd) {
     int brdg_cnt = 0;
     int hb_cnt = 0;
-    int entr_cnt = 0;
+    int entr_cnt;
     int i;
-    int j;
+    int k;
+    unsigned int cnt;
 
     munmap(dnconf_addr, dn_size);
     munmap(seqstr_addr, sq_size);
 
-    unsigned long* idxlst = calloc((PARAMX+(*hashlattice)->max),sizeof(unsigned long));
+    //unsigned long* idxlst = calloc((PARAMX+(*hashlattice)->max),sizeof(unsigned long));
 
     for (i =0; i < (*hashlattice)->max; i++){
         if (((*hashlattice)->bridges[i]) != NULL){
-            *(idxlst+brdg_cnt) = (*((((*hashlattice)->bridges)[i]))->finode).fhshno;
+            //*(idxlst+brdg_cnt) = (*((((*hashlattice)->bridges)[i]))->finode).fhshno;
             ++brdg_cnt;
-            free((*(((*hashlattice)->bridges)[i])->finode).finame);
-            free((*((*hashlattice)->bridges)[i]).finode);
-            //free((((*hashlattice)->chains->vessel->armature->entries)[HTMASK&(*idxlst+brdg_cnt)])->finame);
+
+//            free((*(((*hashlattice)->bridges)[i])->finode).finame);
+//            free((*((*hashlattice)->bridges)[i]).finode);
+
+            /*
+             * AI GENERATED ----------------------\
+             */
+            uchar* finm = (*((*hashlattice)->bridges[i])->finode).finame;
+            if(finm != NULL) {
+                free(finm);
+                (*((*hashlattice)->bridges[i])->finode).finame = NULL; // Avoid dangling pointer
+            }
+
+            FiNode* fiode = &(*((*hashlattice)->bridges[i])->finode);
+            if(fiode != NULL) {
+                free(fiode);
+                (((*hashlattice)->bridges[i])->finode) = NULL; // Avoid dangling pointer
+            }
+            /*
+             * * AI GENERATED ----------------------/
+             */
 
         }
     }
 
     //MEDA
-    (*hashlattice)->chains->vessel = (*dirchains)->dir_head->right;
-    unsigned int cnt = expo_basedir_cnt((*hashlattice)->chains->vessel->did);
-    goto_chain_tail((*hashlattice)->chains,1);
-    entr_cnt = 0;
-    for (i = 0; i< cnt; ++i){
+    (*hashlattice)->chains->vessel = (*hashlattice)->chains->dir_head->right;
+    cnt = expo_basedir_cnt((*hashlattice)->chains->vessel->did);
+    goto_chain_tail((*hashlattice)->chains, 1, NULL);
+    if ((*hashlattice)->chains->vessel->left->tag == 7){
+        free((*hashlattice)->chains->vessel->left);
+    }
 
-        if ((*hashlattice)->chains->vessel->did == DGMEDAID || (*dirchains)->vessel->did == DGDOCSID) {
+    Armatr armatr_hold;
+
+    entr_cnt = 0;
+    for (i = 0; i< cnt; i++){
+        if (is_base((*hashlattice)->chains->vessel)) {
             printf("bb");
             break;
         }
+
         printf("<<FREED: %d\ncount: %d\n>>",entr_cnt,(*dirchains)->vessel->armature->count);
 
         if (!i){
             free((*hashlattice)->chains->vessel->right);
         }
 
-        //free((*hashlattice)->chains->vessel->armature->entries->finame);
+        armatr_hold = (*hashlattice)->chains->vessel->armature;
+
+        if ((armatr_hold->nodemap->entrieslist_fd->prime_fd) > 2){
+            struct stat statbuf;
+            if (fstat((armatr_hold->nodemap->entrieslist_fd->prime_fd),&statbuf) != -1){
+                close((armatr_hold->nodemap->entrieslist_fd->prime_fd));
+            }
+            (armatr_hold->nodemap->entrieslist_fd->prime_fd) = 0;
+        }
+        if ((armatr_hold->nodemap->dirnode_fd->prime_fd) > 2){
+            struct stat statbuf;
+            if (fstat((armatr_hold->nodemap->dirnode_fd->prime_fd),&statbuf) != -1){
+                close((armatr_hold->nodemap->dirnode_fd->prime_fd));
+            }
+            (armatr_hold->nodemap->dirnode_fd->prime_fd) = 0;
+        }
+
+        if (armatr_hold->nodemap->dirnode_fd->path != NULL){
+            free(armatr_hold->nodemap->dirnode_fd->path);
+        }
+        if (armatr_hold->nodemap->entrieslist_fd->path != NULL){
+            free(armatr_hold->nodemap->entrieslist_fd->path);
+        }
+        free(armatr_hold->nodemap->entrieslist_fd);
+        free(armatr_hold->nodemap->dirnode_fd);
+        //free(armatr_hold->nodemap->path);
+        free(armatr_hold->nodemap);
+        armatr_hold->nodemap = NULL;
+
+        for (k = 0; k < armatr_hold->totsize; k++){
+            if (armatr_hold->entries[k].tag){
+                free(armatr_hold->entries[k].path);
+                armatr_hold->entries[k].path = NULL;
+                armatr_hold->entries[k].tag = 0;
+            }
+        }
+
         free((*hashlattice)->chains->vessel->armature->entries);
         free((*hashlattice)->chains->vessel->armature);
         (*hashlattice)->chains->vessel = (*hashlattice)->chains->vessel->left;
@@ -108,28 +164,23 @@ void disassemble(Lattice* hashlattice,
     //DOCS
     (*hashlattice)->chains->vessel = (*dirchains)->dir_head->left;
     cnt = expo_basedir_cnt((*hashlattice)->chains->vessel->did);
-    goto_chain_tail((*dirchains),0);
+    goto_chain_tail((*hashlattice)->chains, 0, NULL);
+    if ((*hashlattice)->chains->vessel->left->tag == 7){
+        free((*hashlattice)->chains->vessel->left);
+    }
 
-    for (i = 0; i< cnt; ++i) {
-        if ((*hashlattice)->chains->vessel->did == DGMEDAID || (*dirchains)->vessel->did == DGDOCSID) {
+
+    for (i = 0; i< cnt; i++) {
+        if (is_base((*hashlattice)->chains->vessel)){
             break;
         }
-        entr_cnt = 0;
-//        if ((*hashlattice)->chains->vessel->did == DGMEDAID || (*dirchains)->vessel->did == DGDOCSID) {
-//            break;
-//        }
-//        for (int j = 0; j < brdg_cnt; ++j) {
-//            if(((*hashlattice)->chains->vessel->armature->entries)[(idxlst[j]) & HTMASK].hshno != 0) {
-//                free(((*hashlattice)->chains->vessel->armature->entries)[(idxlst[j]) & HTMASK]);
-//                entr_cnt++;
-//            }
-//
-//        }
+
         printf("<<FREED: %d\ncount: %d\n>>", entr_cnt, (*hashlattice)->chains->vessel->armature->count);
 
-        if (!i){
+        if (!i) {
             free((*hashlattice)->chains->vessel->left);
         }
+
         free((*hashlattice)->chains->vessel->armature->entries);
         free((*hashlattice)->chains->vessel->armature);
         (*hashlattice)->chains->vessel = (*hashlattice)->chains->vessel->right;
@@ -138,24 +189,36 @@ void disassemble(Lattice* hashlattice,
     }
 
     (*hashlattice)->chains->vessel = (*hashlattice)->chains->dir_head;
+    free((*hashlattice)->chains->vessel->right->diname);
     free((*hashlattice)->chains->vessel->right);
+    free((*hashlattice)->chains->vessel->left->diname);
     free((*hashlattice)->chains->vessel->left);
     free((*hashlattice)->chains->vessel);
     free((*hashlattice)->chains);
 
-    ParaBridge *parabrg = malloc(sizeof(parabrg));
-    ParaBridge* pbmark;
+    ParaBridge parabrg;
+    ParaBridge pbmark = NULL;
 
     for (i = 0; i<(*hashlattice)->max;i++){
         if((*hashlattice)->bridges[i] != 0){
             if ((*(*hashlattice)->bridges[i]).parabridge != NULL) {
-                *parabrg = &(*(*hashlattice)->bridges[i]);
-                while (((*parabrg)->parabridge) != NULL) {
-                    pbmark = parabrg;
-                    *parabrg = (*parabrg)->parabridge;
-                    free((*pbmark)->finode->finame);
-                    free((*pbmark)->finode);
-                    free(*pbmark);
+                parabrg = ((*hashlattice)->bridges[i]);
+                while (((parabrg)) != NULL) {
+                    parabrg = (parabrg)->parabridge;
+                    if ((parabrg)->parabridge != NULL){
+                        pbmark = parabrg->parabridge;
+                    } else
+                    {
+                        pbmark = NULL;
+                    }
+                    if ((parabrg)->finode != NULL){
+                        free((parabrg)->finode->finame);
+                        (parabrg)->finode->finame = NULL;
+                        free((parabrg)->finode);
+                        (parabrg)->finode = NULL;
+                    }
+                    free(parabrg);
+                    parabrg = pbmark;
                     hb_cnt++;
                 }
             }
@@ -163,14 +226,13 @@ void disassemble(Lattice* hashlattice,
             hb_cnt++;
         }
     }
-    free(parabrg);
 
 
     printf("\n-----\nfreed: %d\ncount: %lu\n-----\n",hb_cnt,(*hashlattice)->count);
     free((*hashlattice)->bridges);
     free(*hashlattice);
     free(tbl_list);
-    free(idxlst);
+    //free(idxlst);
 
     if (lengths != NULL && paths != NULL) {
         free(lengths);
@@ -185,7 +247,7 @@ void disassemble(Lattice* hashlattice,
 
 void destroy_metastructures(Resp_Tbl *rsp_tbl,
                             InfoFrame *infoFrame,
-                            LttcFlags reqflg_arr,
+                            LttFlgs reqflg_arr,
                             unsigned char* req_buf,
                             unsigned char* req_arr_buf,
                             unsigned char* tmparrbuf,
@@ -218,13 +280,15 @@ size_t read_conf(unsigned char** dnconf_addr, int cnfdir_fd){
 
     *dnconf_addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, dnconf_fd, 0);
     if (*dnconf_addr == MAP_FAILED) {
-        stsErno(EPOLLE, &statusFrame, errno, EPOLLERR, "Issue detected by EPOLLE", "epoll_wait", 0);
+        stsErno(MISMAP, &statusFrame, "Config mem map failed", 0, 0, "read_conf", NULL, errno);
+        close(dnconf_fd);
         return -1;
     }
 
     close(dnconf_fd);
     return sb.st_size;
 }
+
 
 
 int nodepaths(unsigned char* dn_conf_addr, int** lengths, unsigned char*** paths){
@@ -272,9 +336,9 @@ int extract_name(const unsigned char* path, int length) {
 //                    StatFrame **stsfrm, InfoFrame **infofrm, Seq_Tbl **seq_tbl, Resp_Tbl **rsp_tbl, HashLattice **hashlattice,
 //                    Dir_Chains **dirchains, LttcFlags *flgsbuf, const int *cnfdir_fd, unsigned int **tmparrbuf, uniArr **cmdseqarr)
 
-StatFrame * spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsigned char **req_buf,
-                    StatFrame **statusFrame, InfoFrame **infofrm, Resp_Tbl **rsp_tbl, HashLattice **hashlattice,
-                    DiChains **dirchains, LttcFlags *flgsbuf, const int *cnfdir_fd, unsigned char **tmparrbuf) {
+
+int spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsigned char **req_buf, InfoFrame **infofrm, Resp_Tbl **rsp_tbl, HashLattice **hashlattice,
+            DiChains **dirchains, LttFlgs *flgsbuf, const int *cnfdir_fd, unsigned char **tmparrbuf) {
 
     /**
      * INFO AND STATUS VARS
@@ -287,7 +351,7 @@ StatFrame * spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsign
 
 //    VER G
 //    *infofrm = init_info_frm(infofrm,cmdseqarr); // Request/Response Info Frame
-    *infofrm = init_info_frm(infofrm); // Request/Response Info Frame
+    *infofrm = init_infofrm(infofrm, 1); // Request/Response Info Frame
     (*dirchains)->vessel = (*dirchains)->dir_head;
     (*infofrm)->vessel = &(*dirchains)->vessel;
 
@@ -307,7 +371,7 @@ StatFrame * spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsign
     *req_buf = (unsigned char *) calloc(buf_len, sizeof(unsigned char));     // client request -> buffer
     *req_arr_buf = (unsigned char *) calloc(arrbuf_len, sizeof(unsigned char));
     *rsp_buf = (unsigned char *) calloc(arrbuf_len, sizeof(unsigned char));
-    *flgsbuf = (LttcFlags) calloc(arrbuf_len, sizeof(LttFlg));
+    *flgsbuf = (LttFlgs) calloc(arrbuf_len, sizeof(LattFlag));
 
     /**
      * SOCKET INIT
@@ -325,9 +389,9 @@ StatFrame * spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsign
     connection_socket = socket(AF_UNIX, SOCK_SEQPACKET, 0);
     if (connection_socket == -1) {
         perror("socket");
-        setErr(statusFrame, BADCON, 'I');
-        setAct(statusFrame, GBYE, 0, 0);
-        return *statusFrame;
+        setErr(&statusFrame, BADCON, 'I');
+        setAct(&statusFrame, GBYE, 0, 0);
+        return 1;
     }
     memset(&name, 0, sizeof(name));
     name.sun_family = AF_UNIX;
@@ -339,9 +403,9 @@ StatFrame * spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsign
     ret = bind(connection_socket, (const struct sockaddr *) &name, sizeof(name));
     if (ret == -1) {
         perror("bind");
-        setErr(statusFrame, BADCON, 'B');// 76 = B -> bind step
-        setAct(statusFrame, GBYE, 0, 0);
-        return *statusFrame;
+        setErr(&statusFrame, BADCON, 'B');// 76 = B -> bind step
+        setAct(&statusFrame, GBYE, 0, 0);
+        return 1;
     }
 
     /**
@@ -350,8 +414,8 @@ StatFrame * spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsign
     int efd = epoll_create(1);
     if (efd == -1) {
         perror("epoll");
-        setErr(statusFrame, EPOLLE, 'C');
-        return *statusFrame;
+        setErr(&statusFrame, EPOLLE, 'C');
+        return 1;
     }
      struct epoll_event *epINevent;
      epINevent = (struct epoll_event*) malloc(sizeof(struct epoll_event)*3);
@@ -363,9 +427,9 @@ StatFrame * spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsign
     ret = listen(connection_socket, 10);    // LISTEN 'L'
     if (ret == -1) {
         perror("listen: ");
-        setErr(statusFrame, BADCON, 'L'); // 76 = L -> listen step
-        setAct(statusFrame, GBYE, 0, 0);
-        return *statusFrame;
+        setErr(&statusFrame, BADCON, 'L'); // 76 = L -> listen step
+        setAct(&statusFrame, GBYE, 0, 0);
+        return 1;
     }
 
       /* * * * * * * * *
@@ -373,14 +437,12 @@ StatFrame * spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsign
     * * * * * * * * */
     while (!exit_flag) {
         i = 0;
-        stsReset(statusFrame);
-
+        stsReset(&statusFrame);
 
         /**
          * ATTACH EPOLL
          * */
-        setSts(statusFrame, LISTN, 0);
-        clock_t clka = clock();
+        setSts(&statusFrame, LISTN, 0);
         /**
          * RECIEVE
          * */
@@ -389,11 +451,9 @@ StatFrame * spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsign
 
         if (data_socket == -1) {
             perror("accept: ");
-            setErr(statusFrame, BADCON, 'B');// 65 = 'A' -> accept step
-            return *statusFrame;
+            setErr(&statusFrame, BADCON, 'B');// 65 = 'A' -> accept step
         }
-        (*statusFrame)->status <<= 1;
-        clock_t clkb = clock();
+        (statusFrame)->status <<= 1;
 
 
     /** Read and Parse */
@@ -402,21 +462,21 @@ StatFrame * spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsign
          * */
         if (epoll_wait(efd,epINevent,3,500) > 0){
             if ((epINevent->events&EPOLLERR) == EPOLLERR) {
-                stsErno(EPOLLE, statusFrame, errno, epINevent->events, "Issue detected by EPOLLE", "epoll_wait - in", 0);
+                stsErno(EPOLLE, &statusFrame, "Issue detected by EPOLLE", epINevent->events,
+                        0, "epoll_wait - in", NULL, errno);
             }
         }
-        clock_t clkc = clock();
 
+        clock_t ca = clock();
         /**
          * READ REQUEST INTO BUFFER
          * */
         ret = read(data_socket, *req_buf, buf_len);  // READ 'R'
         if (ret == -1) {
-            stsErno(BADSOK, statusFrame, errno, 0, "Issue reading from data socket", "read", 0);
-            return *statusFrame;
+            stsErno(BADSOK, &statusFrame, "Issue reading from data socket", 0, 0, "read", NULL, errno);
+            return 1;
         }
-        (*statusFrame)->status <<= 1;
-        clock_t clkd = clock();
+        (statusFrame)->status <<= 1;
 
         /**
          * CMD RECEIVED
@@ -436,57 +496,56 @@ StatFrame * spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsign
          * */
         *infofrm = parse_req(*req_buf,   // <<< Raw Request
                              infofrm,
-                             statusFrame,
+                             &statusFrame,
                              flgsbuf,
                              *tmparrbuf,
                              req_arr_buf); // >>> Extracted array
 
-        if ((*statusFrame)->err_code) {
-            setErr(statusFrame,MALREQ,0);
-            serrOut(statusFrame,"Failed to process request.");
+        if ((statusFrame)->err_code) {
+            if ((statusFrame->act_id)==GBYE){
+                exit_flag = 1;
+                goto endpoint;
+            }
+            setErr(&statusFrame,MALREQ,0);
+            serrOut(&statusFrame,"Failed to process request.");
             goto endpoint;
 
              // TODO: replace w/ better option.
         }
 
-        clock_t clke = clock();
-
         /** DETERMINE RESPONSE */
         if (respond(*rsp_tbl,
-                     statusFrame,
+                     &statusFrame,
                      infofrm,
                      dirchains,
                      hashlattice,
                      *rsp_buf)){
-            setErr(statusFrame,MISSPK,0);
-            serrOut(statusFrame,"Failed to stage a response");
+            setErr(&statusFrame,MISSPK,0);
+            serrOut(&statusFrame,"Failed to stage a response");
             // TODO: replace w/ better option.
         }
         //TODO: Optimize response processing time
-        clock_t clkf = clock();
 
 
-        if ((*statusFrame)->act_id == GBYE) {
+        if ((statusFrame)->act_id == GBYE) {
             /**
              * ACTION:
              *  shutdown
              * */
-            setSts(statusFrame, SHTDN, 0);
+            setSts(&statusFrame, SHTDN, 0);
             exit_flag = 1;
         }else {
-                setSts(statusFrame, RESPN, 0);
+                setSts(&statusFrame, RESPN, 0);
 
                 /** WRITEOUT REPLY */
                 if (epoll_wait(efd,epINevent,2,1000)){
                     if ((epINevent->events&EPOLLERR) == EPOLLERR) {
-                        stsErno(EPOLLE, statusFrame, errno, epINevent->events,
-                                "Issue detected by EPOLLE", "epoll_wait - in", 0);
+                        stsErno(EPOLLE, &statusFrame,
+                                "Issue detected by EPOLLE", epINevent->events, 0, "epoll_wait - in", NULL, errno);
                    }
                     ret = write(data_socket, *rsp_buf, buf_len);
                 }
         }
-        clock_t clkg = clock();
-
 
         /**
          * ACTION:
@@ -505,7 +564,11 @@ StatFrame * spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsign
          * CLEAR CONNECTION
          * */
 
+        clock_t cb = clock();
+        printf("\n<<TIME: %lu>>\n",cb-ca);
+
         endpoint:
+        init_infofrm(infofrm,0);
         bzero(*req_buf, buf_len - 1);
         bzero(*flgsbuf,FLGSCNT);
         bzero(*rsp_buf, arrbuf_len-1);
@@ -521,18 +584,8 @@ StatFrame * spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsign
         /**
          * CLOSE ON SHTDN CMD
          * */
-        if ((*statusFrame)->err_code && (*statusFrame)->act_id == GBYE) {
-            exit_flag = 1;
-            serrOut(statusFrame, NULL);
-        }
-        clock_t clkh = clock();
 
-        printf("\n-----------------\ntimes:\n accept%ld\n",(clkb-clka));
-        printf("epoll:%ld\n",clkc-clkb);
-        printf("read:%ld\n",(clkd-clkc));
-        printf("parse:%ld\n",(clke-clkd));
-        printf("respond:%ld\n",(clkf-clke));
-        printf("clearout:%ld\n",(clkg-clkf));
+
     }// END WHILE !EXITFLAG
 
     epoll_ctl(efd, EPOLL_CTL_DEL, data_socket, epINevent);
@@ -542,7 +595,7 @@ StatFrame * spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsign
     //destroy_cmdseq(stsfrm,&prev_seq);
 
     unlink(SOCKET_NAME);
-    return *statusFrame;
+    return 0;
 }   /* * * * *
       * CLOSE *
        * * * * */
@@ -562,14 +615,13 @@ void summon_lattice() {
     int naclinit = sodium_init();
     if (naclinit != 0) {
         setAct(&statusFrame,GBYE,NOTHN,0);
-        stsErno(SODIUM, &statusFrame, errno, naclinit, "Sodium init failed", "summon_lattice", 0);
+        stsErno(SODIUM, &statusFrame, "Sodium init failed", naclinit, 0, "summon_lattice", NULL, errno);
     }
 
     /**
      * DECLARATIONS
      * */
     int i = 0;
-
 
     unsigned int arrbuf_len = 256;
     unsigned int seqtbl_sz;  // Sequence Table size
@@ -586,10 +638,17 @@ void summon_lattice() {
     unsigned char *req_arr_buf;     // char strings
     unsigned char *rsp_buf;  // Outgoing responses
 
-    LttcFlags reqflg_arr;
+    LttFlgs reqflg_arr;
     InfoFrame *info_frm;    // Frame for storing request info
-    StatFrame *status_frm; // Frame for storing sys info
-    status_frm = init_stat_frm(&status_frm);
+
+    LattcKey latticeKey = sodium_malloc(ULONG_SZ*2);
+    unsigned char* headname = malloc(sizeof(unsigned char)*5);
+    unsigned char headnm[5] = {'H','E','A','D','\0'};
+    memcpy(headname,headnm,5);
+
+    mk_little_hash_key(&latticeKey);
+    dump_little_hash_key(latticeKey,headname,5);
+    free(headname);
 
 
        /* * * * * * *
@@ -603,7 +662,7 @@ void summon_lattice() {
         //  DirNode chains
         DiChains *dirchains = init_dchains();
         //  HashBridge lattice
-        HashLattice *hashlattice = init_hashlattice(&dirchains);
+        HashLattice *hashlattice = init_hashlattice(&dirchains,latticeKey);
         //  Size of config file in bytes
 
 
@@ -615,11 +674,11 @@ void summon_lattice() {
             perror("Error in fd: cnfdir_fd: %d");
             setAct(&statusFrame,GBYE,NOTHN,0);
             //stsErno(perror, ltcerr, **sts_frm, erno, misc, *msg, *function, *miscdesc);
-            stsErno(BADCNF, &statusFrame, errno, 333, "Failed reading config", NULL, 0);
+            stsErno(BADCNF, &statusFrame, "Failed reading config", 333, 0, NULL, NULL, errno);
             disassemble(&hashlattice, &dirchains, NULL,
                         NULL, 0, NULL, 0,
                         NULL, NULL, 0, 0);
-            serrOut(&status_frm,NULL);
+            serrOut(&statusFrame,NULL);
             break;
         }
 
@@ -628,7 +687,7 @@ void summon_lattice() {
          * */
         size_t dn_size = read_conf(&dn_conf, cnfdir_fd);
         if (dn_size == -1) {
-            stsErno(BADCNF, &statusFrame, errno, 333, "Failed reading config", NULL, 0);
+            stsErno(BADCNF, &statusFrame, "Failed reading config", 333, 0, NULL, NULL, errno);
             destroy_metastructures(NULL,
                                    info_frm,
                                    reqflg_arr,
@@ -654,26 +713,27 @@ void summon_lattice() {
           *  BUILD LATTICE  *
          * * * * * * * * **/
 
+        /** BUILD STRUCTURES
+         * AND MAP DIRECTORIES.
+         **/
         for (i = 0; i < dn_cnt; i++) {
             nm_len = extract_name(*(paths + i), *(lengths + i));
 
-            /** BUILD STRUCTURES
-             * AND MAP DIRECTORIES.
-             **/
-            if (map_dir((const char *) *(paths + i),
+            if (map_dir(&statusFrame,
+                        (const char *) *(paths + i),
                         nm_len,
                         (*(paths + i) + nm_len),
                         (*(lengths + i) - nm_len),
                         dirchains,
                         hashlattice,
-                        &(tbl_list[i]))< 0){
+                        &(tbl_list[i]),
+                        latticeKey)< 0){
 
-                stsErno(MISMAP, &statusFrame, errno, 333, "Big fail", "map_dir", 0);
+                stsErno(ESHTDN, &statusFrame, "Big fail", 333, 0, "map_dir", NULL, errno);
                 disassemble(&hashlattice,&dirchains,tbl_list,dn_conf,dn_size,NULL,0,lengths,paths,dn_cnt,cnfdir_fd);
                 destroy_metastructures(NULL, info_frm, reqflg_arr, req_buf, req_arr_buf, tmparrbuf, rsp_buf);
                 return;
             }
-
         }
          /**
           *  INIT FUNC ARRAY
@@ -681,7 +741,7 @@ void summon_lattice() {
          Resp_Tbl* rsp_tbl;
         init_rsptbl(cnfdir_fd,
                     &rsp_tbl,
-                    &status_frm,
+                    &statusFrame,
                     &info_frm,
                     &dirchains,
                     &hashlattice);
@@ -691,21 +751,20 @@ void summon_lattice() {
          *  EXECUTE SERVER  *
         * * * * * * * * * **/
 
-        status_frm = spin_up(&rsp_buf,
-                            &req_arr_buf,
-                            &req_buf,
-                            &status_frm,
-                            &info_frm,
-                            &rsp_tbl,
-                            &hashlattice,
-                            &dirchains,
-                            &reqflg_arr,
-                            &cnfdir_fd,
-                            &tmparrbuf);
+        spin_up(&rsp_buf,
+                &req_arr_buf,
+                &req_buf,
+                &info_frm,
+                &rsp_tbl,
+                &hashlattice,
+                &dirchains,
+                &reqflg_arr,
+                &cnfdir_fd,
+                &tmparrbuf);
 
-        if (status_frm->err_code) {
+        if (statusFrame->err_code) {
              fprintf(stderr, "Failure:\nCode: %d\nAct id: %d\nModr: %c\n",
-                     status_frm->status, status_frm->act_id, status_frm->modr);
+                     statusFrame->status, statusFrame->act_id, statusFrame->modr);
         }
 
          /**
@@ -730,12 +789,13 @@ void summon_lattice() {
                     dn_cnt,
                     cnfdir_fd);
 
-    }while (status_frm->status != SHTDN);
+    }while (statusFrame->status != SHTDN);
 
     /* * * * * * *
        *   EXIT   *
          * * * * * **/
 
-    stsOut(&status_frm);
-    free(status_frm);
+    stsOut(&statusFrame);
+    free(statusFrame);
+    sodium_free(latticeKey);
 }

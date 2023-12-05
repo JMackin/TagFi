@@ -4,32 +4,45 @@
 
 #include "lattice_signals.h"
 #include <sodium.h>
-
 #ifndef TAGFI_LATTICE_WORKS_H
 #define TAGFI_LATTICE_WORKS_H
+#include "FiOps.h"
+
 #define INFARRLEN 18
 #define RSPARRLEN 256
 #define HASHSTRLEN 64
 #define LKEYSZ 16
 
-
 typedef unsigned char LatticeKey[LKEYSZ];
+typedef unsigned char* LattcKey;
 
-typedef struct NodeEntries{
-    unsigned long long fiid;
+typedef struct FiEntry{
+    //unsigned long long fiid;
     unsigned long hshno;
+    char* path;
+    unsigned int tag;
+}FiEntry;
 
-}NodeEntries;
+typedef struct DiNodeMap{
+    LattFD entrieslist_fd;
+    LattFD dirnode_fd;
+    char* mm_entries;
+} DiNodeMap;
+typedef DiNodeMap * DNMap;
+
 
 typedef struct FiNode{
     unsigned long long fiid;
     unsigned long fhshno;
     unsigned char* finame;
 } FiNode;
+typedef FiEntry * NEntries;
+
 
 typedef struct Armature{
     LatticeKey lttc_key;
-    NodeEntries* entries;
+    NEntries entries;
+    DNMap nodemap;
     unsigned long totsize;
     unsigned int count;
 } Armature;
@@ -40,6 +53,7 @@ typedef struct DiNode{
     struct DiNode* right;
     unsigned long long did;
     unsigned char* diname;
+    unsigned long tag;
 }DiNode;
 
 typedef DiNode* Vessel;
@@ -48,7 +62,13 @@ typedef struct DiChains{
     DiNode* dir_head;
     Vessel vessel;
 }DiChains;
+
 struct HashBridge;
+
+typedef struct TravelPath{
+    DiNode* origin;
+    DiNode* destination;
+}TravelPath;
 
 typedef struct HashBridge* ParaBridge;
 
@@ -57,14 +77,15 @@ typedef struct HashBridge {
     ParaBridge parabridge;
     DiNode* dirnode;
     FiNode* finode;
+    u_long tag;
 } HashBridge;
-
 
 typedef struct HashLattice {
     DiChains* chains;
     HashBridge** bridges;
     unsigned long count;
     unsigned long max;
+    LattcKey lattcKey;
 } HashLattice;
 
 typedef HashLattice* Lattice;
@@ -74,15 +95,6 @@ typedef RspFlag* RspArr;
 typedef ReqFlag* ReqArr;
 
 
-typedef union LttFlg{
-    ReqFlag req;
-    RspFlag rsp;
-    int flg;
-    unsigned int uflg;
-}LttFlg;
-//SPLITTO works
-
-typedef LttFlg* LttcFlags;
 
 
 /**
@@ -105,13 +117,13 @@ typedef struct InfoFrame {
     unsigned int arr_type; //0: none, 1: char, 2: int
     unsigned int arr_len;
     unsigned int flg_cnt;
-    LttcFlags *flags;
+    LttFlgs *flags;
     unsigned char *arr;
     Vessel* vessel;
 } InfoFrame;
 
-InfoFrame *init_info_frm(InfoFrame **info_frm);
-
+InfoFrame *init_infofrm(InfoFrame **info_frm, uint startup);
+//uint reset_infofrm(InfoFrame **info_frm);
 
 typedef struct LattStruct{
     Lattice lattice;
@@ -119,20 +131,21 @@ typedef struct LattStruct{
     unsigned long* itmID;
 }LattStruct;
 
-
 typedef struct stat* stptr;
 
-double long* map_dir(const char* dir_path,
-            unsigned int path_len,
-            unsigned char* dirname,
-            unsigned int dnlen,
-            DiChains* dirchains,
-            HashLattice* hashlattice,
-            Armature** fitbl);
+double long* map_dir(StatFrame** statusFrame,
+                     const char* dir_path,
+                     unsigned int path_len,
+                     unsigned char* dirname,
+                     unsigned int dnlen,
+                     DiChains* dirchains,
+                     HashLattice* hashlattice,
+                     Armature** fitbl,
+                     LatticeKey latticeKey);
 
 DiChains* init_dchains();
 
-HashLattice * init_hashlattice(DChains * diChains);
+HashLattice * init_hashlattice(DChains * diChains, LattcKey lattcKey);
 
 FiNode* mk_finnode(unsigned int nlen,
                    unsigned char* finame,
@@ -146,15 +159,21 @@ typedef unsigned int (*RspFunc[RSPARRLEN])(StatFrame**, InfoFrame**, Lattice*, u
 
 unsigned int getidx(unsigned long fhshno);
 
-void add_entry(FiNode* entry,
-               Armature* fiTbl);
+uint add_entry(FiNode* entry,
+               Armature* fiTbl,
+               PathParts pp);
 
-void travel_dchains(Vessel* vessel,
-                    unsigned int lor,
-                    unsigned char steps);
+uint return_to_origin(TravelPath* travelPath, DChains dirChains);
 
-void goto_chain_tail(DiChains* dirChains,
-                     unsigned int lor);
+void travel_dchains(Vessel *vessel, unsigned int lor, unsigned char steps, TravelPath **travelpath);
+
+void goto_chain_tail(DiChains *dirChains, unsigned int lor, TravelPath **travelpath);
+
+void goto_base(DChains dchns, TravelPath **travelpath);
+
+void switch_base(DChains dchns, TravelPath **travelpath);
+
+unsigned int travel_by_chnid(unsigned long chn_id, DiChains *dchns, TravelPath **travelpath);
 
 DiNode* add_dnode(unsigned long long did,
                   unsigned char* dname,
@@ -183,31 +202,30 @@ void destroy_armatr(Armatr fitbl, HashLattice hashLattice);
 
 void destroy_chains(DiChains* dirChains);
 
-int make_bridgeanchor(DiNode** dirnode,
-                      char** path,
-                      unsigned int pathlen);
+LattFD make_bridgeanchor(DiNode** dirnode,
+                         char** path,
+                         unsigned int pathlen);
 
-unsigned int gotonode(unsigned long long did, DiChains* dchns);
+unsigned int travel_by_diid(unsigned long long did, DiChains *dchns, TravelPath **travelpath);
 
 void yield_dnhsh(DiNode** dirnode, unsigned char** dn_hash);
 char *yield_dnhstr(DiNode** dirnode);
 
-
-InfoFrame * parse_req(const unsigned char* fullreqbuf,
+InfoFrame * parse_req(unsigned char* fullreqbuf,
                       InfoFrame **infofrm,
                       StatFrame** stsfrm,
-                      LttcFlags* rqflgsbuf,
+                      LttFlgs* rqflgsbuf,
                       unsigned char* tmparrbuf,
                       unsigned char** req_arr_buf);
 
 clock_t build_bridge(Armature* armatr,
-                  FiNode* fiNode,
-                  DiNode* dnode,
-                  HashLattice* hashlattice,
-                  unsigned char buf[16]);
+                     FiNode* fiNode,
+                     DiNode* dnode,
+                     HashLattice* hashlattice,
+                     unsigned char buf[16]);
 
 void build_bridge2(
-                   Armature* armatr,
+                   LatticeKey lattkey,
                    FiNode* fiNode,
                    DiNode* dnode,
                    HashLattice* hashlattice,

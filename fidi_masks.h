@@ -46,10 +46,10 @@
  * DIR NODES:
  */
 #define DCHNSMASK 255              // 0b00000000000000000000011111111 - ID under group-base
-#define DBASEMASK 768              // 0b00000000000000000001100000000 - Base ID: 01=media, 10=docs - abs:2
-#define MEDABASEM 256              // 0b00000000000000000000100000000 - OR Mask: ID for MEDIA base derived from: (did & DBASEMASK)
-#define DOCSBASEM 512              // 0b00000000000000000001000000000 - OR Mask: ID for DOCS base derived from: (did & DBASEMASK
-#define DBASESHFT 8                // 0b000000000000000000011xxxxxxxx - Trailing bits after group-base flag: baseID = (DBASEMASK & did) >> DBASESHFT
+#define DBASEMASK 768              // 0b00000000000000000001100000000 - Base ID: 10=media, 01=docs - abs:2
+#define MEDABASEM 512              // 0b00000000000000000000100000000 - OR Mask: ID for MEDIA base derived from: (did & DBASEMASK)
+#define DOCSBASEM 256              // 0b00000000000000000001000000000 - OR Mask: ID for DOCS base derived from: (did & DBASEMASK
+#define DBASESHFT 9                // 0b000000000000000000011xxxxxxxx - Trailing bits after group-base flag: baseID = (DBASEMASK & did) >> DBASESHFT
 #define DNAMEMASK 130048           // 0b00000000000011111110000000000 - Str len of directory name - abs:7
 #define DNAMESHFT 10               // 0b0000000000001111111xxxxxxxxxx - Trailing bits after dir str-len flag - abs:7
 #define DENTRYCNT 1073676288       // 0b11111111111100000000000000000 -
@@ -60,13 +60,19 @@
  */
 #define MEDACHSE 1
 #define DOCSCHCE 0
+#define HEADCHCE 2
+#define MEDASHID 5
+#define DOCSSHID 3
+#define HEADSHID 1
+
 #define DGCNTMASK 4080             // 0b00000000000111111110000 - Total num. of dirs under group-base. For use on MEDA/DOCS nodes.
 #define DGCNTSHFT 4                // 0b0000000000011111111xxxx - Number of trailing bits after base - dir count.
 
 #define DGRPTMPL 4611686018427387904 // 1 leading bit and 62 empty bits, template for dirids
-#define DROOTDID 4611686018427387905 // Root node did, empty save for 1 set leading bit and 1 trailing - 60 bits
-#define DGMEDAID 4611686018427387906 // MEDA group id
-#define DGDOCSID 4611686018427387908 // DOCS group id
+#define DHEADDID 4611686020574871553 // HEAD node id, 0b100000000000000000000000000000010000000000000000000000000000001
+#define DGMEDAID 5764607528402944005 // MEDA group id 0b101000000000000000000000000000101000000000000000000000000000101
+#define DGDOCSID 6917529030862307331 // DOCS group id 0b110000000000000000000000000000011000000000000000000000000000011
+#define BASEMASK 9223372035781033999 // base  mask    0b111111111111111111111111111111111000000000000000000000000001111
 #define BIGMASK 1152921504606846975 // 62 1s
 
 
@@ -185,7 +191,7 @@ unsigned long long msk_format(unsigned long long fiid, unsigned int fform);
 unsigned int expo_format(unsigned long long fiid);
 unsigned long long msk_resdir(unsigned long long fiid, unsigned int dirid);
 unsigned int expo_resdir(unsigned long long fiid);
-unsigned long long msk_dirgrp(unsigned long long fiid);
+unsigned long long msk_dirgrp(unsigned long long fiid, unsigned int dirid);
 unsigned int expo_dirgrp(unsigned long long fiid);
 
 /* *
@@ -205,6 +211,9 @@ unsigned int msk_dirchnid(unsigned long long did, unsigned int id);
 
 unsigned int expo_basedir_cnt(unsigned long long did);
 unsigned int msk_basedir_cnt(unsigned long long did, unsigned int cnt);
-
+unsigned int check_base(unsigned long long int did);
+unsigned int is_base(DiNode* dinode);
+//inline unsigned int base_chcetosh(unsigned int chce);
+//inline unsigned int base_shtochce(unsigned int shid);
 
 #endif //TAGFI_FIDI_MASKS_H

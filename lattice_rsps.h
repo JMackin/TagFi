@@ -7,7 +7,6 @@
 #ifndef TAGFI_LATTICE_RSPS_H
 #define TAGFI_LATTICE_RSPS_H
 
-
 typedef struct Resp_Tbl{
     unsigned int fcnt;
     RspMap* rsp_map; // 3 x 3 x fcnt - 3D array: {LattReply,Mod,actIdx}
@@ -44,14 +43,11 @@ unsigned int respond(Resp_Tbl *rsp_tbl,
 
 void destroy_metastructures(Resp_Tbl *rsp_tbl,
                             InfoFrame *infoFrame,
-                            LttcFlags reqflg_arr,
+                            LttFlgs reqflg_arr,
                             unsigned char* req_buf,
                             unsigned char* req_arr_buf,
                             unsigned char* tmparrbuf,
                             unsigned char* rsp_buf);
-
-
-
 /** Response actions */
 
 unsigned int  rsp_sts(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice* hltc, unsigned char **buf);
@@ -72,7 +68,6 @@ unsigned int rsp_fiid(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice* hltc, u
 unsigned int rsp_frdn(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice* hltc, unsigned char **buf);
 unsigned int rsp_iiii(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice* hltc, unsigned char **buf);
 unsigned int rsp_fyld(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice* hltc, unsigned char **buf);
-
 
 
 #endif //TAGFI_LATTICE_RSPS_H

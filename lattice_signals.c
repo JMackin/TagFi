@@ -6,11 +6,11 @@
 #include <stdio.h>
 #include <time.h>
 #include <errno.h>
+#include <malloc.h>
 #include "lattice_signals.h"
+#include "reply_tools.h"
 
 #define SELFRESET 333
-#define RSPARRLEN 16
-#define INFARRLEN 19
 
 /* * * * * * * * * * * * * *
 *  StatusFrame Functions   *
@@ -38,40 +38,52 @@ void setSts(StatFrame **sts_frm, LattStts ltcst, unsigned int modr) {
 }
 
 //TODO: OPTIMIZE THIS
-long stsErno(LattErr ltcerr, StatFrame **sts_frm, int erno, long misc, char *msg, char *function, char *miscdesc) {
-    clock_t ca = clock();
-    fprintf(stderr,"\n\t---------- Error ----------\n\t");
+long
+stsErno(LattErr ltcerr, StatFrame **sts_frm, char *msg,
+        unsigned long misc, char *miscdesc,
+        char *function, char *note, int erno) {
+
+    char* errmsg = malloc(ERRBUFLEN);
+    unsigned int idx = sprintf(errmsg,"\n\n\n\t---------- Error ----------\n\t");
     (*sts_frm)->err_code = ltcerr;
-    perror(" ");
-    fprintf(stderr, "\t : %s"
+
+    if(erno){perror(" ");}
+
+    idx+=sprintf(errmsg+idx, ":%s"
                     "\n\t\t------------------\n", msg);
-    fprintf(stderr, "\t\t [ LttcErr: %d ]", (*sts_frm)->err_code);
-    fprintf(stderr, "\n\t\t   [ Errno: %d ]", erno);
 
-    fprintf(stderr, "\n\t\t------------------");
+    idx+=sprintf(errmsg+idx, "\t\t[ LttcErr: %s ]", convertLattErr(&(*sts_frm)->err_code));
 
-    fprintf(stderr, "\n\t\\status:\n\t\t\t  [ %d ]\n", (*sts_frm)->status);
-    if (misc){
-        fprintf(stderr,"\t\\note:\n\t\t\t  [ %ld ]\n", misc);
-    }
+    if(erno) {idx+=sprintf(errmsg+idx, "\n\t\t [ Errno: %d ]", erno);}
+
+    idx+=sprintf(errmsg+idx, "\n\t\t------------------");
+
+    idx+=sprintf(errmsg+idx, "\n\t\\status:\n\t\t    [ %s ]\n", convertLattSts(&(*sts_frm)->status));
     if ((*sts_frm)->modr){
-        fprintf(stderr, "\t\\modr:\n\t\t\t  [ %d ]\n", (*sts_frm)->modr);
+        idx+=sprintf(errmsg+idx, "\t\\modr:\n\t\t   [ %d ]\n", (*sts_frm)->modr);
     }
     if (function != NULL){
-        fprintf(stderr,"\t\\function:\n\t\t> %s", function);
+        idx+=sprintf(errmsg+idx,"\t\\function:\n\t\t   [ %s ]\n", function);
     }
-    if (miscdesc){
-        fprintf(stderr, "\n\t\t------------------\n");
-        fprintf(stderr,"\t NOTE:  \n\t\t\t%s\n", miscdesc);
+    if (misc){
+        idx+=sprintf(errmsg+idx,"\t\\%s:\n\t\t[ %ld ]\n", miscdesc, misc);
     }
-    clock_t cb = clock();
-    fprintf(stderr,"\n\t\t <<ErrorTime: %ld>>",cb-ca);
+    if (note != NULL){
+        idx+=sprintf(errmsg+idx, "\t\t------------------\n");
+        idx+=sprintf(errmsg+idx,"\t NOTE:  \n\t\t\t%s\n", note);
+    }
+    idx+=sprintf(errmsg+idx, "\t---------------------------\n"
+                    "\t| | | | | | | | | | | | | |\n\n");
 
-    fprintf(stderr, "\n\t---------------------------\n"
-                    "\t| | | | | | | | | | | | | |\n");
+    unsigned int i = idx;
+
+    while(--i){
+        putc_unlocked((*(errmsg+(idx-i))),stderr);
+    }
 
     (*sts_frm)->status = STERR;
-    (*sts_frm)->modr = erno;
+    if (erno){(*sts_frm)->modr = erno;}
+
 
     if ((*sts_frm)->act_id == GBYE || (misc == 333)) {
         (*sts_frm)->status = SHTDN;
@@ -80,7 +92,6 @@ long stsErno(LattErr ltcerr, StatFrame **sts_frm, int erno, long misc, char *msg
     {
         return 0;
     }
-
 }
 
 /** Set action id*/
@@ -94,6 +105,9 @@ void setAct(StatFrame **sts_frm, LattAct lttact, LattStts ltsts, unsigned int mo
     }
     if (modr == SELFRESET) {
         (*sts_frm)->modr = 0;
+    }
+    if (modr == ESHTDN){
+        (*sts_frm)->err_code=ESHTDN;
     }
 }
 
@@ -119,7 +133,6 @@ void stsOut(StatFrame **sts_frm) {
     printf("[ Status: %d ]\n", (*sts_frm)->status);
     if ((*sts_frm)->status == SHTDN) {
         fprintf(stdout, "\n<< GoodBye >>\n");
-
     }
 }
 
@@ -131,5 +144,5 @@ void stsOut(StatFrame **sts_frm) {
  *  for none;
  * */
 void serrOut(StatFrame **sts_frm, char *msg) {
-    stsErno((*sts_frm)->err_code, sts_frm, errno, 0, msg, NULL, NULL);
+    stsErno((*sts_frm)->err_code, sts_frm, msg, 0, NULL, NULL, NULL, errno);
 }

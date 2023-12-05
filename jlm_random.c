@@ -118,7 +118,7 @@ int dump_little_hash_key(unsigned char* kout, unsigned char* name, unsigned int 
     memcpy(kname,name,nlen);
     memcpy(kname+nlen,".lhsk",6);
 
-    int hkeyout = openat(AT_FDCWD, DNKEYPATH, O_DIRECTORY, O_RDWR);
+    int hkeyout = openat(AT_FDCWD, DNKEYPATH, O_DIRECTORY, O_RDONLY);
 
     if(hkeyout < 0){
         fprintf(stderr,"<<%s>>\n",name);
@@ -156,11 +156,10 @@ int dump_little_hash_key(unsigned char* kout, unsigned char* name, unsigned int 
 //void recv_little_hash_key(char* pathin, unsigned int nlen, unsigned char* bytesout)
 void recv_little_hash_key(int dnkeyfd, unsigned char* dirname, unsigned int knmln, unsigned char* bytesout) {
 
-
     char* kname = (char*) calloc(knmln+6, sizeof(char));
     memcpy(kname,dirname,knmln);
     memcpy(kname+knmln,".lhsk",6);
-
+    FILE* lhkstrm;
 
     int kfi = openat(dnkeyfd, kname, O_RDONLY);
 
@@ -169,17 +168,17 @@ void recv_little_hash_key(int dnkeyfd, unsigned char* dirname, unsigned int knml
     {
         perror("recv_little_hash_key/kfi: ");
         fprintf(stderr,"<<%s>>\n",dirname);
+        free(kname);
         return;
     }
-    FILE* lhkstrm = fdopen(kfi,"r");
+    lhkstrm = fdopen(kfi,"r");
 
     for (int i =0; i < crypto_shorthash_KEYBYTES;i++){
         *(bytesout+i) = fgetc(lhkstrm);
     }
-    close(kfi);
+    fclose(lhkstrm);
     free(kname);
 }
-
 
 unsigned long long little_hsh_llidx(unsigned char* hkey, unsigned char* tobehshed, unsigned int tbh_len, unsigned long long xno) {
     unsigned char* outp = (unsigned char*) sodium_malloc(sizeof (unsigned long));
@@ -198,7 +197,7 @@ unsigned long long little_hsh_llidx(unsigned char* hkey, unsigned char* tobehshe
 
 }
 
-unsigned long latt_hsh_idx(Armature* armtr, unsigned long fhshno, unsigned char intbuf[16]){
+unsigned long latt_hsh_idx(LattcKey lattkey, unsigned long fhshno, unsigned char intbuf[16]){
 
 
     unsigned long outidx=0;
@@ -208,30 +207,19 @@ unsigned long latt_hsh_idx(Armature* armtr, unsigned long fhshno, unsigned char 
     unsigned char tbuf[8];
     memcpy(&outidx,&fhshno,8);
 
-    //msk = (clk) ? msk << 2 : msk >> 1;
-    //outidx &= msk;
-//    unsigned int clk = fhshno & 7;
-//    unsigned int msk = (3817748711);
-//    msk = (clk) ? fhshno << 2 : fhshno >> 1;
-//    fhshno &= msk;
-//    fhshno >>= clk;
-//    return fhshno & HTMASK;
 
     memcpy(tbuf,&outidx,8);
 
-    if (crypto_shorthash(intbuf, tbuf, 8, armtr->lttc_key) != 0){
+    if (crypto_shorthash(intbuf, tbuf, 8, lattkey) != 0){
         fprintf(stderr, "Something went wrong hashing for an index.\n");
         return 1;
     }
     memcpy(&outidx2,intbuf,8);
 
-    (outidx2 &= 4194303);
-    //(outidx2 >>= clk);
+    (outidx2 &= 16777215);
 
     return outidx2;
-
 }
-
 
 
 
@@ -252,16 +240,17 @@ unsigned long latt_hsh_idx(Armature* armtr, unsigned long fhshno, unsigned char 
 
 void get_many_big_salts(unsigned long long** bigsaltls, int n){
     do{
-        bigsaltls[n] = (unsigned long long*) sodium_malloc(sizeof(unsigned long long));
+        bigsaltls[n] = (unsigned long long*) malloc(sizeof(unsigned long long));
         genrandsalt(bigsaltls[n]);
     } while(n--);
 }
 
-void get_many_little_salts(unsigned long** saltls, int n)
+void get_many_little_salts(unsigned long** saltls, uint n)
 {
+    //*saltls = calloc(n,ULONG_SZ);
     do{
-        saltls[n] = (unsigned long*) sodium_malloc(sizeof(unsigned long));
-        rando_sf(saltls[n]);
+        *(saltls+n) = (unsigned long*) malloc(sizeof(unsigned long));
+        rando_sf(*(saltls+n));
 
     } while(n--);
 }
