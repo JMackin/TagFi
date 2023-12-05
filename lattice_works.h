@@ -57,7 +57,6 @@ typedef struct DiNode{
     unsigned char* diname;
     unsigned long tag;
 }DiNode;
-
 typedef DiNode* Vessel;
 
 typedef struct DiChains{
@@ -132,15 +131,8 @@ typedef struct LattStruct{
 
 typedef struct stat* stptr;
 
-double long* map_dir(StatFrame** statusFrame,
-                     const char* dir_path,
-                     unsigned int path_len,
-                     unsigned char* dirname,
-                     unsigned int dnlen,
-                     DiChains* dirchains,
-                     HashLattice* hashlattice,
-                     Armature** fitbl,
-                     LatticeKey latticeKey);
+double long *map_dir(StatFrame **statusFrame, const char *dir_path, unsigned int path_len, unsigned char *dirname,
+                     unsigned int dnlen, HashLattice *hashlattice, Armature **fitbl, LattcKey latticeKey);
 
 DiChains* init_dchains();
 
@@ -208,7 +200,8 @@ LattFD make_bridgeanchor(DiNode** dirnode,
 unsigned int travel_by_diid(unsigned long long did, DiChains *dchns, TravelPath **travelpath);
 
 void yield_dnhsh(DiNode** dirnode, unsigned char** dn_hash);
-char *yield_dnhstr(DiNode** dirnode);
+
+__attribute__((unused)) char *yield_dnhstr(DiNode** dirnode);
 
 InfoFrame * parse_req(unsigned char* fullreqbuf,
                       InfoFrame **infofrm,

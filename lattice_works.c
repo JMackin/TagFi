@@ -17,19 +17,15 @@
 #include <fcntl.h>
 #include <string.h>
 #include <sys/stat.h>
-#include <time.h>
 
 
 // ----------------------------
 
 // ----------------------------
 
-
-#define NDENTRYPRFX_SZ 8
 
 InfoFrame *init_infofrm(InfoFrame **info_frm, uint startup) {
     if (startup){*info_frm = (InfoFrame *) malloc(sizeof(InfoFrame));}
-    unsigned int cat_sffx = 0;
     (*info_frm)->rsp_size = 0;
     (*info_frm)->trfidi[0] = 0;
     (*info_frm)->trfidi[1] = 0;
@@ -80,12 +76,11 @@ void mk_hashes(unsigned long long* haidarr,
 
 }
 
-DiNode* mk_tailnode(DiNode** tail){
+void mk_tailnode(DiNode** tail){
     *tail = (DiNode*) malloc(sizeof(DiNode));
     (*tail)->diname = 0;
     (*tail)->did = 0;
     (*tail)->tag = 7;
-//    return tail;
 }
 
 DiChains* init_dchains() {
@@ -318,7 +313,7 @@ void yield_dnhsh(DiNode** dirnode, unsigned char** dn_hash) {
     close(dnkeyfd);
 }
 
-char* yield_dnhstr(DiNode** dirnode){
+__attribute__((unused)) char* yield_dnhstr(DiNode** dirnode){
     char* str_buf = (char*) malloc(crypto_generichash_BYTES*2+1);
 
     unsigned char *hsh_buf;
@@ -610,10 +605,7 @@ void build_bridge2(LatticeKey lattkey, FiNode* fiNode, DiNode* dnode, HashLattic
 HashBridge *yield_bridge_for_fihsh(Lattice lattice,unsigned long fiHsh){
 
     HashBridge * hshBrdg;
-    unsigned int fflg = 1;
     unsigned char oBuf [16] = {0};
-    unsigned char idBuf [8] = {0};
-    unsigned long long int iid;
     unsigned long long int biidBufL;
 
     unsigned long brdgIdx = latt_hsh_idx(lattice->lattcKey,fiHsh,oBuf);
@@ -629,7 +621,6 @@ HashBridge *yield_bridge_for_fihsh(Lattice lattice,unsigned long fiHsh){
         hshBrdg = hshBrdg->parabridge;
         memcpy(&biidBufL,hshBrdg->unid,8);
         if ((biidBufL & fiHsh) == fiHsh){
-            fflg = 1;
             break;
         }
     }
@@ -637,21 +628,14 @@ HashBridge *yield_bridge_for_fihsh(Lattice lattice,unsigned long fiHsh){
     return hshBrdg;
 }
 
-int filter_dirscan(const struct dirent *entry) {
+__attribute__((unused)) int filter_dirscan(const struct dirent *entry) {
     return ((entry->d_name[0] == 46)) || (strnlen(entry->d_name, 4) > 3);
 }
 
 
 
-double long* map_dir(StatFrame** statusFrame,
-                     const char* dir_path,
-                     unsigned int path_len,
-                     unsigned char* rootdirname,
-                     unsigned int dnlen,
-                     DiChains* dirchains,
-                     HashLattice* hashlattice,
-                     Armature** armatr,
-                     LattcKey latticeKey) {
+double long *map_dir(StatFrame **statusFrame, const char *dir_path, unsigned int path_len, unsigned char *rootdirname,
+                     unsigned int dnlen, HashLattice *hashlattice, Armature **armatr, LattcKey latticeKey) {
     int i;
     int j=0;
     int k=0;
@@ -662,7 +646,6 @@ double long* map_dir(StatFrame** statusFrame,
 
     // Open the directory and read in the contents
     struct dirent ***dentrys = (struct dirent***) malloc(sizeof(struct dirent**));
-    //struct dirent ***dentrys;
     int n;
     int dir_cnt = 0;
 
@@ -704,7 +687,6 @@ double long* map_dir(StatFrame** statusFrame,
     unsigned char* dubbuf = (unsigned char*) calloc(17,UCHAR_SZ);
 
 
-    char* fullfipath;
 
     // For each entry in the directory...
     for (i=0;i<n;i++){

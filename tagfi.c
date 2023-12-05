@@ -84,29 +84,6 @@ StreamMode set_streammode(LattFD *lattFd, StreamMode streammode) {
     return streammode;
 }
 
-int scanfiinodes(const char* dir_path) {
-
-    struct dirent *entry;
-    DIR *dp;
-
-    dp = opendir(dir_path);
-
-    if (dp == NULL) {
-        perror("opendir");
-        return -1;
-    }
-
-    while ((entry = readdir(dp)))
-        if(entry == -1){
-            fprintf(stderr, "errno = %d", errno);
-            return -1;
-        }else {
-            printf("%lu\n", (entry->d_ino));
-        }
-
-    closedir(dp);
-    return 0;
-}
 
 __attribute__((unused)) int scanfi(const char* dir_path){
     struct dirent **elist;
@@ -315,9 +292,7 @@ unsigned int mk_node_list(int entrycnt, LattFD nodeanchor, unsigned char** e_nam
 
     int i;
     int idx = 0;
-    int j = 0;
-    //int nanch_fd = cycle_nodeFD(&nodeanchor);
-    //if (nanch_fd == -1){ perror("Error duplicating node anchor fd");return 1;}
+    int j;
 
     FILE* nanch_strm = open_lattfdstream(nodeanchor,A_STRM);
     if (nanch_strm == NULL){

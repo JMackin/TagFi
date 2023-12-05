@@ -350,7 +350,6 @@ int spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsigned char 
     int k, res;
     unsigned int j;
     ssize_t ret;
-    int resp_len = 0;
 
     /**
      * BUFFERS INIT
@@ -684,10 +683,9 @@ void summon_lattice() {
                         nm_len,
                         (*(paths + i) + nm_len),
                         (*(lengths + i) - nm_len),
-                        dirchains,
                         hashlattice,
                         &(tbl_list[i]),
-                        latticeKey)< 0){
+                        latticeKey) < 0){
 
                 stsErno(ESHTDN, &statusFrame, "Big fail", 333, 0, "map_dir", NULL, errno);
                 disassemble(&hashlattice,&dirchains,tbl_list,dn_conf,dn_size,NULL,0,lengths,paths,dn_cnt,cnfdir_fd);
