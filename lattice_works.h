@@ -94,9 +94,6 @@ typedef Armature* Armatr;
 typedef RspFlag* RspArr;
 typedef ReqFlag* ReqArr;
 
-
-
-
 /**
  *<h4>
  * \InformationFrame
