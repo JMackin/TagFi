@@ -3,7 +3,7 @@ project(TagFI C)
 
 set(CMAKE_C_STANDARD 17)
 
-add_executable(TagFI test_tagfiles.c /usr/local/include/sodium.h
+add_executable(TagFI hashlattice.c /usr/local/include/sodium.h
         tagfi.h
         tagfi.c
         lattice_works.c
@@ -30,6 +30,8 @@ add_executable(TagFI test_tagfiles.c /usr/local/include/sodium.h
         reply_tools.c
         reply_tools.h
         FiOps.h
+        ops.c
+        ops.h
 
 )
 include_directories(/usr/local/include/sodium)

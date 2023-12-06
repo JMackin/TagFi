@@ -19,6 +19,7 @@ typedef unsigned char* LattcKey;
 typedef struct FiEntry{
     //unsigned long long fiid;
     unsigned long hshno;
+    unsigned char* finame;
     char* path;
     unsigned int tag;
 }FiEntry;
@@ -27,30 +28,18 @@ typedef FiEntry * NEntries;
 typedef struct DiNodeMap{
     LattFD entrieslist_fd;
     LattFD dirnode_fd;
-    char* mm_entries;
+    LattFD shm_fd;
 } DiNodeMap;
 typedef DiNodeMap * DNMap;
-
 
 typedef struct FiNode{
     unsigned long long fiid;
     unsigned long fhshno;
-    unsigned char* finame;
 } FiNode;
 
-
-typedef struct Armature{
-    LatticeKey lttc_key;
-    NEntries entries;
-    DNMap nodemap;
-    unsigned long totsize;
-    unsigned int count;
-} Armature;
-typedef Armature* Armatr;
-
+typedef FiNode* NodeFoliage;
 
 typedef struct DiNode{
-    Armatr armature;
     struct DiNode* left;
     struct DiNode* right;
     unsigned long long did;
@@ -59,19 +48,24 @@ typedef struct DiNode{
 }DiNode;
 typedef DiNode* Vessel;
 
+typedef struct Armature{
+    LatticeKey lttc_key;
+    NEntries entries;
+    DNMap nodemap;
+    DiNode* dinode;
+    unsigned long totsize;
+    unsigned int count;
+} Armature;
+typedef Armature* Armatr;
+
 typedef struct DiChains{
     Vessel dir_head;
     Vessel vessel;
 }DiChains;
 typedef DiChains* DChains;
 
-
 struct HashBridge;
 
-typedef struct TravelPath{
-    Vessel origin;
-    Vessel destination;
-}TravelPath;
 
 typedef struct HashBridge* ParaBridge;
 
@@ -79,18 +73,26 @@ typedef struct HashBridge {
     unsigned char unid[16];
     ParaBridge parabridge;
     Vessel dirnode;
-    FiNode* finode;
+    NodeFoliage finode;
     u_long tag;
 } HashBridge;
 
 typedef struct HashLattice {
     DChains chains;
     HashBridge** bridges;
+    Armatr armature;
     unsigned long count;
     unsigned long max;
     LattcKey lattcKey;
+    LttcStt state;
+
 } HashLattice;
 typedef HashLattice* Lattice;
+
+typedef struct TravelPath{
+    Vessel origin;
+    Vessel destination;
+}TravelPath;
 
 typedef RspFlag* RspArr;
 typedef ReqFlag* ReqArr;
@@ -136,7 +138,7 @@ double long *map_dir(StatFrame **statusFrame, const char *dir_path, unsigned int
 
 DiChains* init_dchains();
 
-HashLattice * init_hashlattice(DChains * dirchains, LattcKey lattcKey);
+HashLattice *init_hashlattice(DChains *dirchains, LattcKey lattcKey, LttcStt lttcstt);
 
 FiNode* mk_finnode(unsigned int nlen,
                    unsigned char* finame,
@@ -154,24 +156,24 @@ uint add_entry(FiNode* entry,
                Armature* fiTbl,
                PathParts pp);
 
-uint return_to_origin(TravelPath* travelPath, DChains dirChains);
+uint return_to_origin(TravelPath *travelPath, DChains dirChains, LttSt lttSt);
 
-void travel_dchains(Vessel *vessel, unsigned int lor, unsigned char steps, TravelPath **travelpath);
+void travel_dchains(Vessel *vessel, unsigned int lor, unsigned char steps, TravelPath **travelpath, LttSt lttSt);
 
-void goto_chain_tail(DiChains *dirChains, unsigned int lor, TravelPath **travelpath);
+void goto_chain_tail(DiChains *dirChains, unsigned int lor, TravelPath **travelpath, LttSt lttSt);
 
-void goto_base(DChains dchns, TravelPath **travelpath);
+void goto_base(DChains dchns, TravelPath **travelpath, LttSt lttSt);
 
-void switch_base(DChains dchns, TravelPath **travelpath);
+void switch_base(DChains dchns, TravelPath **travelpath, LttSt lttSt);
 
-unsigned int travel_by_chnid(unsigned long chn_id, DiChains *dchns, TravelPath **travelpath);
+unsigned int travel_by_chnid(unsigned long chn_id, DiChains *dchns, TravelPath **travelpath, LttSt lttSt);
 
 DiNode* add_dnode(unsigned long long did,
                   unsigned char* dname,
                   unsigned short nlen,
                   unsigned int mord,
                   Lattice* lattice,
-                  Armatr armatr);
+                  Armatr *armatr);
 
 HashBridge* yield_bridge(HashLattice* hashLattice,
                          unsigned char* filename,
@@ -193,11 +195,9 @@ void destroy_armatr(Armatr fitbl, HashLattice hashLattice);
 
 void destroy_chains(DiChains* dirChains);
 
-LattFD make_bridgeanchor(DiNode** dirnode,
-                         char** path,
-                         unsigned int pathlen);
+LattFD make_bridgeanchor(Armatr *armatr, DiNode **dirnode, char **path, unsigned int pathlen);
 
-unsigned int travel_by_diid(unsigned long long did, DiChains *dchns, TravelPath **travelpath);
+unsigned int travel_by_diid(unsigned long long did, DiChains *dchns, TravelPath **travelpath, LttSt lttSt);
 
 void yield_dnhsh(DiNode** dirnode, unsigned char** dn_hash);
 

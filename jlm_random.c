@@ -8,7 +8,6 @@
 #include "fidi_masks.h"
 
 
-#define DNKEYPATH "/home/ujlm/CLionProjects/TagFI/keys"
 
 
 unsigned long long eightchartollong(const unsigned char* in, int wlen) {
@@ -27,19 +26,14 @@ unsigned long long eightchartollong(const unsigned char* in, int wlen) {
 }
 
 void rando_sf(unsigned long* salt_ptr) {
-
-
     const unsigned long clck = (clock() << 16) + (clock () << 2) ;
-
     fflush(stdout);
 
     *salt_ptr = (randombytes_random() << 1) << 16;
-
     *salt_ptr = (*salt_ptr ^ clck);
 
     randombytes_close();
     fflush(stdout);
-
 }
 
 void genrandsalt(unsigned long long* expanded_salt) {
@@ -98,10 +92,22 @@ void real_hash_keyfully(unsigned char** in, unsigned char** out, size_t inlen, c
 void dn_hdid_str(unsigned char** dn_hash, char** strout) {
        sodium_bin2hex(*strout, (crypto_generichash_BYTES*2+1), *dn_hash, crypto_generichash_BYTES);
 }
-char* btostr(char* strout[16], unsigned char** dn_hash) {
 
-       sodium_bin2hex(*strout, 16, *dn_hash,8);
-    return *strout;
+unsigned int bytes_tostr(char** strout, const unsigned char* bytes, size_t b_len) {
+    if (b_len > 16){
+        b_len = 16;
+    }else if (b_len < 4){
+        return 1;
+    }
+    const size_t hexmaxlen = b_len * 4;
+    *strout = calloc(hexmaxlen+1,UCHAR_SZ);
+    if (*strout == NULL){
+        perror("Couldnt allocate mem for bytestostr");
+        return 1;
+    }
+
+    sodium_bin2hex(*strout, hexmaxlen, bytes, b_len);
+    return strnlen(*strout,hexmaxlen);
 }
 
 
@@ -118,7 +124,7 @@ int dump_little_hash_key(unsigned char* kout, unsigned char* name, unsigned int 
     memcpy(kname,name,nlen);
     memcpy(kname+nlen,".lhsk",6);
 
-    int hkeyout = openat(AT_FDCWD, DNKEYPATH, O_DIRECTORY, O_RDONLY);
+    int hkeyout = openat(AT_FDCWD, getenv("DNKEYPATH"), O_DIRECTORY, O_RDONLY);
 
     if(hkeyout < 0){
         fprintf(stderr,"<<%s>>\n",name);
@@ -137,14 +143,12 @@ int dump_little_hash_key(unsigned char* kout, unsigned char* name, unsigned int 
     //FILE* hkfi_out = fdopen(hkfi,"w+");
 
     write(hkfi,kout,crypto_shorthash_KEYBYTES);
-
     //fflush(hkfi_out);
-    fsync(hkfi);
-
     if (hkeyout < 0 || hkfi < 0)
     {
         badflg = 1;
     }
+    fsync(hkfi);
 
     //fclose(hkfi_out);
     free(kname);

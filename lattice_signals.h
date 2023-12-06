@@ -5,6 +5,7 @@
 #ifndef TAGFI_LATTICE_SIGNALS_H
 #define TAGFI_LATTICE_SIGNALS_H
 
+
 /**
  * <h4><code>
  * \ResponseCMDs
@@ -467,6 +468,7 @@ typedef union LattFlag{
 
 typedef LattFlag* LttFlgs;
 
+
 /**
  *<h4>
  *  \StatusFrame
@@ -487,6 +489,32 @@ typedef union uniArr{
     unsigned int* iarr;
     unsigned char* carr;
 }uniArr;
+
+typedef struct LatticeState{
+    SttsFrm frame;
+    unsigned long long int cwdnode;
+    unsigned int tag;
+    unsigned int misc;
+}LatticeState;
+
+typedef LatticeState* LttcStt;
+typedef LatticeState** LttSt;
+
+typedef struct ErrorBundle{
+    LattErr ltcerr;
+    unsigned long relvval;
+    char func[32];
+    char relvval_desc[64];
+    char note[128];
+    char msg[256];
+    int erno;
+    unsigned int raised;
+}ErrorBundle;
+typedef ErrorBundle* ErrBundle;
+//(char*) calloc(64,UCHAR_SZ);
+//calloc(32,UCHAR_SZ);
+//calloc(128,UCHAR_SZ);
+//alloc(256,UCHAR_SZ);
 
 /** Status ops **/
 
@@ -510,5 +538,11 @@ long
 stsErno(LattErr ltcerr, StatFrame **sts_frm, char *msg, unsigned long misc, char *miscdesc, char *function, char *note,
         int erno);
 
+ErrorBundle raiseErr(LttSt lttSt, ErrorBundle bundle);
+ErrorBundle init_errorbundle();
+unsigned int bundle_add(ErrBundle* bundle, unsigned int  attr, void* val);
+ErrorBundle bundle_addglob(ErrorBundle bundle,LattErr ltcerr, char *msg,
+                    unsigned long relvval, char *relvval_desc,
+                    char *func, char *note, int erno);
 
 #endif //TAGFI_LATTICE_SIGNALS_H

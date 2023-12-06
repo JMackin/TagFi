@@ -76,7 +76,6 @@ void p_stm(char* title, double long dur){
 long double time_avg(){return AVGTIME;}
 
 void time_ssp(){
-
     p_stm(NULL,durat());
 }
 

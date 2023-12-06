@@ -11,6 +11,7 @@
 #include "lattice_rsps.h"
 #include "consts.h"
 #include "reply_tools.h"
+#include "tagfi.h"
 
 
 
@@ -416,7 +417,7 @@ uint rsp_diid(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, buff_arr
             return 1;
         }
 
-        if (travel_by_chnid(chainID.l_ulong, (*hltc)->chains, &travelPath)){
+        if (travel_by_chnid(chainID.l_ulong, (*hltc)->chains, &travelPath, NULL)){
             free(travelPath);
             stsErno(NOINFO, sts_frm, "Provided chain ID not found", itmID->l_ulong,
                     "misc - chain id", "rsp_diid", NULL, errno);
@@ -425,7 +426,7 @@ uint rsp_diid(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, buff_arr
 
         diID.l_ulonglong = (*hltc)->chains->vessel->did;
         bcnt += rsparr_add_lng(bcnt,diID,buf);
-        uint ret_status = return_to_origin(travelPath,(*hltc)->chains);
+        uint ret_status = return_to_origin(travelPath, (*hltc)->chains, &(*hltc)->state);
         if(ret_status){
             stsErno(MISVEN, sts_frm, "Return to origin failed", ret_status,
                     "return status", "rsp_diid::return_to_origin", NULL, 0);
@@ -446,7 +447,6 @@ uint rsp_frdn(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, buff_arr
 
     lattitm.obj = DIRN;
     bcnt = rsp_add_arrobj(lattitm.obj,buf);
-
 
     fiID->l_ulong = pull_objid(inf_frm, (*fiID), 8).l_ulong;
     if (fiID->l_ulong == 0){
@@ -496,7 +496,7 @@ uint rsp_gond(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, buff_arr
 
     if (lattitm.obj == DCHN){
         dnode->l_ulong = pull_objid(inf_frm, *dnode, ULONG_SZ).l_ulong;
-        if (travel_by_chnid(dnode->l_ulong, (*hltc)->chains, &travelpath)){
+        if (travel_by_chnid(dnode->l_ulong, (*hltc)->chains, &travelpath, &(*hltc)->state)){
             free(travelpath);
             stsErno(MISVEN, sts_frm, "Travel by chain ID failed", dnode->l_ulong, "dnode::chain id", "rsp_gond",
                     NULL, errno);
@@ -505,7 +505,7 @@ uint rsp_gond(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, buff_arr
         bcnt += rsparr_add_travelpath(travelpath,buf,bcnt);
     }else if (lattitm.obj == IDID){
         dnode->l_ulonglong = pull_objid(inf_frm,(*dnode),8).l_ulonglong;
-        if(travel_by_diid(dnode->l_ulonglong, (*hltc)->chains, &travelpath)==1){
+        if(travel_by_diid(dnode->l_ulonglong, (*hltc)->chains, &travelpath, &(*hltc)->state) == 1){
             free(travelpath);
             stsErno(MISVEN, sts_frm, "Travel by diid failed", dnode->l_ulonglong, "dnode::diid", "rsp_gond",
                     NULL, errno);
@@ -513,9 +513,7 @@ uint rsp_gond(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, buff_arr
         }
         bcnt += rsparr_add_travelpath(travelpath,buf,bcnt);
     }
-
     return bcnt;
-
 }
 
 uint rsp_fyld(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, buff_arr buf) {
@@ -544,6 +542,27 @@ uint rsp_gohd(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, buff_arr 
 
 uint rsp_dnls(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf) {
     printf("Response: List dir ");
+    Vessel* vessel = &((*hltc)->chains->vessel);
+    DNMap dnMap = ((*hltc)->armature->nodemap);
+
+    uint in_basenode = check_base((*vessel)->did);
+    if(check_base((*vessel)->did)){
+        stsErno(MISVEN,sts_frm,"Vessel is in a base node. Base node contents cannot be accessed.",
+                in_basenode,"basenode","rsp_dnls",NULL,0);
+        return 1;
+    }
+    if((dnMap)->shm_fd->tag != 0){
+        stsErno(MISMAP,sts_frm,"An expanse is already in place. Close it first or switch directories to re-span.",
+                (dnMap)->shm_fd->prime_fd, "shm-prime_fd","rsp_dnls",NULL,0);
+        return 0;
+    }
+
+    printf("%s\n",(dnMap)->shm_fd->path);
+    fflush(stdout);
+    close_shm_lattfd(&(dnMap)->shm_fd);
+    return 0;
+
+
 }
 
 uint rsp_vvvv(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf) {
@@ -684,7 +703,6 @@ LattType dtrm_rsp(StatFrame **sts_frm,
         serrOut(sts_frm,"Response determination failed.");
         reply.rpl = ERRCD;
     }
-
     return reply;
 }
 
@@ -721,6 +739,7 @@ uint respond(Resp_Tbl *rsp_tbl,
     rsp_add_replyitm(&rsp_buf,lattItm.rpl);
     // Call function at index 'rsp' (the reply object value) from function array.
     rspsz += (*rsp_tbl->rsp_funcarr)[lattItm.rpl](sts_frm, inf_frm, hltc, &rsp_buf);
+
     if (!rspsz){
         return 1;
     }
