@@ -544,8 +544,9 @@ uint rsp_dnls(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, buff_arr 
     printf("Response: List dir ");
     Vessel* vessel = &((*hltc)->chains->vessel);
     DNMap dnMap = ((*hltc)->armature->nodemap);
-
     uint in_basenode = check_base((*vessel)->did);
+
+
     if(check_base((*vessel)->did)){
         stsErno(MISVEN,sts_frm,"Vessel is in a base node. Base node contents cannot be accessed.",
                 in_basenode,"basenode","rsp_dnls",NULL,0);

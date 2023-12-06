@@ -312,27 +312,30 @@ typedef enum LattAct {
 /**
  * <h4><code>
  * \LatticeObjects
- * <l_ulong> NADA = 0 - No or nonexistent object
- * <l_ulong> LTTC = 1 -  Hash Lattice
- * <l_ulong> BRDG = 2 -  Hash bridge
- * <l_ulong> DIRN = 4 -  Dir node
- * <l_ulong> FTBL = 8 -  File table
- * <l_ulong> FIMP = 16 - File map
- * <l_ulong> LFLG = 32 -  Request/response flag
- * <l_ulong> SFRM = 64 -  Status frame
- * <l_ulong> IFRM = 128 -  Info frame
- * <l_ulong> DCHN = 256 - Dir Chains or chainID
- * <l_ulong> SEQT = 512 -  Stored seq table
- * <l_ulong> CMSQ = 1024 -   Cmd sequence (response or request)
- * <l_ulong> ICAR = 2048 - Int or Char array
- * <l_ulong> VSSL = 4096 - Dirnode vessel/cursor object or path traveled
- * <l_ulong> FIOB = 8192 - Actual file object
- * <l_ulong> IDID = 16384 - ID for an object
- * <l_ulong> NMNM = 32768 - Name for an object
- * <l_ulong> FIDE = 65536 - File desc or socket
- * <l_ulong> HSKY = 262144 - Hash key
- * <l_ulong> FRLD = 524288 - Cmd frame lead
- * <l_ulong> BUFF = 131072 -  Buffers
+ * <li> NADA = 0 - No or nonexistent object
+ * <li> LTTC = 1 -  Hash Lattice
+ * <li> BRDG = 2 -  Hash bridge
+ * <li> DIRN = 4 -  Dir node
+ * <li> FTBL = 8 -  File table
+ * <li> FIMP = 16 - File map
+ * <li> LFLG = 32 -  Request/response flag
+ * <li> SFRM = 64 -  Status frame
+ * <li> IFRM = 128 -  Info frame
+ * <li> DCHN = 256 - Dir Chains or chainID
+ * <li> SEQT = 512 -  Stored seq table
+ * <li> CMSQ = 1024 -   Sequence of cmds (response or request)
+ * <li> ICAR = 2048 - Int or Char array
+ * <li> VSSL = 4096 - Dirnode vessel/cursor object or path traveled
+ * <li> FIOB = 8192 - Actual file object
+ * <li> IDID = 16384 - ID for an object
+ * <li> NMNM = 32768 - Name for an object
+ * <li> FIDE = 65536 - File desc or socket
+ * <li> HSKY = 262144 - Hash key
+ * <li> FRLD = 524288 - Cmd frame lead
+ * <li> BUFF = 131072 -  Buffers
+ * <li> SHMM = 2097150 - Shm obj
+ * <li> MEMA = 4194300 - Memory address.
+
  */
 
 typedef enum LattObj{
@@ -379,8 +382,11 @@ typedef enum LattObj{
     // Cmd frame lead
     FRLD = 524288,
     // Ping reply.
-    HERE = 1048575
-
+    HERE = 1048575,
+    // Shm obj.
+    SHMM = 2097150,
+    // Memory address
+    MEMA = 4194300
 } LattObj;
 
 /**
