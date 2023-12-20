@@ -8,7 +8,6 @@
 #include "fiforms.h"
 #include "fidi_masks.h"
 #include "profiling.h"
-#include "lattice_signals.h"
 #include "tagfi.h"
 #include <sodium.h>
 #include <stdio.h>

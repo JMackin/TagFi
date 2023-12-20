@@ -2,7 +2,6 @@
 // Created by ujlm on 11/2/23.
 //
 
-#include "lattice_signals.h"
 #include <sodium.h>
 #ifndef TAGFI_LATTICE_WORKS_H
 #define TAGFI_LATTICE_WORKS_H
@@ -12,6 +11,8 @@
 #define RSPARRLEN 256
 #define HASHSTRLEN 64
 #define LKEYSZ 16
+#include "lattice_signals.h"
+
 
 typedef unsigned char LatticeKey[LKEYSZ];
 typedef unsigned char* LattcKey;
