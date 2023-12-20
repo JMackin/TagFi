@@ -16,7 +16,6 @@
 #include <pthread.h>
 #include "jlm_random.h"
 #include "lattice_rsps.h"
-#include "lattice_signals.h"
 #include "fidi_masks.h"
 #include "lattice_works.h"
 

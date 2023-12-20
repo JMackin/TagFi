@@ -90,14 +90,18 @@ def main(path: list, maxlength: int = 7, dump: bool = False, topres: int = 0, ex
 
     res = sorted(res, key=lambda x: getattr(x, 'cnt'), reverse=True)
     res = res[:255]
-
-    res = [(r[0], i) for r, i in zip(res, range(1, len(res) + 1))]
-
-    last = res[-1]
     formcount = len(res) + 1
     cnt = 0
     flip = True
     topr = True if topres > 0 else False
+
+    if len(res) > 1:
+        res = [(r[0], i) for r, i in zip(res, range(1, len(res) + 1))]
+        last = res[0]
+        #last = res[-1]
+
+    else:
+        last = 0
 
     vars_tobe = (formcount, maxlength)
 
@@ -116,7 +120,7 @@ def main(path: list, maxlength: int = 7, dump: bool = False, topres: int = 0, ex
                                 cnt = 1
                                 (f if flip else ffff).write('\n')
                                 continue
-                            elif cnt == 1:
+                            if cnt == 1:
                                 newline = re.split('###%', l)
                                 elem = newline[1].split('^')
 
