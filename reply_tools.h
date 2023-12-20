@@ -7,6 +7,7 @@
 #include <string.h>
 
 #include "consts.h"
+#include "lattice_works.h"
 #include <stdint.h>
 
 void rsparr_out(unsigned char ** buf, unsigned int arrlen);
@@ -29,7 +30,7 @@ unsigned int rsparr_add_msg(unsigned char ** buf, char* msg, unsigned int len, u
 unsigned int rsparr_add_chrstr(unsigned char ** buf, unsigned char * msg, unsigned int len, unsigned int offst);
 unsigned int rsparr_add_travelpath(TravelPath* travelpath, buff_arr buf, uint offst);
 
-LattObj pull_arrObj(Info_F inf_frm);
+LattObj pull_arrObj(Info_Frame_PTP inf_frm);
 LattReply pull_replyitm(buff_arr buf);
 uint pull_arrsz(buff_arr buf);
 uint nxt_arrelem_type(buff_arr buf, uint offset);

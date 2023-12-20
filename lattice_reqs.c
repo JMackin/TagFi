@@ -209,7 +209,7 @@ InfoFrame *parse_req(uchar_arr fullreqbuf, //<-- same name in spin up
     memcpy(&uni_flag, fullreqbuf, UINT_SZ);
     flgcnt = parse_lead(uni_flag, rqflgsbuf, stsfrm, infofrm);
 
-    if (!flgcnt) {
+    if (flgcnt == 0) {
         stsErno(MALREQ, stsfrm, "Malformed request, error parsing lead", uni_flag,
                 "misc - lead", "parse_req->parse_lead", NULL, errno);
         return *infofrm;

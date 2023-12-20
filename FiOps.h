@@ -41,7 +41,7 @@ typedef struct Lattice_FD{
     StreamMode stream_mode;
 
 }Lattice_FD;
-
 typedef Lattice_FD* LattFD;
+typedef Lattice_FD** LattFD_PTP;
 
 #endif

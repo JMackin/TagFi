@@ -201,7 +201,7 @@ unsigned long long little_hsh_llidx(unsigned char* hkey, unsigned char* tobehshe
 
 }
 
-unsigned long latt_hsh_idx(LattcKey lattkey, unsigned long fhshno, unsigned char* intbuf){
+unsigned long latt_hsh_idx(LttcKey lattkey, unsigned long fhshno, unsigned char* intbuf){
 
 
     unsigned long outidx=0;

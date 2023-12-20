@@ -225,6 +225,7 @@ LattFD open_blank_lattfd(void){
     lattfd->dir_fd = 0;
     set_lattfd_empty(&lattfd);
     return lattfd;
+
 }
 
 int cycle_nodeFD(LattFD* lattFd){

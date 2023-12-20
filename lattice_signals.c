@@ -230,7 +230,7 @@ uint bundle_add(ErrBundle* bundle, uint attr, void* val){
 
 
 
-ErrorBundle raiseErr(LttSt lttSt, ErrorBundle bundle){
+ErrorBundle raiseErr(LttcState_PTP lttSt, ErrorBundle bundle){
     clock_t ca = clock();
 
     bundle.raised = 1;
@@ -238,7 +238,7 @@ ErrorBundle raiseErr(LttSt lttSt, ErrorBundle bundle){
     char* itm_hold;
     char* errmsg_lnbuf = (char*) malloc(32*UCHAR_SZ);
     char* errmsg = (char*) malloc(ERRBUFLEN*UCHAR_SZ);
-    SttsFrm sttsFrm = (*lttSt)->frame;
+    SttsFrame sttsFrm = (*lttSt)->frame;
 
 
     unsigned int idx = sprintf(errmsg,"\n\n\n\t---------- Error ----------\n\t");

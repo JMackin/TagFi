@@ -7,6 +7,7 @@
 #ifndef TAGFI_LATTICE_WORKS_H
 #define TAGFI_LATTICE_WORKS_H
 #include "FiOps.h"
+#include "consts.h"
 
 #define INFARRLEN 18
 #define RSPARRLEN 256
@@ -14,7 +15,7 @@
 #define LKEYSZ 16
 
 typedef unsigned char LatticeKey[LKEYSZ];
-typedef unsigned char* LattcKey;
+typedef unsigned char* LttcKey;
 
 typedef struct FiEntry{
     //unsigned long long fiid;
@@ -83,11 +84,12 @@ typedef struct HashLattice {
     Armatr armature;
     unsigned long count;
     unsigned long max;
-    LattcKey lattcKey;
-    LttcStt state;
+    LttcKey lattcKey;
+    LttcState state;
 
 } HashLattice;
 typedef HashLattice* Lattice;
+typedef HashLattice** Lattice_PTP;
 
 typedef struct TravelPath{
     Vessel origin;
@@ -122,6 +124,7 @@ typedef struct InfoFrame {
     Vessel* vessel;
 } InfoFrame;
 
+
 InfoFrame *init_infofrm(InfoFrame **info_frm, uint startup);
 //uint reset_infofrm(InfoFrame **info_frm);
 
@@ -131,14 +134,50 @@ typedef struct LattStruct{
     unsigned long* itmID;
 }LattStruct;
 
+typedef unsigned int** RspMap;
+typedef unsigned int (*RspFunc[RSPARRLEN])(StatFrame**, InfoFrame**, Lattice*, unsigned char**);
+
+typedef struct Resp_Tbl{
+    unsigned int fcnt;
+    RspMap* rsp_map; // 3 x 3 x fcnt - 3D array: {LattReply,Mod,actIdx}
+    RspFunc* rsp_funcarr;
+} Resp_Tbl;
+typedef Resp_Tbl* ResponseTable;
+typedef Resp_Tbl** ResponseTable_PTP;
+
+
 typedef struct stat* stptr;
+typedef struct epoll_event* epEvent;
+typedef InfoFrame** Info_Frame_PTP;
+typedef StatFrame** Status_Frame_PTP;
+typedef unsigned char** Std_Buffer_PTP; // Standard buffer, pointer-to-pointer
+
+
+
+typedef struct SpinOffArgsPack{
+    pthread_t tid;
+    Lattice_PTP hashLattice;
+    Std_Buffer_PTP request_buf;
+    Std_Buffer_PTP response_buf;
+    Std_Buffer_PTP requestArr_buf;
+    Std_Buffer_PTP tempArr_buf;
+    Flags_Buffer_PTP flags_buf;
+    Info_Frame_PTP infoFrame;
+    ResponseTable_PTP responseTable;       // Not implemented?
+    epEvent epollEvent_IN;
+    int dataSocket;
+    int epollFD;
+    int buf_len;
+    unsigned int tag;
+}SpinOffArgsPack;
+typedef SpinOffArgsPack* SOA_Pack;
 
 double long *map_dir(StatFrame **statusFrame, const char *dir_path, unsigned int path_len, unsigned char *dirname,
-                     unsigned int dnlen, HashLattice *hashlattice, Armature **fitbl, LattcKey latticeKey);
+                     unsigned int dnlen, HashLattice *hashlattice, Armature **fitbl, LttcKey latticeKey);
 
 DiChains* init_dchains();
 
-HashLattice *init_hashlattice(DChains *dirchains, LattcKey lattcKey, LttcStt lttcstt);
+HashLattice *init_hashlattice(DChains *dirchains, LttcKey lattcKey, LttcState lttcstt);
 
 FiNode* mk_finnode(unsigned int nlen,
                    unsigned char* finame,
@@ -147,8 +186,6 @@ FiNode* mk_finnode(unsigned int nlen,
                    unsigned long fhshno);
 
 
-typedef unsigned int** RspMap;
-typedef unsigned int (*RspFunc[RSPARRLEN])(StatFrame**, InfoFrame**, Lattice*, unsigned char**);
 
 unsigned int getidx(unsigned long fhshno);
 
@@ -156,17 +193,17 @@ uint add_entry(FiNode* entry,
                Armature* fiTbl,
                PathParts pp);
 
-uint return_to_origin(TravelPath *travelPath, DChains dirChains, LttSt lttSt);
+uint return_to_origin(TravelPath *travelPath, DChains dirChains, LttcState_PTP lttSt);
 
-void travel_dchains(Vessel *vessel, unsigned int lor, unsigned char steps, TravelPath **travelpath, LttSt lttSt);
+void travel_dchains(Vessel *vessel, unsigned int lor, unsigned char steps, TravelPath **travelpath, LttcState_PTP lttSt);
 
-void goto_chain_tail(DiChains *dirChains, unsigned int lor, TravelPath **travelpath, LttSt lttSt);
+void goto_chain_tail(DiChains *dirChains, unsigned int lor, TravelPath **travelpath, LttcState_PTP lttSt);
 
-void goto_base(DChains dchns, TravelPath **travelpath, LttSt lttSt);
+void goto_base(DChains dchns, TravelPath **travelpath, LttcState_PTP lttSt);
 
-void switch_base(DChains dchns, TravelPath **travelpath, LttSt lttSt);
+void switch_base(DChains dchns, TravelPath **travelpath, LttcState_PTP lttSt);
 
-unsigned int travel_by_chnid(unsigned long chn_id, DiChains *dchns, TravelPath **travelpath, LttSt lttSt);
+unsigned int travel_by_chnid(unsigned long chn_id, DiChains *dchns, TravelPath **travelpath, LttcState_PTP lttSt);
 
 DiNode* add_dnode(unsigned long long did,
                   unsigned char* dname,
@@ -197,7 +234,7 @@ void destroy_chains(DiChains* dirChains);
 
 LattFD make_bridgeanchor(Armatr *armatr, DiNode **dirnode, char **path, unsigned int pathlen);
 
-unsigned int travel_by_diid(unsigned long long did, DiChains *dchns, TravelPath **travelpath, LttSt lttSt);
+unsigned int travel_by_diid(unsigned long long did, DiChains *dchns, TravelPath **travelpath, LttcState_PTP lttSt);
 
 void yield_dnhsh(DiNode** dirnode, unsigned char** dn_hash);
 

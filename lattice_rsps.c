@@ -711,11 +711,11 @@ LattType dtrm_rsp(StatFrame **sts_frm,
  * \ProcessResponse
  */
 uint respond(Resp_Tbl *rsp_tbl,
-                     SttsFrm *sts_frm,
-                     InfoFrame **inf_frm,
-                     DChains *dchns,
-                     Lattice *hltc,
-                     uchar_arr rsp_buf) {
+             SttsFrame *sts_frm,
+             InfoFrame **inf_frm,
+             DChains *dchns,
+             Lattice *hltc,
+             uchar_arr rsp_buf) {
 
     //TODO: Reset infoframe, implement and include.
     LattType lattItm;

@@ -473,6 +473,7 @@ typedef union LattFlag{
 //SPLITTO works
 
 typedef LattFlag* LttFlgs;
+typedef LttFlgs* Flags_Buffer_PTP; // Flags buffer, pointer to pointer.
 
 
 /**
@@ -488,8 +489,8 @@ typedef struct StatFrame{
     LattErr err_code;
     unsigned int modr;
 }StatFrame;
-
-typedef StatFrame* SttsFrm;
+typedef StatFrame* SttsFrame;
+typedef StatFrame** Status_Frame_PTP;
 
 typedef union uniArr{
     unsigned int* iarr;
@@ -497,14 +498,14 @@ typedef union uniArr{
 }uniArr;
 
 typedef struct LatticeState{
-    SttsFrm frame;
+    SttsFrame frame;
     unsigned long long int cwdnode;
     unsigned int tag;
     unsigned int misc;
 }LatticeState;
 
-typedef LatticeState* LttcStt;
-typedef LatticeState** LttSt;
+typedef LatticeState* LttcState;
+typedef LatticeState** LttcState_PTP;
 
 typedef struct ErrorBundle{
     LattErr ltcerr;
@@ -544,7 +545,7 @@ long
 stsErno(LattErr ltcerr, StatFrame **sts_frm, char *msg, unsigned long misc, char *miscdesc, char *function, char *note,
         int erno);
 
-ErrorBundle raiseErr(LttSt lttSt, ErrorBundle bundle);
+ErrorBundle raiseErr(LttcState_PTP lttSt, ErrorBundle bundle);
 ErrorBundle init_errorbundle();
 unsigned int bundle_add(ErrBundle* bundle, unsigned int  attr, void* val);
 ErrorBundle bundle_addglob(ErrorBundle bundle,LattErr ltcerr, char *msg,

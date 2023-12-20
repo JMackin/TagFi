@@ -13,11 +13,13 @@
 #include <string.h>
 #include <sys/epoll.h>
 #include <errno.h>
-#include "lattice_works.h"
+#include <pthread.h>
 #include "jlm_random.h"
 #include "lattice_rsps.h"
 #include "lattice_signals.h"
 #include "fidi_masks.h"
+#include "lattice_works.h"
+
 
 
 #define CNFIGPTH "/home/ujlm/CLionProjects/TagFI/config"
@@ -30,9 +32,9 @@
 
 int erno;
 
-LttcStt init_latticestate(void){
-    SttsFrm status_frm = (SttsFrm) malloc(sizeof(StatFrame));
-    LttcStt lattst = (LttcStt) malloc(sizeof(LatticeState));
+LttcState init_latticestate(void){
+    SttsFrame status_frm = (SttsFrame) malloc(sizeof(StatFrame));
+    LttcState lattst = (LttcState) malloc(sizeof(LatticeState));
     (status_frm)->status=RESET;
     (status_frm)->err_code=IMFINE;
     (status_frm)->modr=0;
@@ -282,15 +284,9 @@ void disassemble(Lattice* hashlattice,
 }
 
 
-void destroy_metastructures(Resp_Tbl *rsp_tbl,
-                            InfoFrame *infoFrame,
-                            LttFlgs reqflg_arr,
-                            unsigned char* req_buf,
-                            unsigned char* req_arr_buf,
-                            unsigned char* tmparrbuf,
-                            unsigned char* rsp_buf) {
-    if ((rsp_tbl)->rsp_funcarr != NULL){free(((rsp_tbl)->rsp_funcarr));}
-    if (rsp_tbl != NULL){free(rsp_tbl);}
+void destroy_metastructures(Resp_Tbl *rsp_tbl, InfoFrame *infoFrame, LttFlgs reqflg_arr, unsigned char *req_buf,
+                            unsigned char *req_arr_buf, unsigned char *tmparrbuf, unsigned char *rsp_buf) {
+    if ((rsp_tbl)->rsp_funcarr != NULL){free(((rsp_tbl)->rsp_funcarr));free(rsp_tbl);}
     if (req_arr_buf != NULL) {free(req_buf);}
     if (req_arr_buf != NULL){free(req_arr_buf);}
    // if (tmparrbuf != NULL){free(tmparrbuf);}
@@ -300,7 +296,7 @@ void destroy_metastructures(Resp_Tbl *rsp_tbl,
 }
 
 
-size_t read_conf(unsigned char **dnconf_addr, int cnfdir_fd, LttcStt ltcSt) {
+size_t read_conf(unsigned char **dnconf_addr, int cnfdir_fd, LttcState ltcSt) {
     struct stat sb;
     size_t length;
     ErrorBundle errBndl = init_errorbundle();
@@ -369,14 +365,289 @@ int extract_name(const unsigned char* path, int length) {
     }
     return fs_pos + 1;
 }
+//
+//// 1 Lattice_PTP hashLattice,
+//// 2 Std_Buffer_PTP request_buf,
+//// 3 Std_Buffer_PTP response_buf,
+//// 4 Std_Buffer_PTP requestArr_buf,
+//// 5 Std_Buffer_PTP tempArr_buf,
+//// 6 Flags_Buffer_PTP flags_buf,
+//// 7 Info_Frame_PTP infoFrame,
+//// 8 ResponseTable_PTP responseTable,
+//// 9 epEvent epollEvent_IN,
+//// 10 pthread_t tid
+//// 11 int epollFD,
+//// 12 int dataSocket,
+//// 13 int buf_len,
+//// 14 int tag
+//
+//void update_SOA(int opt, SOA_Pack* soaPack, void* new_val){
+//
+//    switch (opt){
+//        case 1:
+//            (*soaPack)->hashLattice = (Lattice_PTP) new_val;
+//            break;
+//        case 2:
+//            (*soaPack)->request_buf = (Std_Buffer_PTP) new_val;
+//            break;
+//        case 3:
+//            (*soaPack)->response_buf = (Std_Buffer_PTP) new_val;
+//            break;
+//        case 4:
+//            (*soaPack)->requestArr_buf = (Std_Buffer_PTP) new_val;
+//            break;
+//        case 5:
+//            (*soaPack)->tempArr_buf = (Std_Buffer_PTP) new_val;
+//            break;
+//        case 6:
+//            (*soaPack)->flags_buf =  (Flags_Buffer_PTP) new_val;
+//            break;
+//        case 7:
+//            (*soaPack)->infoFrame = (Info_Frame_PTP) new_val;
+//            break;
+//        case 8:
+//            (*soaPack)->responseTable = (ResponseTable_PTP) new_val;
+//            break;
+//        case 9:
+//            (*soaPack)->epollEvent_IN = (epEvent) new_val;
+//            break;
+//        case 10:
+//            (*soaPack)->tid = *((pthread_t*) new_val);
+//            break;
+//        case 11:
+//            (*soaPack)->epollFD = *((int*) new_val);
+//            break;
+//        case 12:
+//            (*soaPack)->dataSocket = *((int*) new_val);
+//            break;
+//        case 13:
+//            (*soaPack)->buf_len = *((int*) new_val);
+//            break;
+//        case 14:
+//            (*soaPack)->tag = *((int*) new_val);
+//            break;
+//        default:
+//            return;
+//    }
+//}
+
+void update_SOA_DS(SOA_Pack* soaPack, int datasocket){(*soaPack)->dataSocket = datasocket;}
+
+SOA_Pack pack_SpinOff_Args(pthread_t tid,
+                           Lattice_PTP hashLattice,
+                           Std_Buffer_PTP request_buf,
+                           Std_Buffer_PTP response_buf,
+                           Std_Buffer_PTP requestArr_buf,
+                           Std_Buffer_PTP tempArr_buf,
+                           Flags_Buffer_PTP flags_buf,
+                           Info_Frame_PTP infoFrame,
+                           ResponseTable_PTP responseTable,
+                           epEvent epollEvent_IN,
+                           int epollFD,
+                           int dataSocket,
+                           int buf_len,
+                           int tag){
+
+    SOA_Pack soaPack = (SOA_Pack) malloc(sizeof(SpinOffArgsPack));
+
+    soaPack->hashLattice = hashLattice;
+    soaPack->request_buf = request_buf;
+    soaPack->response_buf = response_buf;
+    soaPack->requestArr_buf = requestArr_buf;
+    soaPack->tempArr_buf = tempArr_buf;
+    soaPack->flags_buf = flags_buf;
+    soaPack->infoFrame = infoFrame;
+    soaPack->responseTable = responseTable;
+    soaPack->epollEvent_IN = epollEvent_IN;
+    soaPack->epollFD = epollFD;
+    soaPack->dataSocket = dataSocket;
+    soaPack->buf_len = buf_len;
+    soaPack->tid = tid;
+    if(tag){soaPack->tag = tag;}else{soaPack->tag = 1;}
+
+    return soaPack;
+}
+
+uint discard_SpinOff_Args(SOA_Pack* soaPack){
+
+    if ((*soaPack) == NULL){
+        return 1;
+    }else {
+        if (!(*soaPack)->tag){return 1;}
+
+        (*soaPack)->hashLattice = NULL;
+        (*soaPack)->request_buf = NULL;
+        (*soaPack)->response_buf = NULL;
+        (*soaPack)->requestArr_buf = NULL;
+        (*soaPack)->tempArr_buf = NULL;
+        (*soaPack)->flags_buf = NULL;
+        (*soaPack)->infoFrame = NULL;
+        (*soaPack)->responseTable = NULL;
+        (*soaPack)->epollEvent_IN = NULL;
+        (*soaPack)->epollFD = 0;
+        (*soaPack)->dataSocket = 0;
+        (*soaPack)->buf_len = 0;
+        (*soaPack)->tag = 0;
+        (*soaPack)->tid = 0;
+
+        free((*soaPack));
+        (*soaPack) = NULL;
+
+        return 0;
+    }
+}
+
+ /* * * * * * * * * * * * * *
+ *  Spawn thread & respond *
+* * * * * * * * * * * * * **/
+
+int spin_off(SOA_Pack soa_pack){
+/*    typedef struct SpinOffArgsPack{
+        Lattice_PTP hashLattice;
+        Std_Buffer_PTP request_buf;
+        Std_Buffer_PTP response_buf;
+        Std_Buffer_PTP requestArr_buf;
+        Std_Buffer_PTP tempArr_buf;
+        Flags_Buffer_PTP flags_buf;
+        Info_Frame_PTP infoFrame;
+        epEvent epollEvent_IN;
+        int dataSocket;
+        int buf_len;
+*/
+
+     clock_t ca = clock();
+     int exit_flag = 0;
+     ErrorBundle errBndl = init_errorbundle();
+
+     LttcState_PTP latticeState =  &(*soa_pack->hashLattice)->state;
+     Status_Frame_PTP statusFrame = &(*latticeState)->frame;
+     epEvent epoll_event = soa_pack->epollEvent_IN;
+
+     /**
+      * READ REQUEST INTO BUFFER
+      * */
+     ssize_t ret = read(soa_pack->dataSocket, *soa_pack->request_buf, soa_pack->buf_len);  // READ 'R'
+     if (ret == -1) {
+         errBndl = bundle_addglob(errBndl, BADSOK, "Issue reading from data socket", 0, 0, "read", NULL, errno);
+         raiseErr(latticeState,errBndl);
+         return 1;
+     }
+     (*statusFrame)->status <<= 1;
+
+/**
+ * CMD RECEIVED
+ * */
+     /**
+      * PARSE REQUEST
+      * */
+     *soa_pack->infoFrame = parse_req(*soa_pack->request_buf,   // <<< Raw Request
+                                      soa_pack->infoFrame,
+                                      statusFrame,
+                                      soa_pack->flags_buf,
+                                      *soa_pack->tempArr_buf, //TODO: Cleanup data types here
+                                      soa_pack->requestArr_buf); // >>> Extracted array
+
+     if ((*statusFrame)->err_code) {
+         if ((*statusFrame)->act_id == GBYE){
+             exit_flag = 1;
+             goto endpoint;
+         }
+         setErr(statusFrame, MALREQ, 0);
+         serrOut(statusFrame, "Failed to process request.");
+         goto endpoint;
+
+         // TODO: replace w/ better option.
+     }
+
+     /** DETERMINE RESPONSE */
+     if (respond(*soa_pack->responseTable,
+                 statusFrame,
+                 soa_pack->infoFrame,
+                 &(*soa_pack->hashLattice)->chains,
+                 soa_pack->hashLattice,
+                 *soa_pack->response_buf)){
+         setErr(statusFrame, MISSPK, 0);
+         serrOut(statusFrame, "Failed to stage a response");
+         // TODO: replace w/ better option.
+     }
+     //TODO: Optimize response processing time
 
 
+     if ((*statusFrame)->act_id == GBYE) {
+         /**
+          * ACTION:
+          *  shutdown
+          * */
+         setSts(statusFrame, SHTDN, 0);
+         exit_flag = 1;
+     }else {
+         setSts(statusFrame, RESPN, 0);
+
+         /** WRITEOUT REPLY */
+         // TODO: Need to handle multiple users using their own buffers or assign them to a queue for writing out.
+         if (epoll_wait(soa_pack->epollFD,epoll_event,2,1000)){
+             if ((epoll_event->events & EPOLLERR) == EPOLLERR) {
+                 bundle_addglob(errBndl, EPOLLE, "Issue detected by EPOLLE", epoll_event->events, NULL, "epoll_wait - out", NULL, errno);
+                 raiseErr(latticeState,errBndl);
+                 return 1;
+             }
+             if (write(soa_pack->dataSocket, soa_pack->response_buf, soa_pack->buf_len) == -1){
+                 bundle_addglob(errBndl, BADSOK, "Error writiting response to buffer", soa_pack->dataSocket, "datascoket", "epoll_wait - out", NULL, errno);
+                 raiseErr(latticeState,errBndl);
+                 return 1;
+             }
+         }
+     }
+
+     /**
+      * ACTION:
+      *  save received sequence
+      * */
+     //TODO: Implement cmd saving
+
+     /**
+      * CLEAR CONNECTION
+      * */
+
+     clock_t cb = clock();
+     printf("\n<<TIME: %lu>>\n",cb-ca);
+
+     endpoint:
+     init_infofrm(soa_pack->infoFrame,0);
+     bzero(*soa_pack->request_buf, soa_pack->buf_len - 1);
+     bzero(soa_pack->flags_buf,FLGSCNT);
+     bzero(soa_pack->response_buf, soa_pack->buf_len - 1);
+     fsync(soa_pack->dataSocket);
+     if (close(soa_pack->dataSocket) == -1){
+         bundle_addglob(errBndl, BADSOK, "Error writiting response to buffer", soa_pack->dataSocket, "datasocket", "endpoint", NULL, errno);
+         raiseErr(latticeState,errBndl);
+         return 1;
+     }
+
+     return 0;
+}
+
+void* spawn_thread(void *vargs){
+    SOA_Pack soaPack = (SOA_Pack) vargs;
+    if(spin_off(soaPack)){
+        fprintf(stderr,"\ntag:%d\n",soaPack->tag);
+    }
+    soaPack->tag++;
+    return soaPack;
+}
+
+
+ /* * * * * * * * * *
+ * Init and listen *
+* * * * * * * * * */
 
 int spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsigned char **req_buf, InfoFrame **infofrm,
             Resp_Tbl **rsp_tbl, HashLattice **hashlattice, DiChains **dirchains, LttFlgs *flgsbuf, const int *cnfdir_fd,
-            unsigned char **tmparrbuf, LttcStt ltcSt) {
+            unsigned char **tmparrbuf, LttcState ltcSt) {
 
     ErrorBundle errBndl = init_errorbundle();
+    pthread_t tid; // Thread id;
+    void *t_ret = NULL;  // Returned value from thread.
 
 //    ErrBundle* eb_addr = &errBndl;
 
@@ -448,7 +719,7 @@ int spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsigned char 
         setErr(&ltcSt->frame, EPOLLE, 'C');
         return 1;
     }
-     struct epoll_event *epINevent;
+     epEvent epINevent;
      epINevent = (struct epoll_event*) malloc(sizeof(struct epoll_event)*3);
      epINevent->events = EPOLLIN | EPOLLOUT;
 
@@ -469,6 +740,21 @@ int spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsigned char 
     while (!exit_flag) {
         i = 0;
         stsReset(&ltcSt->frame);
+        SOA_Pack soaPack = pack_SpinOff_Args(
+                0,
+                hashlattice,
+                req_buf,
+                rsp_buf,
+                req_arr_buf,
+                tmparrbuf,
+                flgsbuf,
+                infofrm,
+                rsp_tbl,
+                epINevent,
+                efd,
+                0,
+                buf_len,
+                0);
 
         /**
          * ATTACH EPOLL
@@ -485,6 +771,7 @@ int spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsigned char 
             setErr(&ltcSt->frame, BADCON, 'B');// 65 = 'A' -> accept step
         }
         (ltcSt->frame)->status <<= 1;
+        update_SOA_DS(&soaPack,data_socket);
 
 
     /** Read and Parse */
@@ -496,95 +783,123 @@ int spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsigned char 
                 errBndl = bundle_addglob(errBndl, EPOLLE, "Error waiting on epoll", epINevent->events, 0, "epoll_wait - in", NULL, errno);
             }
         }
+        /** SPAWN THREAD UPON CONN */
 
-        clock_t ca = clock();
-        /**
-         * READ REQUEST INTO BUFFER
-         * */
-        ret = read(data_socket, *req_buf, buf_len);  // READ 'R'
-        if (ret == -1) {
-            errBndl = bundle_addglob(errBndl, BADSOK, "Issue reading from data socket", 0, 0, "read", NULL, errno);
+        if(pthread_create(&tid, NULL, spawn_thread, (void*)(soaPack))){
+            perror("Error creating thread.");
+            exit_flag = 1;
             return 1;
         }
-        (ltcSt->frame)->status <<= 1;
+        pthread_join(tid,&t_ret);
 
-/**
- * CMD RECEIVED
- * */
-        /**
-         * PARSE REQUEST
-         * */
-        *infofrm = parse_req(*req_buf,   // <<< Raw Request
-                             infofrm,
-                             &ltcSt->frame,
-                             flgsbuf,
-                             *tmparrbuf,
-                             req_arr_buf); // >>> Extracted array
 
-        if ((ltcSt->frame)->err_code) {
-            if ((ltcSt->frame->act_id)==GBYE){
-                exit_flag = 1;
-                goto endpoint;
+        if (ltcSt->frame->status == SHTDN){
+            if(soaPack->tag > 1){
+                fprintf(stderr,"\n>> pthread (%ld) ret: %lx\n\t>> >> %s\n\n", tid, *((long*) t_ret), (unsigned char*) t_ret);
+                pthread_exit(0);
             }
-            setErr(&ltcSt->frame,MALREQ,0);
-            serrOut(&ltcSt->frame,"Failed to process request.");
-            goto endpoint;
-
-             // TODO: replace w/ better option.
         }
 
-        /** DETERMINE RESPONSE */
-        if (respond(*rsp_tbl,
-                     &ltcSt->frame,
-                     infofrm,
-                     dirchains,
-                     hashlattice,
-                     *rsp_buf)){
-            setErr(&ltcSt->frame,MISSPK,0);
-            serrOut(&ltcSt->frame,"Failed to stage a response");
-            // TODO: replace w/ better option.
-        }
-        //TODO: Optimize response processing time
+        fprintf(stderr,"\n>> pthread (%ld) ret: %lx\n\t>> >> %s\n\n", tid, *((long*) t_ret), (unsigned char*) t_ret);
 
 
-        if ((ltcSt->frame)->act_id == GBYE) {
-            /**
-             * ACTION:
-             *  shutdown
-             * */
-            setSts(&ltcSt->frame, SHTDN, 0);
-            exit_flag = 1;
-        }else {
-                setSts(&ltcSt->frame, RESPN, 0);
-
-                /** WRITEOUT REPLY */
-                if (epoll_wait(efd,epINevent,2,1000)){
-                    if ((epINevent->events&EPOLLERR) == EPOLLERR) {
-                        bundle_addglob(errBndl, EPOLLE, "Issue detected by EPOLLE", epINevent->events, 0, "epoll_wait - in", NULL, errno);
-                   }
-                    ret = write(data_socket, *rsp_buf, buf_len);
-                }
-        }
-
-        /**
-         * ACTION:
-         *  save received sequence
-         * */
-        //TODO: Implement cmd saving
-
-        /**
-         * CLEAR CONNECTION
-         * */
-
-        clock_t cb = clock();
-        printf("\n<<TIME: %lu>>\n",cb-ca);
-
-        endpoint:
-        init_infofrm(infofrm,0);
-        bzero(*req_buf, buf_len - 1);
-        bzero(*flgsbuf,FLGSCNT);
-        bzero(*rsp_buf, arrbuf_len-1);
-        close(data_socket);
+//       /* TOBE migrated to spinoff() - START
+//        * ===============================================
+//        * */
+//
+//        clock_t ca = clock();
+//        /**
+//         * READ REQUEST INTO BUFFER
+//         * */
+//        ret = read(data_socket, *req_buf, buf_len);  // READ 'R'
+//        if (ret == -1) {
+//            errBndl = bundle_addglob(errBndl, BADSOK, "Issue reading from data socket", 0, 0, "read", NULL, errno);
+//
+//            return 1;
+//        }
+//        (ltcSt->frame)->status <<= 1;
+//
+///**
+// * CMD RECEIVED
+// * */
+//        /**
+//         * PARSE REQUEST
+//         * */
+//        *infofrm = parse_req(*req_buf,   // <<< Raw Request
+//                             infofrm,
+//                             &ltcSt->frame,
+//                             flgsbuf,
+//                             *tmparrbuf,
+//                             req_arr_buf); // >>> Extracted array
+//
+//        if ((ltcSt->frame)->err_code) {
+//            if ((ltcSt->frame->act_id)==GBYE){
+//                exit_flag = 1;
+//                goto endpoint;
+//            }
+//            setErr(&ltcSt->frame,MALREQ,0);
+//            serrOut(&ltcSt->frame,"Failed to process request.");
+//            goto endpoint;
+//
+//             // TODO: replace w/ better option.
+//        }
+//
+//        /** DETERMINE RESPONSE */
+//        if (respond(*rsp_tbl,
+//                     &ltcSt->frame,
+//                     infofrm,
+//                     dirchains,
+//                     hashlattice,
+//                     *rsp_buf)){
+//            setErr(&ltcSt->frame,MISSPK,0);
+//            serrOut(&ltcSt->frame,"Failed to stage a response");
+//            // TODO: replace w/ better option.
+//        }
+//        //TODO: Optimize response processing time
+//
+//
+//        if ((ltcSt->frame)->act_id == GBYE) {
+//            /**
+//             * ACTION:
+//             *  shutdown
+//             * */
+//            setSts(&ltcSt->frame, SHTDN, 0);
+//            exit_flag = 1;
+//        }else {
+//                setSts(&ltcSt->frame, RESPN, 0);
+//
+//                /** WRITEOUT REPLY */
+//                if (epoll_wait(efd,epINevent,2,1000)){
+//                    if ((epINevent->events&EPOLLERR) == EPOLLERR) {
+//                        bundle_addglob(errBndl, EPOLLE, "Issue detected by EPOLLE", epINevent->events, 0, "epoll_wait - in", NULL, errno);
+//                   }
+//                    ret = write(data_socket, *rsp_buf, buf_len);
+//                }
+//        }
+//
+//        /**
+//         * ACTION:
+//         *  save received sequence
+//         * */
+//        //TODO: Implement cmd saving
+//
+//        /**
+//         * CLEAR CONNECTION
+//         * */
+//
+//        clock_t cb = clock();
+//        printf("\n<<TIME: %lu>>\n",cb-ca);
+//
+//        endpoint:
+//        init_infofrm(infofrm,0);
+//        bzero(*req_buf, buf_len - 1);
+//        bzero(*flgsbuf,FLGSCNT);
+//        bzero(*rsp_buf, arrbuf_len-1);
+//        close(data_socket);
+//
+//        /* ===============================================
+//         * TOBE migrated to spinoff() - END
+//         * */
 
         /**
          * CLOSE ON SHTDN CMD
@@ -598,8 +913,10 @@ int spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsigned char 
     free(epINevent);
 
     unlink(SOCKET_NAME);
+
     return 0;
-}   /* * * * *
+}
+    /* * * * *
       * CLOSE *
        * * * * */
 
@@ -611,7 +928,7 @@ void summon_lattice() {
     /**
      * INIT GLOBAL STATFRAME
      */
-    LttcStt ltcSt = init_latticestate();
+    LttcState latticestate = init_latticestate();
 
     /**
      * START SODIUM
@@ -620,7 +937,7 @@ void summon_lattice() {
     if (naclinit != 0) {
         //TODO: REPLACE stsErno with errBundle functions
         bundle_addglob(errBndl, SODIUM, "Sodium init failed", naclinit, 0, "summon_lattice", NULL, errno);
-        raiseErr(&ltcSt,errBndl);
+        raiseErr(&latticestate, errBndl);
     }
 
 
@@ -648,7 +965,7 @@ void summon_lattice() {
     LttFlgs reqflg_arr;
     InfoFrame *info_frm;    // Frame for storing request info
 
-    LattcKey latticeKey = sodium_malloc(ULONG_SZ*2);
+    LttcKey latticeKey = sodium_malloc(ULONG_SZ * 2);
     unsigned char* headname = malloc(sizeof(unsigned char)*5);
     unsigned char headnm[5] = {'H','E','A','D','\0'};
     memcpy(headname,headnm,5);
@@ -668,7 +985,7 @@ void summon_lattice() {
         //  DirNode chains
         DiChains *dirchains = init_dchains();
         //  HashBridge lattice
-        HashLattice *hashlattice = init_hashlattice(&dirchains, latticeKey, ltcSt);
+        HashLattice *hashlattice = init_hashlattice(&dirchains, latticeKey, latticestate);
         //  Size of config file in bytes
 
         /**
@@ -678,13 +995,21 @@ void summon_lattice() {
         if (cnfdir_fd == -1) {
             errno_hold = errno;
             perror("Error in fd: cnfdir_fd: %d");
-            setAct(&ltcSt->frame,GBYE,NOTHN,0);
+            setAct(&latticestate->frame, GBYE, NOTHN, 0);
             //stsErno(perror, ltcerr, **sts_frm, erno, misc, *msg, *function, *miscdesc);
-//            stsErno(BADCNF, &ltcSt->frame, "Failed reading config", 333, 0, NULL, NULL, errno);
+//            stsErno(BADCNF, &latticestate->frame, "Failed reading config", 333, 0, NULL, NULL, errno);
             errBndl = bundle_addglob(errBndl,BADCNF, "Failed reading config", 333, 0, NULL, NULL, errno_hold);
+            errBndl = raiseErr(&latticestate, errBndl);
             disassemble(&hashlattice, &dirchains, NULL,
                         NULL, 0, NULL, 0,
                         NULL, NULL, 0, 0);
+            destroy_metastructures(NULL,
+                                   info_frm,
+                                   reqflg_arr,
+                                   NULL,
+                                   req_arr_buf,
+                                   tmparrbuf,
+                                   NULL);
 
             break;
         }
@@ -695,7 +1020,7 @@ void summon_lattice() {
         size_t dn_size = read_conf(&dn_conf, cnfdir_fd, NULL);
         if (dn_size == -1) {
             errBndl = bundle_addglob(errBndl, BADCNF,"Failed reading config",dn_size,"dirnode size", "Summon Lattice", NULL, errno);
-            errBndl = raiseErr(&ltcSt,errBndl);
+            errBndl = raiseErr(&latticestate, errBndl);
             destroy_metastructures(NULL,
                                    info_frm,
                                    reqflg_arr,
@@ -703,9 +1028,16 @@ void summon_lattice() {
                                    req_arr_buf,
                                    tmparrbuf,
                                    NULL);
-                                 disassemble(&hashlattice, &dirchains, NULL,
-                                 dn_conf, dn_size, NULL, 0,
-                                 NULL, NULL, 0, cnfdir_fd);
+            disassemble(&hashlattice,
+                        &dirchains,
+                        NULL,
+                        dn_conf,
+                        dn_size,
+                        NULL,
+                        0,
+                        NULL,
+                        NULL,
+                        0, cnfdir_fd);
             break;
         }
 
@@ -714,8 +1046,8 @@ void summon_lattice() {
         Armature **tbl_list = (Armature **) calloc(dn_cnt, sizeof(Armature *));
 
 
-        errBndl = bundle_addglob(errBndl, ESHTDN, "DirectoryMapping failed", 333, 0, "map_dir", NULL, 0);
-        raiseErr(&ltcSt,errBndl);
+//        errBndl = bundle_addglob(errBndl, ESHTDN, "DirectoryMapping failed", 333, 0, "map_dir", NULL, 0);
+//        raiseErr(&latticestate,errBndl);
 
            /* * * * * * * * * *
           *  BUILD LATTICE  *
@@ -727,7 +1059,7 @@ void summon_lattice() {
         for (i = 0; i < dn_cnt; i++) {
             nm_len = extract_name(*(paths + i), *(lengths + i));
 
-            if (map_dir(&ltcSt->frame,
+            if (map_dir(&latticestate->frame,
                         (const char *) *(paths + i),
                         nm_len,
                         (*(paths + i) + nm_len),
@@ -737,7 +1069,7 @@ void summon_lattice() {
                         latticeKey) < 0){
                 errno_hold = errno;
                 errBndl = bundle_addglob(errBndl, ESHTDN, "DirectoryMapping failed", 333, 0, "map_dir", NULL, errno_hold);
-                raiseErr(&ltcSt,errBndl);
+                raiseErr(&latticestate, errBndl);
                 disassemble(&hashlattice,&dirchains,tbl_list,dn_conf,dn_size,NULL,0,lengths,paths,dn_cnt,cnfdir_fd);
                 destroy_metastructures(NULL, info_frm, reqflg_arr, req_buf, req_arr_buf, tmparrbuf, rsp_buf);
                 return;
@@ -751,7 +1083,7 @@ void summon_lattice() {
          Resp_Tbl* rsp_tbl;
         init_rsptbl(cnfdir_fd,
                     &rsp_tbl,
-                    &ltcSt->frame,
+                    &latticestate->frame,
                     &info_frm,
                     &dirchains,
                     &hashlattice);
@@ -771,11 +1103,11 @@ void summon_lattice() {
                 &reqflg_arr,
                 &cnfdir_fd,
                 &tmparrbuf,
-                ltcSt);
+                latticestate);
 
-        if (ltcSt->frame->err_code) {
+        if (latticestate->frame->err_code) {
              fprintf(stderr, "Failure:\nCode: %d\nAct id: %d\nModr: %c\n",
-                     ltcSt->frame->status, ltcSt->frame->act_id, ltcSt->frame->modr);
+                     latticestate->frame->status, latticestate->frame->act_id, latticestate->frame->modr);
         }
 
          /**
@@ -800,13 +1132,14 @@ void summon_lattice() {
                     dn_cnt,
                     cnfdir_fd);
 
-    }while (ltcSt->frame->status != SHTDN);
+    }while (latticestate->frame->status != SHTDN);
 
     /* * * * * * *
        *   EXIT   *
          * * * * * **/
 
-    stsOut(&ltcSt->frame);
-    free(ltcSt->frame);
+    stsOut(&latticestate->frame);
+    free(latticestate->frame);
     sodium_free(latticeKey);
+    pthread_exit(NULL);
 }

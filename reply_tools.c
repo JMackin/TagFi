@@ -8,6 +8,7 @@
 #include "reply_tools.h"
 #include "lattice_signals.h"
 #include "consts.h"
+#include "fi_lattice.h"
 #include <string.h>
 
 uchar_arr rsparr_pos(buff_arr buf) {return *buf + ARR_POS;}
@@ -18,7 +19,7 @@ uint pull_arrtyp(LattFlag lattflg){
 
 uchar_arr pull_arr(buff_arr buf){return *buf + ARR_POS;}
 
-LattObj pull_arrObj(Info_F inf_frm){
+LattObj pull_arrObj(Info_Frame_PTP inf_frm){
     LattObj arrobj;
     memcpy(&arrobj, (*inf_frm)->arr, LATTTYP_SZ);
     return arrobj;

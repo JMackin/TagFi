@@ -3,6 +3,7 @@
 #include <sys/types.h>
 #include "FiOps.h"
 #include "consts.h"
+#include "lattice_works.h"
 
 #define SINGLECHAR_MODEFORM 0
 #define CHARSTRING_MODEFORM 1

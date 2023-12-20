@@ -1,7 +1,7 @@
 #ifndef TAGFI_FI_CONSTS_H
 #define TAGFI_FI_CONSTS_H
 
-#include "fi_lattice.h"
+#include "lattice_signals.h"
 
 #define LERR_CNT 21
 #define LERR_CHARCNT 8
@@ -44,8 +44,8 @@ typedef const unsigned int cnst_uint;
 typedef unsigned char** buff_arr;
 typedef unsigned char* uchar_arr;
 typedef unsigned int* ptr_uint;
-typedef InfoFrame** Info_F;
-typedef StatFrame** Status_F;
+
+
 
 extern const unsigned int UINT_SZ;
 extern const unsigned int UCHAR_SZ;
