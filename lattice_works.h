@@ -152,8 +152,6 @@ typedef InfoFrame** Info_Frame_PTP;
 typedef StatFrame** Status_Frame_PTP;
 typedef unsigned char** Std_Buffer_PTP; // Standard buffer, pointer-to-pointer
 
-
-
 typedef struct SpinOffArgsPack{
     pthread_t tid;
     Lattice_PTP hashLattice;
@@ -170,7 +168,10 @@ typedef struct SpinOffArgsPack{
     int buf_len;
     unsigned int tag;
 }SpinOffArgsPack;
+
 typedef SpinOffArgsPack* SOA_Pack;
+
+typedef
 
 double long *map_dir(StatFrame **statusFrame, const char *dir_path, unsigned int path_len, unsigned char *dirname,
                      unsigned int dnlen, HashLattice *hashlattice, Armature **fitbl, LttcKey latticeKey);

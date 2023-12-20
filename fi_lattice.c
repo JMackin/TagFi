@@ -501,7 +501,7 @@ uint discard_SpinOff_Args(SOA_Pack* soaPack){
  *  Spawn thread & respond *
 * * * * * * * * * * * * * **/
 
-int spin_off(SOA_Pack soa_pack){
+ void* spin_off(void* sp){
 /*    typedef struct SpinOffArgsPack{
         Lattice_PTP hashLattice;
         Std_Buffer_PTP request_buf;
@@ -516,6 +516,8 @@ int spin_off(SOA_Pack soa_pack){
 */
 
      clock_t ca = clock();
+     SOA_Pack soa_pack = (SOA_Pack) sp;
+
      int exit_flag = 0;
      ErrorBundle errBndl = init_errorbundle();
 
@@ -530,7 +532,7 @@ int spin_off(SOA_Pack soa_pack){
      if (ret == -1) {
          errBndl = bundle_addglob(errBndl, BADSOK, "Issue reading from data socket", 0, 0, "read", NULL, errno);
          raiseErr(latticeState,errBndl);
-         return 1;
+         return NULL;
      }
      (*statusFrame)->status <<= 1;
 
@@ -589,12 +591,12 @@ int spin_off(SOA_Pack soa_pack){
              if ((epoll_event->events & EPOLLERR) == EPOLLERR) {
                  bundle_addglob(errBndl, EPOLLE, "Issue detected by EPOLLE", epoll_event->events, NULL, "epoll_wait - out", NULL, errno);
                  raiseErr(latticeState,errBndl);
-                 return 1;
+                 return NULL;
              }
              if (write(soa_pack->dataSocket, soa_pack->response_buf, soa_pack->buf_len) == -1){
                  bundle_addglob(errBndl, BADSOK, "Error writiting response to buffer", soa_pack->dataSocket, "datascoket", "epoll_wait - out", NULL, errno);
                  raiseErr(latticeState,errBndl);
-                 return 1;
+                 return NULL;
              }
          }
      }
@@ -621,19 +623,10 @@ int spin_off(SOA_Pack soa_pack){
      if (close(soa_pack->dataSocket) == -1){
          bundle_addglob(errBndl, BADSOK, "Error writiting response to buffer", soa_pack->dataSocket, "datasocket", "endpoint", NULL, errno);
          raiseErr(latticeState,errBndl);
-         return 1;
+         return NULL;
      }
 
-     return 0;
-}
-
-void* spawn_thread(void *vargs){
-    SOA_Pack soaPack = (SOA_Pack) vargs;
-    if(spin_off(soaPack)){
-        fprintf(stderr,"\ntag:%d\n",soaPack->tag);
-    }
-    soaPack->tag++;
-    return soaPack;
+     return soa_pack;
 }
 
 
@@ -785,13 +778,12 @@ int spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsigned char 
         }
         /** SPAWN THREAD UPON CONN */
 
-        if(pthread_create(&tid, NULL, spawn_thread, (void*)(soaPack))){
+        if(pthread_create(&tid, NULL, spin_off, (void*)(soaPack))){
             perror("Error creating thread.");
             exit_flag = 1;
             return 1;
         }
         pthread_join(tid,&t_ret);
-
 
         if (ltcSt->frame->status == SHTDN){
             if(soaPack->tag > 1){
@@ -801,110 +793,6 @@ int spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsigned char 
         }
 
         fprintf(stderr,"\n>> pthread (%ld) ret: %lx\n\t>> >> %s\n\n", tid, *((long*) t_ret), (unsigned char*) t_ret);
-
-
-//       /* TOBE migrated to spinoff() - START
-//        * ===============================================
-//        * */
-//
-//        clock_t ca = clock();
-//        /**
-//         * READ REQUEST INTO BUFFER
-//         * */
-//        ret = read(data_socket, *req_buf, buf_len);  // READ 'R'
-//        if (ret == -1) {
-//            errBndl = bundle_addglob(errBndl, BADSOK, "Issue reading from data socket", 0, 0, "read", NULL, errno);
-//
-//            return 1;
-//        }
-//        (ltcSt->frame)->status <<= 1;
-//
-///**
-// * CMD RECEIVED
-// * */
-//        /**
-//         * PARSE REQUEST
-//         * */
-//        *infofrm = parse_req(*req_buf,   // <<< Raw Request
-//                             infofrm,
-//                             &ltcSt->frame,
-//                             flgsbuf,
-//                             *tmparrbuf,
-//                             req_arr_buf); // >>> Extracted array
-//
-//        if ((ltcSt->frame)->err_code) {
-//            if ((ltcSt->frame->act_id)==GBYE){
-//                exit_flag = 1;
-//                goto endpoint;
-//            }
-//            setErr(&ltcSt->frame,MALREQ,0);
-//            serrOut(&ltcSt->frame,"Failed to process request.");
-//            goto endpoint;
-//
-//             // TODO: replace w/ better option.
-//        }
-//
-//        /** DETERMINE RESPONSE */
-//        if (respond(*rsp_tbl,
-//                     &ltcSt->frame,
-//                     infofrm,
-//                     dirchains,
-//                     hashlattice,
-//                     *rsp_buf)){
-//            setErr(&ltcSt->frame,MISSPK,0);
-//            serrOut(&ltcSt->frame,"Failed to stage a response");
-//            // TODO: replace w/ better option.
-//        }
-//        //TODO: Optimize response processing time
-//
-//
-//        if ((ltcSt->frame)->act_id == GBYE) {
-//            /**
-//             * ACTION:
-//             *  shutdown
-//             * */
-//            setSts(&ltcSt->frame, SHTDN, 0);
-//            exit_flag = 1;
-//        }else {
-//                setSts(&ltcSt->frame, RESPN, 0);
-//
-//                /** WRITEOUT REPLY */
-//                if (epoll_wait(efd,epINevent,2,1000)){
-//                    if ((epINevent->events&EPOLLERR) == EPOLLERR) {
-//                        bundle_addglob(errBndl, EPOLLE, "Issue detected by EPOLLE", epINevent->events, 0, "epoll_wait - in", NULL, errno);
-//                   }
-//                    ret = write(data_socket, *rsp_buf, buf_len);
-//                }
-//        }
-//
-//        /**
-//         * ACTION:
-//         *  save received sequence
-//         * */
-//        //TODO: Implement cmd saving
-//
-//        /**
-//         * CLEAR CONNECTION
-//         * */
-//
-//        clock_t cb = clock();
-//        printf("\n<<TIME: %lu>>\n",cb-ca);
-//
-//        endpoint:
-//        init_infofrm(infofrm,0);
-//        bzero(*req_buf, buf_len - 1);
-//        bzero(*flgsbuf,FLGSCNT);
-//        bzero(*rsp_buf, arrbuf_len-1);
-//        close(data_socket);
-//
-//        /* ===============================================
-//         * TOBE migrated to spinoff() - END
-//         * */
-
-        /**
-         * CLOSE ON SHTDN CMD
-         * */
-
 
     }// END WHILE !EXITFLAG
 
