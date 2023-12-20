@@ -168,7 +168,7 @@ RspFlag rsplead_addflg(RspFlag flags, buff_arr buf){
 }
 
 char* convertLattErr(const LattErr* _latterr){
-    char* laterrstr = (char*) malloc(ULONG_SZ);
+    char* laterrstr = (char*) malloc(LERR_CHARCNT);
     LattErr _latterr_itr;
     _latterr_itr = LERR_LASTELEM;
     uint i = LERR_CNT;
@@ -177,7 +177,7 @@ char* convertLattErr(const LattErr* _latterr){
         _latterr_itr >>= 1;
         if (!--i) { return NULL; }
     }
-    memcpy(laterrstr,latt_err_strs[i-1],8);
+    memcpy(laterrstr,latt_err_strs[i-1],LERR_CHARCNT);
     return laterrstr;
 }
 
@@ -192,7 +192,7 @@ char* convertLattSts(const LattStts * _lattsts){
         if (!--i) { return NULL; }
     }
     i=LSTS_CNT-i;
-    memcpy(lsttsstr,latt_stts_strs[i],8);
+    memcpy(lsttsstr,latt_stts_strs[i],LSTS_CHARCNT);
     return lsttsstr;
 }
 

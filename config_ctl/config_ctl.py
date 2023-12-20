@@ -76,9 +76,7 @@ import count_file_forms
 dirnodesconfpath = '/home/ujlm/CLionProjects/TagFI/config/dirnodes'
 confdirpath = '/home/ujlm/CLionProjects/TagFI/config'
 
-excl_set = {'asm','index','h'}
-
-
+excl_set = {'asm', 'index', 'h', 'HEAD'}
 
 def add_dirnodes():
     print("Enter filepaths to be added and q when done..\n")
@@ -203,7 +201,7 @@ def eval_dirnodesconf(dirnodes: list = None):
                 else:
                     path_bldr += chr(chr_in)
                 cursr += 1
-        #print(fi_list)
+        print(fi_list)
         fi_list = [i for i in fi_list if i != '']
 
         if dirnodes is not None:
@@ -219,10 +217,10 @@ def eval_dirnodesconf(dirnodes: list = None):
             print(len_list)
 
 
-# blank_conf_templ(dirnodesconfpath)
-# eval_dirnodesconf(['/home/ujlm/Tech', '/home/ujlm/Code'])
+blank_conf_templ(dirnodesconfpath)
+eval_dirnodesconf(['/srv/sandpit/Code', '/srv/sandpit/Vault'])
 #
-# eval_dirnodesconf(['/home/ujlm/Vaults'])
+eval_dirnodesconf(['/home/ujlm/Tech'])
 #
 # eval_dirnodesconf()
 

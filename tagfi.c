@@ -1,7 +1,9 @@
 #include "tagfi.h"
+#include "jlm_random.h"
 #include <sodium.h>
 #include <stdio.h>
 #include <dirent.h>
+#include <sys/mman.h>
 #include <unistd.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -84,29 +86,6 @@ StreamMode set_streammode(LattFD *lattFd, StreamMode streammode) {
     return streammode;
 }
 
-int scanfiinodes(const char* dir_path) {
-
-    struct dirent *entry;
-    DIR *dp;
-
-    dp = opendir(dir_path);
-
-    if (dp == NULL) {
-        perror("opendir");
-        return -1;
-    }
-
-    while ((entry = readdir(dp)))
-        if(entry == -1){
-            fprintf(stderr, "errno = %d", errno);
-            return -1;
-        }else {
-            printf("%lu\n", (entry->d_ino));
-        }
-
-    closedir(dp);
-    return 0;
-}
 
 __attribute__((unused)) int scanfi(const char* dir_path){
     struct dirent **elist;
@@ -179,7 +158,7 @@ unsigned long cwd_ino(const char* dir_path) {
     return ino;
 }
 
-int open_node_fd(char* path, int add_modes, int res_dnodefd){
+int open_dnode_fd(char* path, int add_modes, int res_dnodefd){
 
     if (res_dnodefd == 0){
         res_dnodefd = AT_FDCWD;
@@ -187,7 +166,7 @@ int open_node_fd(char* path, int add_modes, int res_dnodefd){
 
     int dnode_fd = openat(res_dnodefd, path, O_DIRECTORY, add_modes);
 
-    if (dnode_fd < 0 ){perror("open_node_fd failed");return -1;
+    if (dnode_fd < 0 ){perror("open_dnode_fd failed");return -1;
     }else{
         return dnode_fd;
     }
@@ -202,10 +181,50 @@ int open_low_fd(char* fipath, int add_ops, int add_modes, int res_dnodefd){
 
     int dnode_fd = openat(res_dnodefd, fipath, add_ops, add_modes);
 
-    if (dnode_fd < 0 ){perror("open_node_fd failed");return -1;
+    if (dnode_fd < 0 ){perror("open_dnode_fd failed");return -1;
     }else{
         return dnode_fd;
     }
+}
+
+void set_lattfd_empty(LattFD* lattFd){
+
+    if((*lattFd)->path != NULL){
+        free((*lattFd)->path);
+        (*lattFd)->path=NULL;
+    }
+
+    if(((*lattFd))->prime_fd > 2){
+        close(((*lattFd))->prime_fd);
+    }
+    if(((*lattFd))->duped_fd > 2){
+        close(((*lattFd))->duped_fd);
+    }
+    if(((*lattFd))->dir_fd > 2){
+        close(((*lattFd))->duped_fd);
+    }
+
+    ((*lattFd))->prime_fd = 0;
+    ((*lattFd))->duped_fd = 0;
+    ((*lattFd))->modes = 0;
+    ((*lattFd))->o_flgs = 0;
+    ((*lattFd))->dir_fd = 0;
+    ((*lattFd))->stream_mode = 0;
+    (*lattFd)->tag = 0;
+    (*lattFd)->len = 0;
+    (*lattFd)->addr = NULL;
+
+}
+
+LattFD open_blank_lattfd(void){
+    LattFD lattfd = malloc(sizeof(Lattice_FD));
+    lattfd->path = NULL;
+    lattfd->addr = NULL;
+    lattfd->prime_fd = 0;
+    lattfd->duped_fd = 0;
+    lattfd->dir_fd = 0;
+    set_lattfd_empty(&lattfd);
+    return lattfd;
 }
 
 int cycle_nodeFD(LattFD* lattFd){
@@ -229,6 +248,8 @@ int cycle_nodeFD(LattFD* lattFd){
 
     return (*lattFd)->duped_fd;
 }
+
+
 /*
 
     r       │ O_RDONLY
@@ -265,7 +286,23 @@ FILE* open_lattfdstream(LattFD lattfd, StreamMode streammode){
 
 }
 
-LattFD open_lattfd(char *fipath, int res_dnodefd, int add_ops, int add_modes, StreamMode streammode) {
+uint set_fisz(LattFD* lattfd, uint sz){
+    if (sz != 0) {
+        (*lattfd)->len = sz;
+    }else{
+        struct stat fi_stat;
+        if (fstat(cycle_nodeFD(lattfd), &fi_stat)==-1) {
+            perror("Error stat-ing Provided lattFd\n");
+            return 1;
+        }
+        long fi_sz = fi_stat.st_size;
+        (*lattfd)->len = fi_sz;
+    }
+
+    return 0;
+}
+
+LattFD open_lattfd(char *fipath, int res_dnodefd, int add_ops, int add_modes, uint fi_sz, StreamMode streammode) {
     int fd_hold;
     LattFD lattfd = malloc(sizeof(Lattice_FD));
 
@@ -282,22 +319,63 @@ LattFD open_lattfd(char *fipath, int res_dnodefd, int add_ops, int add_modes, St
     fd_hold = open_low_fd(fipath,add_ops,add_modes,res_dnodefd);
     if (fd_hold == -1){fprintf(stderr,"Failed to open LattFD prime");return NULL;}
 
+
     lattfd->prime_fd = fd_hold;
     lattfd->modes = add_modes;
     lattfd->o_flgs = add_ops;
     lattfd->duped_fd = 0;
     lattfd->dir_fd = res_dnodefd;
     lattfd->path = fipath;
-//    lattfd->stream_mode = 0;
+    lattfd->tag = 1;
+    lattfd->addr = NULL;
+    lattfd->stream_mode = 0;
+
+    if (fi_sz == 0) {
+        struct stat fi_stat;
+        if (fstat(cycle_nodeFD(&lattfd), &fi_stat)==-1) {
+            perror("Error stat-ing Provided lattFd\n");
+            free(lattfd);
+            return NULL;
+        }
+        fi_sz = fi_stat.st_size;
+        lattfd->len = fi_sz;
+
+    }
 
     return lattfd;
 }
 
-LattFD open_dir_lattfd(char* fipath, int res_dnodefd, int add_modes){
+uint count_direntrys(LattFD lattFd){
+
+    int cnt = 0;
+    //struct dirent *ep;
+
+    if (lattFd->tag != 2){
+        fprintf(stderr,"Must provide a type 2 (tag == 2) latt_fd\n");
+        return 0;
+
+    }
+    DIR *dp = fdopendir(cycle_nodeFD(&lattFd));
+    if (dp == NULL){
+        perror("Failed to open directory stream for counting");
+        return 0;
+    }
+    while(readdir(dp)){
+        ++cnt;
+    }
+    if(closedir(dp) == -1){
+        perror("Failed to close directory stream.");
+        return 0;
+    }
+
+    return cnt;
+}
+
+LattFD open_dir_lattfd(char *fipath, int res_dnodefd, int add_modes, uint entry_cnt) {
     int fd_hold;
     LattFD lattfd = malloc(sizeof(Lattice_FD));
 
-    fd_hold = open_node_fd(fipath,add_modes,res_dnodefd);
+    fd_hold = open_dnode_fd(fipath, add_modes, res_dnodefd);
 
     if (fd_hold == -1){fprintf(stderr,"Failed to open LattFD prime");return NULL;}
     lattfd->prime_fd = fd_hold;
@@ -307,6 +385,14 @@ LattFD open_dir_lattfd(char* fipath, int res_dnodefd, int add_modes){
     lattfd->dir_fd = res_dnodefd;
     lattfd->path = fipath;
     lattfd->stream_mode = 0;
+    lattfd->tag = 2;
+    lattfd->addr = NULL;
+
+    if(entry_cnt == 0){
+        entry_cnt = count_direntrys(lattfd);
+    }
+    lattfd->len = entry_cnt;
+
 
     return lattfd;
 }
@@ -315,9 +401,7 @@ unsigned int mk_node_list(int entrycnt, LattFD nodeanchor, unsigned char** e_nam
 
     int i;
     int idx = 0;
-    int j = 0;
-    //int nanch_fd = cycle_nodeFD(&nodeanchor);
-    //if (nanch_fd == -1){ perror("Error duplicating node anchor fd");return 1;}
+    int j;
 
     FILE* nanch_strm = open_lattfdstream(nodeanchor,A_STRM);
     if (nanch_strm == NULL){
@@ -351,3 +435,162 @@ unsigned int mk_node_list(int entrycnt, LattFD nodeanchor, unsigned char** e_nam
     fclose(nanch_strm);
     return 0;
 }
+
+/*
+ * PROT_FLGS: (default = PROT_READ | PROT_WRITE)
+      They include PROT_READ, PROT_WRITE, and PROT_EXEC.
+      The special flag PROT_NONE reserves a region of address space for future use.
+      The mprotect function can be used to change the protection flags
+ * MAP_TYPE: (default = MAP_SHARED)
+      contains flags that control the nature of the map. One of MAP_SHARED or MAP_PRIVATE must be specified.
+      Others: MAP_FIXED, MAP_ANONYMOUS, MAP_ANON, MAP_HUGETLB, etc...
+
+ * Reference:
+      https://www.gnu.org/software/libc/manual/html_node/Memory_002dmapped-I_002fO.html
+*/
+
+uint open_shm_lattfd(LattFD *lattFd, void *pref_addr, uint fi_sz, int o_flgs, int mode, int map_type, int prot_flgs) {
+    const uint bytesbufmax = 16;
+    char* name_buf;
+    struct stat shm_stat;
+    uint ih_flg = 0;
+
+    if (lattFd == NULL){
+        ih_flg = 1;
+        *lattFd = (LattFD) malloc(sizeof(Lattice_FD));
+    }
+
+    ulong* bytes_buf = (ulong*) malloc(bytesbufmax);
+    unsigned char* uc_bytes_buf = (unsigned char*) calloc(bytesbufmax+1,UCHAR_SZ);
+
+    rando_sf(bytes_buf);
+    memcpy(uc_bytes_buf,bytes_buf,bytesbufmax);
+    size_t nmlen = bytes_tostr(&name_buf,uc_bytes_buf,bytesbufmax);
+    free(uc_bytes_buf);
+    free(bytes_buf);
+    if (nmlen == 1){
+        fprintf(stderr,"Failed to generate name from bytes.");
+        free(name_buf);
+        if (ih_flg) {
+            free(lattFd);
+        }
+        return 1;
+    }
+    char* name = calloc(nmlen+2,UCHAR_SZ);
+    memset(name,'/',1);
+    memcpy(name,name_buf,nmlen);
+    free(name_buf);
+
+    if ((o_flgs&O_TRUNC)==O_TRUNC || (o_flgs&O_WRONLY)==O_WRONLY){
+        fprintf(stderr,"lattFd can't have been opened with O_TRUNC or O_WRONLY flags, or with StreamMode w/w+/a)\n");
+        if (ih_flg) {
+            free(lattFd);
+        }
+        free(name);
+        return 2;
+    }
+//    if ((baseFd->dir_fd == 0) || baseFd->prime_fd == 0 || baseFd->o_flgs == 0){
+//        fprintf(stderr,"Undeveloped lattFd used to stage shm.\n");
+//        if (ih_flg) {
+//            free(lattFd);
+//        }
+//        free(name);
+//        return 3;
+//    }
+//    if((baseFd->tag) != 1){
+//        fprintf(stderr,"lattFd must be of type 1 (tag==1), i.e. connected to a regular file/ directory entry.");
+//    }
+    if (fi_sz == 0) {
+        if (fstat(cycle_nodeFD(lattFd), &shm_stat)) {
+            perror("Error stat-ing Provided lattFd\n");
+            if (ih_flg) {
+                free(lattFd);
+            }
+            free(name);
+            return 4;
+        }
+        fi_sz = shm_stat.st_size;
+    }
+
+    if (map_type == 0){
+        map_type = MAP_SHARED;
+    }
+    if(prot_flgs == 0){
+        prot_flgs = PROT_READ | PROT_WRITE;
+    }
+    (*lattFd)->prime_fd = 0;
+    (*lattFd)->modes = mode;
+    (*lattFd)->o_flgs = o_flgs;
+    (*lattFd)->duped_fd = 0;
+    (*lattFd)->dir_fd = 0;
+    (*lattFd)->stream_mode = 0;
+    (*lattFd)->tag = 8;
+    (*lattFd)->addr = NULL;
+    (*lattFd)->path = name;
+    (*lattFd)->len = fi_sz;
+
+
+    (*lattFd)->prime_fd = shm_open((*lattFd)->path,(*lattFd)->o_flgs,(*lattFd)->modes);
+
+    if ((*lattFd)->prime_fd == -1){
+        perror("Failed to create shm - lattfd");
+        free(name);
+        if (ih_flg) {
+            free(lattFd);
+        }
+        return 5;
+    }
+
+    (*lattFd)->addr = mmap(pref_addr, fi_sz, prot_flgs, map_type, (cycle_nodeFD(lattFd)),0);
+
+    if((*lattFd)->addr == MAP_FAILED){
+        perror("mmaping on lattfd shm failed.");
+        free(name);
+        if (ih_flg) {
+            free(lattFd);
+        }
+        return 6;
+    }
+
+    return 0;
+
+}
+
+uint close_shm_lattfd(LattFD* shm_lattfd){
+
+    if (shm_unlink((*shm_lattfd)->path) == -1){
+        perror("Failed to unlink shm object from shm_lattfd");
+        return 1;
+    }
+    if(munmap((*shm_lattfd)->addr,(*shm_lattfd)->len)==-1){
+        perror("Error un-mmap-ing shm_lattfd");
+        return 1;
+    }
+
+    set_lattfd_empty(shm_lattfd);
+    return 0;
+}
+
+
+uint lattice_span(DNMap* DNMap){
+    if ((*DNMap)->shm_fd->tag != 0){
+        fprintf(stderr,"Shm already in place for given lattfd, close it first with 'close_shm_lattfd'\n");
+        return 1;
+    }
+
+    uint res = open_shm_lattfd(&((*DNMap)->shm_fd),
+                    NULL,
+                    (*DNMap)->entrieslist_fd->len,
+                    (*DNMap)->entrieslist_fd->o_flgs,
+                    (*DNMap)->entrieslist_fd->modes,
+                    0,0);
+
+    if (res != 0){
+        fprintf(stderr,"Failed to expand lattice.\n Error: #%d \n",res);
+        close_shm_lattfd(&((*DNMap)->shm_fd));
+        return 1;
+    }
+
+    return 0;
+}
+

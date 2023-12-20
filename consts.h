@@ -12,6 +12,8 @@
 #define LSTS_CHARCNT 6
 #define LSTS_LASTELEM 1024
 
+#define POTENTL_ARG_CNT 8
+#define ARGS_MAX_LEN 8
 
 
 typedef union LattType{
@@ -65,5 +67,7 @@ extern const LattErr latt_err_arr[LERR_CNT];
 extern const char latt_err_strs[LERR_CNT][LERR_CHARCNT];
 extern const LattStts latt_sts_arr[LSTS_CNT];
 extern const char latt_stts_strs[LSTS_CNT][LSTS_CHARCNT];
+
+extern const char potntl_args[POTENTL_ARG_CNT][ARGS_MAX_LEN];
 
 #endif

@@ -17,6 +17,14 @@ const LattType INT_SEP = (LattType) 0xdbdbdbdb;
 const LattType CHAR_SEP = (LattType) 0xbddbdbbd;
 const LattType LONG_SEP = (LattType) 0xddddbbbb;
 
+const char potntl_args[POTENTL_ARG_CNT][ARGS_MAX_LEN] = {{'t','e','s','t'},
+                                                         {0,0,0,0,0,0,0,0},
+                                                         {0,0,0,0,0,0,0,0},
+                                                         {0,0,0,0,0,0,0,0},
+                                                         {0,0,0,0,0,0,0,0},
+                                                         {0,0,0,0,0,0,0,0},
+                                                         {0,0,0,0,0,0,0,0},
+                                                         {'i','n','i','t'}};
 
 const LattErr latt_err_arr[LERR_CNT] = {IMFINE, MALREQ, MISSNG, UNKNWN, NOINFO, BADCON, BADSOK, MISMAP, STFAIL, FIFAIL, MISCLC,
                                          BADHSH, SODIUM, FULLUP, ADFAIL, COLISN, ILMMOP, EPOLLE, BADCNF,MISSPK,MISVEN};

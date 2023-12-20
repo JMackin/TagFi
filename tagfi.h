@@ -2,8 +2,8 @@
 #define TAGFILES_TAGFILES_H
 #include <sys/types.h>
 #include "FiOps.h"
+#include "consts.h"
 
-#define DNKEYPATH "/home/ujlm/Code/Clang/C/TagFI/keys"
 #define SINGLECHAR_MODEFORM 0
 #define CHARSTRING_MODEFORM 1
 #define INTBITMASK_MODEFORM 2
@@ -45,16 +45,16 @@ int scanfiinodes(const char* dir_path);
 int fd_getstat(const char* dir_path, int op);
 int scanfi(const char* dir_path);
 unsigned long cwd_ino(const char* dir_path);
-int open_node_fd(char *path, int add_modes, int res_dnodefd);
+int open_dnode_fd(char *path, int add_modes, int res_dnodefd);
 unsigned int mk_node_list(int entrycnt, LattFD nodeanchor, unsigned char** e_names, unsigned long** e_hashnos);
-LattFD open_lattfd(char *path, int res_dnodefd, int add_ops, int add_modes, StreamMode streammode);
+LattFD open_lattfd(char *fipath, int res_dnodefd, int add_ops, int add_modes, uint fi_sz, StreamMode streammode);
 int cycle_nodeFD(LattFD* lattFd);
 int open_low_fd(char* path, int add_ops, int add_modes, int res_dnodefd);
-LattFD open_dir_lattfd(char* fipath, int res_dnodefd, int add_modes);
-
-
-
-
+LattFD open_blank_lattfd(void);
+LattFD open_dir_lattfd(char *fipath, int res_dnodefd, int add_modes, uint entry_cnt);
+uint close_shm_lattfd(LattFD* shm_lattfd);
+uint lattice_span(DNMap* DNMap);
+uint set_fisz(LattFD* lattfd,unsigned int sz);
 
 
 __attribute__((unused)) char chk_fmt(const char** dir_path, int op);

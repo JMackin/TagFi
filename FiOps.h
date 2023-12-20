@@ -34,8 +34,12 @@ typedef struct Lattice_FD{
     int o_flgs;
     int modes;
     int dir_fd;
+    int tag; // 0 = none, 1 = reg, 2 = dir, 4 = cwd-dir, 8 = shm
+    long len;
     char* path;
+    unsigned char* addr;
     StreamMode stream_mode;
+
 }Lattice_FD;
 
 typedef Lattice_FD* LattFD;

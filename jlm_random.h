@@ -18,3 +18,4 @@ void mk_little_hash_key(unsigned char** kout);
 int dump_little_hash_key(unsigned char* kout, unsigned char* name, unsigned int nlen);
 unsigned long long little_hsh_llidx(unsigned char* hkey, unsigned char* tobehshed, unsigned int wlen, unsigned long long xno);
 unsigned long latt_hsh_idx_2(Armature* armtr, FiNode *fiNode, char* cbuf[16], unsigned char* obuf[16]);
+unsigned int bytes_tostr(char** strout, const unsigned char* bytes, size_t b_len);

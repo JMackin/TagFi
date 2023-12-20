@@ -16,7 +16,6 @@
 #include "lattice_works.h"
 #include "jlm_random.h"
 #include "lattice_rsps.h"
-#include "lattice_signals.h"
 #include "fidi_masks.h"
 
 
@@ -29,17 +28,20 @@
 #define PARAMX 65535
 
 int erno;
-SttsFrm statusFrame;
 
-StatFrame* init_stat_frm(StatFrame** status_frm)
-{
-    *status_frm = (StatFrame*) malloc(sizeof(StatFrame));
-    (*status_frm)->status=RESET;
-    (*status_frm)->err_code=IMFINE;
-    (*status_frm)->modr=0;
+LttcStt init_latticestate(void){
+    SttsFrm status_frm = (SttsFrm) malloc(sizeof(StatFrame));
+    LttcStt lattst = (LttcStt) malloc(sizeof(LatticeState));
+    (status_frm)->status=RESET;
+    (status_frm)->err_code=IMFINE;
+    (status_frm)->modr=0;
+    lattst->frame = status_frm;
+    lattst->cwdnode = 1;
+    lattst->misc = 0;
 
-    return *status_frm;
+    return lattst;
 }
+
 
 void disassemble(Lattice* hashlattice,
                  DChains * dirchains,
@@ -75,11 +77,11 @@ void disassemble(Lattice* hashlattice,
             /*
              * AI GENERATED ----------------------\
              */
-            uchar* finm = (*((*hashlattice)->bridges[i])->finode).finame;
-            if(finm != NULL) {
-                free(finm);
-                (*((*hashlattice)->bridges[i])->finode).finame = NULL; // Avoid dangling pointer
-            }
+//            uchar* finm = (*((*hashlattice)->bridges[i])->finode).finame;
+//            if(finm != NULL) {
+//                free(finm);
+//                (*((*hashlattice)->bridges[i])->finode).finame = NULL; // Avoid dangling pointer
+//            }
 
             FiNode* fiode = &(*((*hashlattice)->bridges[i])->finode);
             if(fiode != NULL) {
@@ -96,13 +98,12 @@ void disassemble(Lattice* hashlattice,
     //MEDA
     (*hashlattice)->chains->vessel = (*hashlattice)->chains->dir_head->right;
     cnt = expo_basedir_cnt((*hashlattice)->chains->vessel->did);
-    goto_chain_tail((*hashlattice)->chains, 1, NULL);
+    goto_chain_tail((*hashlattice)->chains, 1, NULL, &(*hashlattice)->state);
     if ((*hashlattice)->chains->vessel->left->tag == 7){
         free((*hashlattice)->chains->vessel->left);
     }
 
     Armatr armatr_hold;
-
     entr_cnt = 0;
     for (i = 0; i< cnt; i++){
         if (is_base((*hashlattice)->chains->vessel)) {
@@ -110,27 +111,53 @@ void disassemble(Lattice* hashlattice,
             break;
         }
 
-        printf("<<FREED: %d\ncount: %d\n>>",entr_cnt,(*dirchains)->vessel->armature->count);
+        //printf("<<FREED: %d\ncount: %d\n>>",entr_cnt,(*dirchains)->vessel->armature->count);
 
         if (!i){
             free((*hashlattice)->chains->vessel->right);
         }
 
-        armatr_hold = (*hashlattice)->chains->vessel->armature;
+        armatr_hold = tbl_list[i];
+        struct stat statbuf;
 
+        //Prime fd's
         if ((armatr_hold->nodemap->entrieslist_fd->prime_fd) > 2){
-            struct stat statbuf;
             if (fstat((armatr_hold->nodemap->entrieslist_fd->prime_fd),&statbuf) != -1){
                 close((armatr_hold->nodemap->entrieslist_fd->prime_fd));
             }
             (armatr_hold->nodemap->entrieslist_fd->prime_fd) = 0;
         }
         if ((armatr_hold->nodemap->dirnode_fd->prime_fd) > 2){
-            struct stat statbuf;
             if (fstat((armatr_hold->nodemap->dirnode_fd->prime_fd),&statbuf) != -1){
                 close((armatr_hold->nodemap->dirnode_fd->prime_fd));
             }
             (armatr_hold->nodemap->dirnode_fd->prime_fd) = 0;
+        }
+        if ((armatr_hold->nodemap->shm_fd->prime_fd) > 2){
+            if (fstat((armatr_hold->nodemap->shm_fd->prime_fd),&statbuf) != -1){
+                close((armatr_hold->nodemap->shm_fd->prime_fd));
+            }
+            (armatr_hold->nodemap->shm_fd->prime_fd) = 0;
+        }
+
+        //Duped fd's
+        if ((armatr_hold->nodemap->entrieslist_fd->duped_fd) > 2){
+            if (fstat((armatr_hold->nodemap->entrieslist_fd->duped_fd),&statbuf) != -1){
+                close((armatr_hold->nodemap->entrieslist_fd->duped_fd));
+            }
+            (armatr_hold->nodemap->entrieslist_fd->duped_fd) = 0;
+        }
+        if ((armatr_hold->nodemap->dirnode_fd->duped_fd) > 2){
+            if (fstat((armatr_hold->nodemap->dirnode_fd->duped_fd),&statbuf) != -1){
+                close((armatr_hold->nodemap->dirnode_fd->duped_fd));
+            }
+            (armatr_hold->nodemap->dirnode_fd->duped_fd) = 0;
+        }
+        if ((armatr_hold->nodemap->shm_fd->duped_fd) > 2){
+            if (fstat((armatr_hold->nodemap->shm_fd->duped_fd),&statbuf) != -1){
+                close((armatr_hold->nodemap->shm_fd->duped_fd));
+            }
+            (armatr_hold->nodemap->shm_fd->duped_fd) = 0;
         }
 
         if (armatr_hold->nodemap->dirnode_fd->path != NULL){
@@ -139,8 +166,13 @@ void disassemble(Lattice* hashlattice,
         if (armatr_hold->nodemap->entrieslist_fd->path != NULL){
             free(armatr_hold->nodemap->entrieslist_fd->path);
         }
+        if (armatr_hold->nodemap->shm_fd->path != NULL){
+            free(armatr_hold->nodemap->entrieslist_fd->path);
+        }
+
         free(armatr_hold->nodemap->entrieslist_fd);
         free(armatr_hold->nodemap->dirnode_fd);
+        free(armatr_hold->nodemap->shm_fd);
         //free(armatr_hold->nodemap->path);
         free(armatr_hold->nodemap);
         armatr_hold->nodemap = NULL;
@@ -152,9 +184,12 @@ void disassemble(Lattice* hashlattice,
                 armatr_hold->entries[k].tag = 0;
             }
         }
+        free(armatr_hold->entries);
+        free(armatr_hold);
+        armatr_hold=NULL;
 
-        free((*hashlattice)->chains->vessel->armature->entries);
-        free((*hashlattice)->chains->vessel->armature);
+//       free((*hashlattice)->armature->entries);
+//        free((*hashlattice)->armature);
         (*hashlattice)->chains->vessel = (*hashlattice)->chains->vessel->left;
         free((*hashlattice)->chains->vessel->right->diname);
         free((*hashlattice)->chains->vessel->right);
@@ -164,7 +199,7 @@ void disassemble(Lattice* hashlattice,
     //DOCS
     (*hashlattice)->chains->vessel = (*dirchains)->dir_head->left;
     cnt = expo_basedir_cnt((*hashlattice)->chains->vessel->did);
-    goto_chain_tail((*hashlattice)->chains, 0, NULL);
+    goto_chain_tail((*hashlattice)->chains, 0, NULL, &(*hashlattice)->state);
     if ((*hashlattice)->chains->vessel->left->tag == 7){
         free((*hashlattice)->chains->vessel->left);
     }
@@ -175,14 +210,14 @@ void disassemble(Lattice* hashlattice,
             break;
         }
 
-        printf("<<FREED: %d\ncount: %d\n>>", entr_cnt, (*hashlattice)->chains->vessel->armature->count);
+       // printf("<<FREED: %d\ncount: %d\n>>", entr_cnt, (*hashlattice)->chains->vessel->armature->count);
 
         if (!i) {
             free((*hashlattice)->chains->vessel->left);
         }
 
-        free((*hashlattice)->chains->vessel->armature->entries);
-        free((*hashlattice)->chains->vessel->armature);
+//        free((*hashlattice)->chains->vessel->armature->entries);
+//        free((*hashlattice)->chains->vessel->armature);
         (*hashlattice)->chains->vessel = (*hashlattice)->chains->vessel->right;
         free((*hashlattice)->chains->vessel->left->diname);
         free((*hashlattice)->chains->vessel->left);
@@ -193,6 +228,7 @@ void disassemble(Lattice* hashlattice,
     free((*hashlattice)->chains->vessel->right);
     free((*hashlattice)->chains->vessel->left->diname);
     free((*hashlattice)->chains->vessel->left);
+    free((*hashlattice)->chains->vessel->diname);
     free((*hashlattice)->chains->vessel);
     free((*hashlattice)->chains);
 
@@ -212,8 +248,8 @@ void disassemble(Lattice* hashlattice,
                         pbmark = NULL;
                     }
                     if ((parabrg)->finode != NULL){
-                        free((parabrg)->finode->finame);
-                        (parabrg)->finode->finame = NULL;
+                        //free((parabrg)->finode->finame);
+                        //(parabrg)->finode->finame = NULL;
                         free((parabrg)->finode);
                         (parabrg)->finode = NULL;
                     }
@@ -263,9 +299,10 @@ void destroy_metastructures(Resp_Tbl *rsp_tbl,
 }
 
 
-size_t read_conf(unsigned char** dnconf_addr, int cnfdir_fd){
+size_t read_conf(unsigned char **dnconf_addr, int cnfdir_fd, LttcStt ltcSt) {
     struct stat sb;
     size_t length;
+    ErrorBundle errBndl = init_errorbundle();
 
     int dnconf_fd = openat(cnfdir_fd, DNCONFFI, O_RDONLY);
     if (dnconf_fd == -1) {
@@ -279,8 +316,9 @@ size_t read_conf(unsigned char** dnconf_addr, int cnfdir_fd){
     }
 
     *dnconf_addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, dnconf_fd, 0);
+
     if (*dnconf_addr == MAP_FAILED) {
-        stsErno(MISMAP, &statusFrame, "Config mem map failed", 0, 0, "read_conf", NULL, errno);
+        errBndl = bundle_addglob(errBndl, MISMAP, "Config mem map failed", 0, 0, "read_conf", NULL, errno);
         close(dnconf_fd);
         return -1;
     }
@@ -337,8 +375,13 @@ int extract_name(const unsigned char* path, int length) {
 //                    Dir_Chains **dirchains, LttcFlags *flgsbuf, const int *cnfdir_fd, unsigned int **tmparrbuf, uniArr **cmdseqarr)
 
 
-int spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsigned char **req_buf, InfoFrame **infofrm, Resp_Tbl **rsp_tbl, HashLattice **hashlattice,
-            DiChains **dirchains, LttFlgs *flgsbuf, const int *cnfdir_fd, unsigned char **tmparrbuf) {
+int spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsigned char **req_buf, InfoFrame **infofrm,
+            Resp_Tbl **rsp_tbl, HashLattice **hashlattice, DiChains **dirchains, LttFlgs *flgsbuf, const int *cnfdir_fd,
+            unsigned char **tmparrbuf, LttcStt ltcSt) {
+
+    ErrorBundle errBndl = init_errorbundle();
+
+//    ErrBundle* eb_addr = &errBndl;
 
     /**
      * INFO AND STATUS VARS
@@ -360,7 +403,6 @@ int spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsigned char 
     int k, res;
     unsigned int j;
     ssize_t ret;
-
     int resp_len = 0;
 
     /**
@@ -389,8 +431,8 @@ int spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsigned char 
     connection_socket = socket(AF_UNIX, SOCK_SEQPACKET, 0);
     if (connection_socket == -1) {
         perror("socket");
-        setErr(&statusFrame, BADCON, 'I');
-        setAct(&statusFrame, GBYE, 0, 0);
+        setErr(&ltcSt->frame, BADCON, 'I');
+        setAct(&ltcSt->frame, GBYE, 0, 0);
         return 1;
     }
     memset(&name, 0, sizeof(name));
@@ -403,8 +445,8 @@ int spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsigned char 
     ret = bind(connection_socket, (const struct sockaddr *) &name, sizeof(name));
     if (ret == -1) {
         perror("bind");
-        setErr(&statusFrame, BADCON, 'B');// 76 = B -> bind step
-        setAct(&statusFrame, GBYE, 0, 0);
+        setErr(&ltcSt->frame, BADCON, 'B');// 76 = B -> bind step
+        setAct(&ltcSt->frame, GBYE, 0, 0);
         return 1;
     }
 
@@ -414,7 +456,7 @@ int spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsigned char 
     int efd = epoll_create(1);
     if (efd == -1) {
         perror("epoll");
-        setErr(&statusFrame, EPOLLE, 'C');
+        setErr(&ltcSt->frame, EPOLLE, 'C');
         return 1;
     }
      struct epoll_event *epINevent;
@@ -427,8 +469,8 @@ int spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsigned char 
     ret = listen(connection_socket, 10);    // LISTEN 'L'
     if (ret == -1) {
         perror("listen: ");
-        setErr(&statusFrame, BADCON, 'L'); // 76 = L -> listen step
-        setAct(&statusFrame, GBYE, 0, 0);
+        setErr(&ltcSt->frame, BADCON, 'L'); // 76 = L -> listen step
+        setAct(&ltcSt->frame, GBYE, 0, 0);
         return 1;
     }
 
@@ -437,12 +479,12 @@ int spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsigned char 
     * * * * * * * * */
     while (!exit_flag) {
         i = 0;
-        stsReset(&statusFrame);
+        stsReset(&ltcSt->frame);
 
         /**
          * ATTACH EPOLL
          * */
-        setSts(&statusFrame, LISTN, 0);
+        setSts(&ltcSt->frame, LISTN, 0);
         /**
          * RECIEVE
          * */
@@ -451,9 +493,9 @@ int spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsigned char 
 
         if (data_socket == -1) {
             perror("accept: ");
-            setErr(&statusFrame, BADCON, 'B');// 65 = 'A' -> accept step
+            setErr(&ltcSt->frame, BADCON, 'B');// 65 = 'A' -> accept step
         }
-        (statusFrame)->status <<= 1;
+        (ltcSt->frame)->status <<= 1;
 
 
     /** Read and Parse */
@@ -462,8 +504,7 @@ int spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsigned char 
          * */
         if (epoll_wait(efd,epINevent,3,500) > 0){
             if ((epINevent->events&EPOLLERR) == EPOLLERR) {
-                stsErno(EPOLLE, &statusFrame, "Issue detected by EPOLLE", epINevent->events,
-                        0, "epoll_wait - in", NULL, errno);
+                errBndl = bundle_addglob(errBndl, EPOLLE, "Error waiting on epoll", epINevent->events, 0, "epoll_wait - in", NULL, errno);
             }
         }
 
@@ -473,10 +514,10 @@ int spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsigned char 
          * */
         ret = read(data_socket, *req_buf, buf_len);  // READ 'R'
         if (ret == -1) {
-            stsErno(BADSOK, &statusFrame, "Issue reading from data socket", 0, 0, "read", NULL, errno);
+            errBndl = bundle_addglob(errBndl, BADSOK, "Issue reading from data socket", 0, 0, "read", NULL, errno);
             return 1;
         }
-        (statusFrame)->status <<= 1;
+        (ltcSt->frame)->status <<= 1;
 
         /**
          * CMD RECEIVED
@@ -496,18 +537,18 @@ int spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsigned char 
          * */
         *infofrm = parse_req(*req_buf,   // <<< Raw Request
                              infofrm,
-                             &statusFrame,
+                             &ltcSt->frame,
                              flgsbuf,
                              *tmparrbuf,
                              req_arr_buf); // >>> Extracted array
 
-        if ((statusFrame)->err_code) {
-            if ((statusFrame->act_id)==GBYE){
+        if ((ltcSt->frame)->err_code) {
+            if ((ltcSt->frame->act_id)==GBYE){
                 exit_flag = 1;
                 goto endpoint;
             }
-            setErr(&statusFrame,MALREQ,0);
-            serrOut(&statusFrame,"Failed to process request.");
+            setErr(&ltcSt->frame,MALREQ,0);
+            serrOut(&ltcSt->frame,"Failed to process request.");
             goto endpoint;
 
              // TODO: replace w/ better option.
@@ -515,33 +556,32 @@ int spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsigned char 
 
         /** DETERMINE RESPONSE */
         if (respond(*rsp_tbl,
-                     &statusFrame,
+                     &ltcSt->frame,
                      infofrm,
                      dirchains,
                      hashlattice,
                      *rsp_buf)){
-            setErr(&statusFrame,MISSPK,0);
-            serrOut(&statusFrame,"Failed to stage a response");
+            setErr(&ltcSt->frame,MISSPK,0);
+            serrOut(&ltcSt->frame,"Failed to stage a response");
             // TODO: replace w/ better option.
         }
         //TODO: Optimize response processing time
 
 
-        if ((statusFrame)->act_id == GBYE) {
+        if ((ltcSt->frame)->act_id == GBYE) {
             /**
              * ACTION:
              *  shutdown
              * */
-            setSts(&statusFrame, SHTDN, 0);
+            setSts(&ltcSt->frame, SHTDN, 0);
             exit_flag = 1;
         }else {
-                setSts(&statusFrame, RESPN, 0);
+                setSts(&ltcSt->frame, RESPN, 0);
 
                 /** WRITEOUT REPLY */
                 if (epoll_wait(efd,epINevent,2,1000)){
                     if ((epINevent->events&EPOLLERR) == EPOLLERR) {
-                        stsErno(EPOLLE, &statusFrame,
-                                "Issue detected by EPOLLE", epINevent->events, 0, "epoll_wait - in", NULL, errno);
+                        bundle_addglob(errBndl, EPOLLE, "Issue detected by EPOLLE", epINevent->events, 0, "epoll_wait - in", NULL, errno);
                    }
                     ret = write(data_socket, *rsp_buf, buf_len);
                 }
@@ -603,25 +643,29 @@ int spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsigned char 
 
 
 void summon_lattice() {
+    ErrorBundle errBndl = init_errorbundle();
 
     /**
      * INIT GLOBAL STATFRAME
      */
-    statusFrame = init_stat_frm(&statusFrame);
+    LttcStt ltcSt = init_latticestate();
 
     /**
      * START SODIUM
      * */
     int naclinit = sodium_init();
     if (naclinit != 0) {
-        setAct(&statusFrame,GBYE,NOTHN,0);
-        stsErno(SODIUM, &statusFrame, "Sodium init failed", naclinit, 0, "summon_lattice", NULL, errno);
+        //TODO: REPLACE stsErno with errBundle functions
+        bundle_addglob(errBndl, SODIUM, "Sodium init failed", naclinit, 0, "summon_lattice", NULL, errno);
+        raiseErr(&ltcSt,errBndl);
     }
+
 
     /**
      * DECLARATIONS
      * */
     int i = 0;
+    int errno_hold;
 
     unsigned int arrbuf_len = 256;
     unsigned int seqtbl_sz;  // Sequence Table size
@@ -655,39 +699,40 @@ void summon_lattice() {
       *   BOOT UP  *
      * * * * * * */
     do {
-
         /**
          * STRUCTURES
          * */
         //  DirNode chains
         DiChains *dirchains = init_dchains();
         //  HashBridge lattice
-        HashLattice *hashlattice = init_hashlattice(&dirchains,latticeKey);
+        HashLattice *hashlattice = init_hashlattice(&dirchains, latticeKey, ltcSt);
         //  Size of config file in bytes
-
 
         /**
          * OPEN CONFIG
          * */
         int cnfdir_fd = openat(AT_FDCWD, CNFIGPTH, O_RDONLY | O_DIRECTORY);
         if (cnfdir_fd == -1) {
+            errno_hold = errno;
             perror("Error in fd: cnfdir_fd: %d");
-            setAct(&statusFrame,GBYE,NOTHN,0);
+            setAct(&ltcSt->frame,GBYE,NOTHN,0);
             //stsErno(perror, ltcerr, **sts_frm, erno, misc, *msg, *function, *miscdesc);
-            stsErno(BADCNF, &statusFrame, "Failed reading config", 333, 0, NULL, NULL, errno);
+//            stsErno(BADCNF, &ltcSt->frame, "Failed reading config", 333, 0, NULL, NULL, errno);
+            errBndl = bundle_addglob(errBndl,BADCNF, "Failed reading config", 333, 0, NULL, NULL, errno_hold);
             disassemble(&hashlattice, &dirchains, NULL,
                         NULL, 0, NULL, 0,
                         NULL, NULL, 0, 0);
-            serrOut(&statusFrame,NULL);
+
             break;
         }
 
         /**
          * READ CONFIG
          * */
-        size_t dn_size = read_conf(&dn_conf, cnfdir_fd);
+        size_t dn_size = read_conf(&dn_conf, cnfdir_fd, NULL);
         if (dn_size == -1) {
-            stsErno(BADCNF, &statusFrame, "Failed reading config", 333, 0, NULL, NULL, errno);
+            errBndl = bundle_addglob(errBndl, BADCNF,"Failed reading config",dn_size,"dirnode size", "Summon Lattice", NULL, errno);
+            errBndl = raiseErr(&ltcSt,errBndl);
             destroy_metastructures(NULL,
                                    info_frm,
                                    reqflg_arr,
@@ -709,6 +754,9 @@ void summon_lattice() {
 //        init_seqtbl(&seqTbl, 32);
 //VER. F
 
+        errBndl = bundle_addglob(errBndl, ESHTDN, "DirectoryMapping failed", 333, 0, "map_dir", NULL, 0);
+        raiseErr(&ltcSt,errBndl);
+
            /* * * * * * * * * *
           *  BUILD LATTICE  *
          * * * * * * * * **/
@@ -719,21 +767,23 @@ void summon_lattice() {
         for (i = 0; i < dn_cnt; i++) {
             nm_len = extract_name(*(paths + i), *(lengths + i));
 
-            if (map_dir(&statusFrame,
+            if (map_dir(&ltcSt->frame,
                         (const char *) *(paths + i),
                         nm_len,
                         (*(paths + i) + nm_len),
                         (*(lengths + i) - nm_len),
-                        dirchains,
                         hashlattice,
                         &(tbl_list[i]),
-                        latticeKey)< 0){
-
-                stsErno(ESHTDN, &statusFrame, "Big fail", 333, 0, "map_dir", NULL, errno);
+                        latticeKey) < 0){
+                errno_hold = errno;
+                errBndl = bundle_addglob(errBndl, ESHTDN, "DirectoryMapping failed", 333, 0, "map_dir", NULL, errno_hold);
+                raiseErr(&ltcSt,errBndl);
                 disassemble(&hashlattice,&dirchains,tbl_list,dn_conf,dn_size,NULL,0,lengths,paths,dn_cnt,cnfdir_fd);
                 destroy_metastructures(NULL, info_frm, reqflg_arr, req_buf, req_arr_buf, tmparrbuf, rsp_buf);
                 return;
             }
+
+
         }
          /**
           *  INIT FUNC ARRAY
@@ -741,7 +791,7 @@ void summon_lattice() {
          Resp_Tbl* rsp_tbl;
         init_rsptbl(cnfdir_fd,
                     &rsp_tbl,
-                    &statusFrame,
+                    &ltcSt->frame,
                     &info_frm,
                     &dirchains,
                     &hashlattice);
@@ -760,11 +810,12 @@ void summon_lattice() {
                 &dirchains,
                 &reqflg_arr,
                 &cnfdir_fd,
-                &tmparrbuf);
+                &tmparrbuf,
+                ltcSt);
 
-        if (statusFrame->err_code) {
+        if (ltcSt->frame->err_code) {
              fprintf(stderr, "Failure:\nCode: %d\nAct id: %d\nModr: %c\n",
-                     statusFrame->status, statusFrame->act_id, statusFrame->modr);
+                     ltcSt->frame->status, ltcSt->frame->act_id, ltcSt->frame->modr);
         }
 
          /**
@@ -789,13 +840,13 @@ void summon_lattice() {
                     dn_cnt,
                     cnfdir_fd);
 
-    }while (statusFrame->status != SHTDN);
+    }while (ltcSt->frame->status != SHTDN);
 
     /* * * * * * *
        *   EXIT   *
          * * * * * **/
 
-    stsOut(&statusFrame);
-    free(statusFrame);
+    stsOut(&ltcSt->frame);
+    free(ltcSt->frame);
     sodium_free(latticeKey);
 }
