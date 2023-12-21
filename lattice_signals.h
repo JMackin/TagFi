@@ -9,13 +9,13 @@
 /**
  * <h4><code>
  * \ResponseCMDs
- * <l_ulong> FFFF = 0 -  False
- * <l_ulong> NRSP = 1 -  Number of responses to follow
- * <l_ulong> RARR = 2 -  The following is the ID code for the info that follows thereafter
- * <l_ulong> RLEN = 4 -  What follows is the length of an array that follows thereafter
- * <l_ulong> STAS = 8 -  Arr that follows is a status frame
- * <l_ulong> CODE = 16 - Data type of next response
- * <l_ulong> CINT = 32 -  Next response
+ * <li> FFFF = 0 -  False
+ * <li> NRSP = 1 -  Number of responses to follow
+ * <li> RARR = 2 -  The following is the ID code for the info that follows thereafter
+ * <li> RLEN = 4 -  What follows is the length of an array that follows thereafter
+ * <li> STAS = 8 -  Arr that follows is a status frame
+ * <li> CODE = 16 - Data type of next response
+ * <li> CINT = 32 -  Next response
  * */
 typedef enum RspFlag {
     // False
@@ -59,41 +59,41 @@ typedef enum RspFlag {
  *<br><code>
 
  \Qualifiers
- * <l_ulong> FFF  = 0  - False
- * <l_ulong> TTT  = 1  - True
- * <l_ulong> DFLT = 2 - Default argument for previous cmd
- * <l_ulong> QQQQ = 4 - Empty
+ * <li> FFF  = 0  - False
+ * <li> TTT  = 1  - True
+ * <li> DFLT = 2 - Default argument for previous cmd
+ * <li> QQQQ = 4 - Empty
 \ArrayOps
- * <l_ulong> NARR = 8  - Int that follows is the length of an int array that will follow thereafter.
- * <l_ulong> GCSQ = 16 - Int that follows is the length of a char array that will follow thereafter
- * <l_ulong> RRRR = 32 - Empty
- * <l_ulong> AAAA = 64 - Empty
+ * <li> NARR = 8  - Int that follows is the length of an int array that will follow thereafter.
+ * <li> GCSQ = 16 - Int that follows is the length of a char array that will follow thereafter
+ * <li> RRRR = 32 - Empty
+ * <li> AAAA = 64 - Empty
  \TravelOps
- *  <l_ulong> ~
- *  <l_ulong> GOTO = 128  > Goto dirNode of following id, goto resdir of given file if DFLT
- *  <l_ulong> SRCH = 256  > Search for resident dir for given fiid
- *  <l_ulong> HEAD = 512  - Goto head node, switch bases if default
- *  <l_ulong> VVVV = 1024 - Empty
+ *  <li> ~
+ *  <li> GOTO = 128  > Goto dirNode of following id, goto resdir of given file if DFLT
+ *  <li> SRCH = 256  > Search for resident dir for given fiid
+ *  <li> HEAD = 512  - Goto head node, switch bases if default
+ *  <li> VVVV = 1024 - Empty
  \FileOps
- *  <l_ulong> ~
- *  <l_ulong> FIID = 2048 > Return file filename for id. fid for filename if DFLT
- *  <l_ulong> FRES = 4096 > Return resident dir node for given file.
- *  <l_ulong> YILD = 8192 > Yield file of following filename , yield resident file table if DFLT
- *  <l_ulong> IIII = 16384 - Empty
+ *  <li> ~
+ *  <li> FIID = 2048 > Return file filename for id. fid for filename if DFLT
+ *  <li> FRES = 4096 > Return resident dir node for given file.
+ *  <li> YILD = 8192 > Yield file of following filename , yield resident file table if DFLT
+ *  <li> IIII = 16384 - Empty
  \DirNodeOps
- *  <l_ulong> ~
- *  <l_ulong> DCWD = 32768  > Return ID for given dirnode, current vessel location
- *  <l_ulong> JJJJ = 65536  - Empty
- *  <l_ulong> LDCH = 131072 > Return list of DirChain node ids. Return list under current base if DFLT.
- *  <l_ulong> LIST = 262144 > List dirnode contents of following dID. Current dir if DFLT
+ *  <li> ~
+ *  <li> DCWD = 32768  > Return ID for given dirnode, current vessel location
+ *  <li> JJJJ = 65536  - Empty
+ *  <li> LDCH = 131072 > Return list of DirChain node ids. Return list under current base if DFLT.
+ *  <li> LIST = 262144 > List dirnode contents of following dID. Current dir if DFLT
  \SystemOps
- *  <l_ulong> INFO = 524288  > Produce info assoc. with the following ID code. StatusFrame if defaults
- *  <l_ulong> SAVE = 1048576 - Save this sequence
- *  <l_ulong> EXIT = 2097152 - Reset/Sleep/Shutdown
- *  <l_ulong> UUUU = 4194304 - Empty
+ *  <li> INFO = 524288  > Produce info assoc. with the following ID code. StatusFrame if defaults
+ *  <li> SAVE = 1048576 - Save this sequence
+ *  <li> EXIT = 2097152 - Reset/Sleep/Shutdown
+ *  <li> UUUU = 4194304 - Empty
  \Structure
- *  <l_ulong> LEAD = 536870912 -  Carry byte
- *  <l_ulong> END = 2147483647 - End sequence and masking byte
+ *  <li> LEAD = 536870912 -  Carry byte
+ *  <li> END = 2147483647 - End sequence and masking byte
  *
  * <note>NOTE
  * <br>
@@ -168,17 +168,17 @@ typedef enum ReqFlag {
 /**
  *  <h4><code>
  * \Status
- * <l_ulong> SLEEP = 0   -  sleeping
- * <l_ulong> LISTN = 1   -  listening
- * <l_ulong> CNNIN = 2   -  connection received
- * <l_ulong> REQST = 4   -  received request (pre validation)
- * <l_ulong> RCVCM = 8   -  cmd valid, processing
- * <l_ulong> RESPN = 16  -  response pending
- * <l_ulong> UPDAT = 32  -  item updated
- * <l_ulong> TRVLD = 64  -  Dir Node location changed
- * <l_ulong> SHTDN = 128 -  Shutting down
- * <l_ulong> RESET = 256 -  System reset
- * <l_ulong> STERR = 512 -  Error occured, see error codes
+ * <li> SLEEP = 0   -  sleeping
+ * <li> LISTN = 1   -  listening
+ * <li> CNNIN = 2   -  connection received
+ * <li> REQST = 4   -  received request (pre validation)
+ * <li> RCVCM = 8   -  cmd valid, processing
+ * <li> RESPN = 16  -  response pending
+ * <li> UPDAT = 32  -  item updated
+ * <li> TRVLD = 64  -  Dir Node location changed
+ * <li> SHTDN = 128 -  Shutting down
+ * <li> RESET = 256 -  System reset
+ * <li> STERR = 512 -  Error occured, see error codes
  * */
 typedef enum LattStts{
     // No value
@@ -213,24 +213,24 @@ typedef enum LattStts{
 /**
  * <h4><code>
  * \Errors
- *<l_ulong> IMFINE = 0     -  No error status
- *<l_ulong> MALREQ = 1     -  Malformed request
- *<l_ulong> MISSNG = 2     -  Requested object known but not located
- *<l_ulong> UNKNWN = 4     -  Requested object not known
- *<l_ulong> NOINFO = 8     -  Failure to produce/change requested info
- *<l_ulong> BADCON = 16    -  Failure w/ connection socket
- *<l_ulong> BADSOK = 32    -  Failure w/ data socket
- *<l_ulong> MISMAP = 64    -  Error with mmap
- *<l_ulong> STFAIL = 128   -  Error with stat op.
- *<l_ulong> FIFAIL = 256   -  Error with a file descriptor op.
- *<l_ulong> MISCLC = 512   -  Computed value doesn't match expected or provided
- *<l_ulong> BADHSH = 1024  -  Error with hashing op
- *<l_ulong> SODIUM = 2048  -  Error with sodium
- *<l_ulong> FULLUP = 4096  -  Structure or object at capacity
- *<l_ulong> ADFAIL = 8192  -  Failed to update a structure with an object
- *<l_ulong> COLISN = 16384 -  Collision in hash table
- *<l_ulong> ILMMOP = 32768 -  Failed memory operation or seg fault
- *<l_ulong> EPOLLE = 65536 -  EPOLL error
+ *<li> IMFINE = 0     -  No error status
+ *<li> MALREQ = 1     -  Malformed request
+ *<li> MISSNG = 2     -  Requested object known but not located
+ *<li> UNKNWN = 4     -  Requested object not known
+ *<li> NOINFO = 8     -  Failure to produce/change requested info
+ *<li> BADCON = 16    -  Failure w/ connection socket
+ *<li> BADSOK = 32    -  Failure w/ data socket
+ *<li> MISMAP = 64    -  Error with mmap
+ *<li> STFAIL = 128   -  Error with stat op.
+ *<li> FIFAIL = 256   -  Error with a file descriptor op.
+ *<li> MISCLC = 512   -  Computed value doesn't match expected or provided
+ *<li> BADHSH = 1024  -  Error with hashing op
+ *<li> SODIUM = 2048  -  Error with sodium
+ *<li> FULLUP = 4096  -  Structure or object at capacity
+ *<li> ADFAIL = 8192  -  Failed to update a structure with an object
+ *<li> COLISN = 16384 -  Collision in hash table
+ *<li> ILMMOP = 32768 -  Failed memory operation or seg fault
+ *<li> EPOLLE = 65536 -  EPOLL error
  * */
 typedef enum LattErr{
     // No error status
@@ -283,13 +283,13 @@ typedef enum LattErr{
 /**
  * <h4><code>
  *\Actions
- *  <l_ulong> ZZZZ = 0 - Do nothing
- *  <l_ulong> RPNG = 1 - Respond True
- *  <l_ulong> RSET = 2 - Clear buffers, reset
- *  <l_ulong> SVSQ = 4 - Save recieved sequence
- *  <l_ulong> SLPP = 8 - Enter sleep mode
- *  <l_ulong> FRSP = 16 - Form response and reply to request
- *  <l_ulong> GBYE = 128 - Shutdown exit
+ *  <li> ZZZZ = 0 - Do nothing
+ *  <li> RPNG = 1 - Respond True
+ *  <li> RSET = 2 - Clear buffers, reset
+ *  <li> SVSQ = 4 - Save recieved sequence
+ *  <li> SLPP = 8 - Enter sleep mode
+ *  <li> FRSP = 16 - Form response and reply to request
+ *  <li> GBYE = 128 - Shutdown exit
  * */
 typedef enum LattAct {
     // Do nothing
@@ -395,25 +395,25 @@ typedef enum LattObj{
  *<br>
 
  \InfoOp
- *<l_ulong> UNDEF  = 6   - Undefined
- *<l_ulong> ERRCD = 10   - An errorcode
- *<l_ulong> OINFO = 12   - Info string for a given object
- *<l_ulong> STATS = 14   - Current status frame
+ *<li> UNDEF  = 6   - Undefined
+ *<li> ERRCD = 10   - An errorcode
+ *<li> OINFO = 12   - Info string for a given object
+ *<li> STATS = 14   - Current status frame
  \TravelOp
- *<l_ulong> DIRIDQ = 3   -  Go to: Change dir to given
- *<l_ulong> DSRCHQ = 7   -  Search for given files resident dir
- *<l_ulong> DCHNSQ = 11  -  Go to: head node.
- *<l_ulong> VVVVVV = 15  -  Empty
+ *<li> DIRIDQ = 3   -  Go to: Change dir to given
+ *<li> DSRCHQ = 7   -  Search for given files resident dir
+ *<li> DCHNSQ = 11  -  Go to: head node.
+ *<li> VVVVVV = 15  -  Empty
  *\DirOp
- *<l_ulong> DIRID = 1   - ID of a given dirnode
- *<l_ulong> JJJJJ = 5   - Empty
- *<l_ulong> DCHNS = 9   - Nodes currently present in the dirchains
- *<l_ulong> DNLST = 13  - Array of contents for a given dirnode
+ *<li> DIRID = 1   - ID of a given dirnode
+ *<li> JJJJJ = 5   - Empty
+ *<li> DCHNS = 9   - Nodes currently present in the dirchains
+ *<li> DNLST = 13  - Array of contents for a given dirnode
  *\FileOp
- *<l_ulong> FILID = 0   - ID of a given file
- *<l_ulong> DNODE = 2   - Resident dirnode for a given file
- *<l_ulong> OBYLD = 4   - Yield file object
- *<l_ulong> IIIII = 8   - Empty
+ *<li> FILID = 0   - ID of a given file
+ *<li> DNODE = 2   - Resident dirnode for a given file
+ *<li> OBYLD = 4   - Yield file object
+ *<li> IIIII = 8   - Empty
  *
  * */
 
@@ -508,6 +508,7 @@ typedef LatticeState* LttcState;
 typedef LatticeState** LttcState_PTP;
 
 typedef struct ErrorBundle{
+    LttcState ltcstate;
     LattErr ltcerr;
     unsigned long relvval;
     char func[32];
@@ -516,12 +517,72 @@ typedef struct ErrorBundle{
     char msg[256];
     int erno;
     unsigned int raised;
+    /**
+     *<li> 0: Normal
+     *<li> 2: Dummy ltcState in place, alloc'd
+     *<li> 3: Dummy ltcState free'd
+     *<li> 7: dummy sttsframe in use during raise_err
+     */
+    unsigned int _internal;
 }ErrorBundle;
+
 typedef ErrorBundle* ErrBundle;
 //(char*) calloc(64,UCHAR_SZ);
 //calloc(32,UCHAR_SZ);
 //calloc(128,UCHAR_SZ);
 //alloc(256,UCHAR_SZ);
+
+/**
+ *<h4><code>
+ * \SpinOffArgOptions
+ *<li> SOA_HASHLATTICE = 1,
+ *<li> SOA_REQBUF = 2,
+ *<li> SOA_RESPBUF = 4,
+ *<li> SOA_REQARRBUF = 8,
+ *<li> SOA_TEMPARRBUF = 16,
+ *<li> SOA_FLAGSBUF = 32,
+ *<li> SOA_INFOFRAME = 64,
+ *<li> SOA_RESPTBL = 128,
+ *<li> SOA_EPEVENT = 256,
+ *<li> SOA_THREADID = 512,
+ *<li> SOA_EPOLLFD = 1024,
+ *<li> SOA_DATASOCKET = 2048,
+ *<li> SOA_BUFLEN = 4096,
+ *<li> SOA_TAG = 8192
+ */
+typedef enum SOA_OPTS{
+    SOA_HASHLATTICE = 1,
+    SOA_REQBUF = 2,
+    SOA_RESPBUF = 4,
+    SOA_REQARRBUF = 8,
+    SOA_TEMPARRBUF = 16,
+    SOA_FLAGSBUF = 32,
+    SOA_INFOFRAME = 64,
+    SOA_RESPTBL = 128,
+    SOA_EPEVENT = 256,
+    SOA_THREADID = 512,
+    SOA_EPOLLFD = 1024,
+    SOA_DATASOCKET = 2048,
+    SOA_BUFLEN = 4096,
+    SOA_TAG = 8192
+}SOA_OPTS;
+
+/**
+ *<h4><code>
+ * \SpawnPoolState
+ * <li> SPS_INIT = 0,
+ * <li> SPS_ATTHREADMAX = 2,
+ * <li> SPS_TAGROLLOVER = 4,
+ * <li> SPS_ATTASKMAX = 8,
+ */
+typedef enum SpawnPoolState{
+    SPS_INIT = 0,
+    SPS_ATTHREADMAX = 2,
+    SPS_TAGROLLOVER = 4,
+    SPS_ATTASKMAX = 8,
+    SPS_SPAWNNOTFOUND = 16,
+    SPS_TAGMISMATCH = 32
+}SpawnPoolState;
 
 /** Status ops **/
 
@@ -545,11 +606,12 @@ long
 stsErno(LattErr ltcerr, StatFrame **sts_frm, char *msg, unsigned long misc, char *miscdesc, char *function, char *note,
         int erno);
 
-ErrorBundle raiseErr(LttcState_PTP lttSt, ErrorBundle bundle);
+ErrorBundle raiseErr(ErrorBundle bundle);
 ErrorBundle init_errorbundle();
-unsigned int bundle_add(ErrBundle* bundle, unsigned int  attr, void* val);
-ErrorBundle bundle_addglob(ErrorBundle bundle,LattErr ltcerr, char *msg,
-                    unsigned long relvval, char *relvval_desc,
-                    char *func, char *note, int erno);
+ErrorBundle * bundle_add(ErrBundle* bundle, unsigned int attr, void* val);
+ErrorBundle bundle_addglob(ErrorBundle bundle, LattErr ltcerr, LttcState ltcstate, char *msg, unsigned long relvval,
+               const char *relvval_desc, char *func, const char *note, int erno);
+ErrorBundle bundle_and_raise(ErrorBundle bundle, LattErr ltcerr, LttcState ltcstate, char *msg, unsigned long relvval,
+                             const char *relvval_desc, char *func, const char *note, int erno);
 
 #endif //TAGFI_LATTICE_SIGNALS_H

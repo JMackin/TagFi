@@ -37,3 +37,6 @@ const char latt_stts_strs[LSTS_CNT][LSTS_CHARCNT] = {"NOTHN","LISTN","CNNIN","RE
 
 // Index: 1 = char, 2 = int, 3 = long
 LattType sep_tup[3] = {0xbddbdbbd,0xdbdbdbdb,0xddddbbbb};
+
+const int BUF_LEN = 256;
+const int ARRBUF_LEN = 128;

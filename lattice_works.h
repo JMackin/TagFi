@@ -3,6 +3,7 @@
 //
 
 #include <sodium.h>
+
 #ifndef TAGFI_LATTICE_WORKS_H
 #define TAGFI_LATTICE_WORKS_H
 #include "FiOps.h"
@@ -12,7 +13,6 @@
 #define RSPARRLEN 256
 #define HASHSTRLEN 64
 #define LKEYSZ 16
-#include "lattice_signals.h"
 
 
 typedef unsigned char LatticeKey[LKEYSZ];
@@ -169,10 +169,39 @@ typedef struct SpinOffArgsPack{
     int buf_len;
     unsigned int tag;
 }SpinOffArgsPack;
-
 typedef SpinOffArgsPack* SOA_Pack;
 
-typedef
+typedef struct ThreadSpawn{
+    pthread_t thread;
+    uint tag[2];
+}ThreadSpawn;
+typedef ThreadSpawn* Spawn;
+
+typedef struct SpawnAct{
+    void (*function)(void*);
+    void *arg;
+    uint tag[2];
+}SpawnAct;
+
+typedef struct SpawnPool{
+    int thread_count;
+    int queue_size;
+    int head;
+    int tail;
+    int count;
+    uint running_tag;
+    uint stop;
+    SpawnPoolState _internal;
+    Spawn spawn;
+    SpawnAct *task_queue;
+    pthread_mutex_t lock;
+    pthread_cond_t notify;
+
+} SpawnPool;
+typedef SpawnPool* SPool;
+typedef SpawnPool** SPool_PTP;
+
+
 
 double long *map_dir(StatFrame **statusFrame, const char *dir_path, unsigned int path_len, unsigned char *dirname,
                      unsigned int dnlen, HashLattice *hashlattice, Armature **fitbl, LttcKey latticeKey);
@@ -186,8 +215,6 @@ FiNode* mk_finnode(unsigned int nlen,
                    unsigned long long fiid,
                    unsigned  long long did,
                    unsigned long fhshno);
-
-
 
 unsigned int getidx(unsigned long fhshno);
 
@@ -264,6 +291,33 @@ void build_bridge2(
 
 unsigned int finode_idx(unsigned long fhshno);
 
+SPool init_spawnpool(int thread_count, int queue_size);
+
+SOA_Pack pack_SpinOff_Args(pthread_t tid,
+                  Lattice_PTP hashLattice,
+                  Std_Buffer_PTP request_buf,
+                  Std_Buffer_PTP response_buf,
+                  Std_Buffer_PTP requestArr_buf,
+                  Std_Buffer_PTP tempArr_buf,
+                  Flags_Buffer_PTP flags_buf,
+                  Info_Frame_PTP infoFrame,
+                  ResponseTable_PTP responseTable,
+                  epEvent epollEvent_IN,
+                  int epollFD,
+                  int dataSocket,
+                  int buf_len,
+                  int tag);
+uint discard_SpinOff_Args(SOA_Pack* soaPack);
+
+int add_spawn(SPool_PTP spawnpool, pthread_t thread, void *arg, SpawnAct spawnAct);
+
+void update_SOA_DS(SOA_Pack* soaPack, int datasocket);
+
+void update_SOA(SOA_OPTS opt, SOA_Pack* soaPack, void* new_val);
+
+int make_socket_non_blocking(int sfd);
+void destroy_SOA_bufs(SOA_Pack* soaPack);
+void init_SOA_bufs(SOA_Pack* soaPack);
 
 
 #endif //TAGFI_LATTICE_WORKS_H

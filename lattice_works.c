@@ -271,7 +271,7 @@ DiNode* add_dnode(unsigned long long did, unsigned char* dname, unsigned short n
     base->did += (16);
 
     (*lattice)->chains->vessel = ((*lattice)->chains->dir_head);
-    goto_chain_tail((*lattice)->chains, mord, NULL, (*lattice)->state);
+    goto_chain_tail((*lattice)->chains, mord, NULL, &(*lattice)->state);
 
 
     //MEDA

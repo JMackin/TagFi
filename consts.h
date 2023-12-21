@@ -63,6 +63,9 @@ extern const LattType INT_SEP;
 extern const LattType CHAR_SEP;
 extern const LattType LONG_SEP;
 
+extern const int BUF_LEN;
+extern const int ARRBUF_LEN;
+
 extern const LattErr latt_err_arr[LERR_CNT];
 extern const char latt_err_strs[LERR_CNT][LERR_CHARCNT];
 extern const LattStts latt_sts_arr[LSTS_CNT];
