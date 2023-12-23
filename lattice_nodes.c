@@ -1,5 +1,5 @@
-#include "tagfi.h"
-#include "jlm_random.h"
+#include "lattice_nodes.h"
+#include "CryptOps.h"
 #include <sodium.h>
 #include <stdio.h>
 #include <dirent.h>
@@ -454,11 +454,13 @@ uint open_shm_lattfd(LattFD *lattFd, void *pref_addr, uint fi_sz, int o_flgs, in
     const uint bytesbufmax = 16;
     char* name_buf;
     struct stat shm_stat;
+    LattFD newlattFd;
     uint ih_flg = 0;
 
     if (lattFd == NULL){
         ih_flg = 1;
-        *lattFd = (LattFD) malloc(sizeof(Lattice_FD));
+        newlattFd = (LattFD) malloc(sizeof(Lattice_FD));
+        lattFd = &newlattFd;
     }
 
     ulong* bytes_buf = (ulong*) malloc(bytesbufmax);
@@ -473,7 +475,7 @@ uint open_shm_lattfd(LattFD *lattFd, void *pref_addr, uint fi_sz, int o_flgs, in
         fprintf(stderr,"Failed to generate name from bytes.");
         free(name_buf);
         if (ih_flg) {
-            free(lattFd);
+            free(newlattFd);
         }
         return 1;
     }
@@ -485,7 +487,7 @@ uint open_shm_lattfd(LattFD *lattFd, void *pref_addr, uint fi_sz, int o_flgs, in
     if ((o_flgs&O_TRUNC)==O_TRUNC || (o_flgs&O_WRONLY)==O_WRONLY){
         fprintf(stderr,"lattFd can't have been opened with O_TRUNC or O_WRONLY flags, or with StreamMode w/w+/a)\n");
         if (ih_flg) {
-            free(lattFd);
+            free(newlattFd);
         }
         free(name);
         return 2;
@@ -529,7 +531,6 @@ uint open_shm_lattfd(LattFD *lattFd, void *pref_addr, uint fi_sz, int o_flgs, in
     (*lattFd)->addr = NULL;
     (*lattFd)->path = name;
     (*lattFd)->len = fi_sz;
-
 
     (*lattFd)->prime_fd = shm_open((*lattFd)->path,(*lattFd)->o_flgs,(*lattFd)->modes);
 

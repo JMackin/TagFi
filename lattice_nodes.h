@@ -2,7 +2,7 @@
 #define TAGFILES_TAGFILES_H
 #include <sys/types.h>
 #include "FiOps.h"
-#include "consts.h"
+#include "Consts.h"
 #include "lattice_works.h"
 
 #define SINGLECHAR_MODEFORM 0

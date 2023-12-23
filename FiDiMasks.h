@@ -21,8 +21,8 @@
 // Created by ujlm on 8/24/23.
 //
 
-#ifndef TAGFI_FIDI_MASKS_H
-#define TAGFI_FIDI_MASKS_H
+#ifndef TAGFI_FIDIMASKS_H
+#define TAGFI_FIDIMASKS_H
 
 #include "lattice_rsps.h"
 
@@ -216,4 +216,4 @@ unsigned int is_base(DiNode* dinode);
 //inline unsigned int base_chcetosh(unsigned int chce);
 //inline unsigned int base_shtochce(unsigned int shid);
 
-#endif //TAGFI_FIDI_MASKS_H
+#endif //TAGFI_FIDIMASKS_H

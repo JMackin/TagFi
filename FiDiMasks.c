@@ -1,7 +1,7 @@
 //
 // Created by ujlm on 8/24/23.
 //
-#include "fidi_masks.h"
+#include "FiDiMasks.h"
 
 /*
  *  FileNode ops

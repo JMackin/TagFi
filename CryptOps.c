@@ -5,9 +5,7 @@
 #include <unistd.h>
 #include <string.h>
 #include "lattice_works.h"
-#include "fidi_masks.h"
-
-
+#include "FiDiMasks.h"
 
 
 unsigned long long eightchartollong(const unsigned char* in, int wlen) {

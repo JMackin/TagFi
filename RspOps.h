@@ -2,11 +2,11 @@
 // Created by ujlm on 11/22/23.
 //
 
-#ifndef TAGFI_REPLY_TOOLS_H
-#define TAGFI_REPLY_TOOLS_H
+#ifndef TAGFI_RSPOPS_H
+#define TAGFI_RSPOPS_H
 #include <string.h>
 
-#include "consts.h"
+#include "Consts.h"
 #include "lattice_works.h"
 #include <stdint.h>
 
@@ -42,4 +42,4 @@ char* convertLattErr(const LattErr* latterr_itr);
 char* convertLattSts(const LattStts * lattsts_itr);
 
 
-#endif //TAGFI_REPLY_TOOLS_H
+#endif //TAGFI_RSPOPS_H

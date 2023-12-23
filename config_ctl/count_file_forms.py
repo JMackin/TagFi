@@ -105,14 +105,14 @@ def main(path: list, maxlength: int = 7, dump: bool = False, topres: int = 0, ex
 
     vars_tobe = (formcount, maxlength)
 
-    shutil.copyfile(f'../fiforms.h', f'../BKUP/fiforms{ts}.h')
-    shutil.copyfile(f'../fiforms.c', f'../BKUP/fiforms{ts}.c')
+    shutil.copyfile(f'../FiForms.h', f'../BKUP/fiforms{ts}.h')
+    shutil.copyfile(f'../FiForms.c', f'../BKUP/fiforms{ts}.c')
 
 
-    with open('../fiforms.h', 'w') as f:
+    with open('../FiForms.h', 'w') as f:
         with open('FIFORMSDOTHTEMP', 'r') as ff:
             with open('FIFORMSDOTCTEMPL', 'r') as fff:
-                with open('../fiforms.c', 'w') as ffff:
+                with open('../FiForms.c', 'w') as ffff:
 
                     for j in [ff.readlines(), fff.readlines()]:
                         for l in j:

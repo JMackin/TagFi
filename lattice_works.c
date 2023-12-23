@@ -3,12 +3,12 @@
 // Created by ujlm on 8/6/23.
 //
 #include "lattice_works.h"
-#include "fi_lattice.h"
-#include "jlm_random.h"
-#include "fiforms.h"
-#include "fidi_masks.h"
-#include "profiling.h"
-#include "tagfi.h"
+#include "Lattice.h"
+#include "CryptOps.h"
+#include "FiForms.h"
+#include "FiDiMasks.h"
+#include "Profiling.h"
+#include "lattice_nodes.h"
 #include <sodium.h>
 #include <stdio.h>
 #include <dirent.h>
@@ -221,9 +221,10 @@ unsigned int travel_by_chnid(unsigned long chn_id, DiChains *dchns, TravelPath *
 }
 
 unsigned int travel_by_diid(unsigned long long did, DiChains *dchns, TravelPath **travelpath, LttcState_PTP lttSt) {
-    if (travelpath != NULL){ chart_travelpath(travelpath, dchns->vessel, 0, lttSt);}
-    Vessel origin = (dchns)->vessel;
-    (*travelpath)->origin = origin;
+    if (travelpath != NULL) {
+        chart_travelpath(travelpath, dchns->vessel, 0, lttSt);
+        (*travelpath)->origin = (dchns)->vessel;
+    }
 
     unsigned int lor = expo_dirbase(did);
     unsigned int dnpos = 0;

@@ -2,7 +2,7 @@
 // Created by ujlm on 11/5/23.
 //
 
-#include "profiling.h"
+#include "Profiling.h"
 #include <stdio.h>
 
 

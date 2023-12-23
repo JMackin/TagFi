@@ -573,7 +573,7 @@ typedef enum SOA_OPTS{
 typedef struct SOA_internal{
     unsigned int shtdn : 1;
     unsigned int : 0;
-}SOAINTernal;
+}SOA_internal;
 
 /**
  *<h4><code>

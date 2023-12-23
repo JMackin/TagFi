@@ -5,10 +5,10 @@
 // lead | item | arrsz | arr | DONE
 
 
-#include "reply_tools.h"
+#include "RspOps.h"
 #include "lattice_signals.h"
-#include "consts.h"
-#include "fi_lattice.h"
+#include "Consts.h"
+#include "Lattice.h"
 #include <string.h>
 
 uchar_arr rsparr_pos(buff_arr buf) {return *buf + ARR_POS;}

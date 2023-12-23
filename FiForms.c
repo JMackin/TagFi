@@ -8,7 +8,7 @@
 
 #include <malloc.h>
 #include <string.h>
-#include "fiforms.h"
+#include "FiForms.h"
 #include <string.h>
 
 unsigned char form_exts[FORMCOUNT][EXTMAXLEN] = {

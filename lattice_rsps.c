@@ -7,11 +7,11 @@
 #include <string.h>
 #include <errno.h>
 #include "lattice_works.h"
-#include "fidi_masks.h"
+#include "FiDiMasks.h"
 #include "lattice_rsps.h"
-#include "consts.h"
-#include "reply_tools.h"
-#include "tagfi.h"
+#include "Consts.h"
+#include "RspOps.h"
+#include "lattice_nodes.h"
 
 
 
@@ -497,22 +497,25 @@ uint rsp_gond(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, buff_arr
     if (lattitm.obj == DCHN){
         dnode->l_ulong = pull_objid(inf_frm, *dnode, ULONG_SZ).l_ulong;
         if (travel_by_chnid(dnode->l_ulong, (*hltc)->chains, &travelpath, &(*hltc)->state)){
-            free(travelpath);
             stsErno(MISVEN, sts_frm, "Travel by chain ID failed", dnode->l_ulong, "dnode::chain id", "rsp_gond",
                     NULL, errno);
+            free(travelpath);
+            free(dnode);
             return 1;
         }
         bcnt += rsparr_add_travelpath(travelpath,buf,bcnt);
     }else if (lattitm.obj == IDID){
         dnode->l_ulonglong = pull_objid(inf_frm,(*dnode),8).l_ulonglong;
         if(travel_by_diid(dnode->l_ulonglong, (*hltc)->chains, &travelpath, &(*hltc)->state) == 1){
-            free(travelpath);
             stsErno(MISVEN, sts_frm, "Travel by diid failed", dnode->l_ulonglong, "dnode::diid", "rsp_gond",
                     NULL, errno);
+            free(travelpath);
+            free(dnode);
             return 1;
         }
         bcnt += rsparr_add_travelpath(travelpath,buf,bcnt);
     }
+    free(dnode);
     return bcnt;
 }
 
@@ -541,6 +544,8 @@ uint rsp_gohd(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, buff_arr 
 }
 
 uint rsp_dnls(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf) {
+    //TODO: Protect access to the dir list
+
     printf("Response: List dir ");
     Vessel* vessel = &((*hltc)->chains->vessel);
     DNMap dnMap = ((*hltc)->armature->nodemap);

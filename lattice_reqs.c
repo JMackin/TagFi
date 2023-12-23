@@ -2,12 +2,12 @@
 // Created by ujlm on 11/2/23.
 //
 
-#include "fidi_masks.h"
-#include "fi_lattice.h"
+#include "FiDiMasks.h"
+#include "Lattice.h"
 #include "lattice_works.h"
 #include "lattice_rsps.h"
 #include "lattice_signals.h"
-#include "reply_tools.h"
+#include "RspOps.h"
 #include <errno.h>
 #include <stdlib.h>
 #include <stdio.h>

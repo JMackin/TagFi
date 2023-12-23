@@ -2,8 +2,8 @@
 // Created by ujlm on 12/5/23.
 //
 
-#ifndef TAGFI_OPS_H
-#define TAGFI_OPS_H
+#ifndef TAGFI_OPTIONS_H
+#define TAGFI_OPTIONS_H
 #define OP_FLG_CNT 5
 
 
@@ -15,4 +15,4 @@ unsigned long read_ops_settings(void);
 
 
 
-#endif //TAGFI_OPS_H
+#endif //TAGFI_OPTIONS_H

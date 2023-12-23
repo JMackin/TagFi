@@ -2,7 +2,7 @@
 // Created by ujlm on 11/2/23.
 //
 #include "lattice_works.h"
-#include "fi_lattice.h"
+#include "Lattice.h"
 
 #ifndef TAGFI_LATTICE_RSPS_H
 #define TAGFI_LATTICE_RSPS_H

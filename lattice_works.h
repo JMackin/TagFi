@@ -7,7 +7,9 @@
 #ifndef TAGFI_LATTICE_WORKS_H
 #define TAGFI_LATTICE_WORKS_H
 #include "FiOps.h"
-#include "consts.h"
+#include "Consts.h"
+#include "lattice_sessions.h"
+
 
 #define INFARRLEN 18
 #define RSPARRLEN 256
@@ -67,8 +69,6 @@ typedef struct DiChains{
 typedef DiChains* DChains;
 
 struct HashBridge;
-
-
 typedef struct HashBridge* ParaBridge;
 
 typedef struct HashBridge {
@@ -87,8 +87,8 @@ typedef struct HashLattice {
     unsigned long max;
     LttcKey lattcKey;
     LttcState state;
-
 } HashLattice;
+
 typedef HashLattice* Lattice;
 typedef HashLattice** Lattice_PTP;
 
@@ -250,18 +250,18 @@ HashBridge* yield_bridge(HashLattice* hashLattice,
 
 HashBridge * yield_bridge_for_fihsh(Lattice lattice,unsigned long fiHsh);
 
-void destoryhashbridge(HashBridge hashbridge);
-
-void destryohashlattice(HashLattice* hashlattice);
-
-void destroy_node(FiNode * node,
-                 Armature* fiTbl);
-
-int destroy_ent(Armatr armatr,  unsigned long idx);
-
-void destroy_armatr(Armatr fitbl, HashLattice hashLattice);
-
-void destroy_chains(DiChains* dirChains);
+//void destoryhashbridge(HashBridge hashbridge);
+//
+//void destryohashlattice(HashLattice* hashlattice);
+//
+//void destroy_node(FiNode * node,
+//                 Armature* fiTbl);
+//
+//int destroy_ent(Armatr armatr,  unsigned long idx);
+//
+//void destroy_armatr(Armatr fitbl, HashLattice hashLattice);
+//
+//void destroy_chains(DiChains* dirChains);
 
 LattFD make_bridgeanchor(Armatr *armatr, DiNode **dirnode, char **path, unsigned int pathlen);
 

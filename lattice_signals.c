@@ -9,7 +9,7 @@
 #include <malloc.h>
 #include <fcntl.h>
 #include "lattice_signals.h"
-#include "reply_tools.h"
+#include "RspOps.h"
 
 #define SELFRESET 333
 #define SPAWNTAG_CEIL 0x80000000 // Last tag in sequence to be assigned before rolling over to 1 - (1<<31)
@@ -187,7 +187,6 @@ LttcState mk_dummy_ltcstate(){
     LttcState dummystate = malloc(sizeof(LatticeState));
 
     dummystate->frame = mk_dummy_stsframe();
-    dummystate->cwdnode = 0;
     dummystate->tag = 0;
     dummystate->misc = 0;
 
@@ -556,7 +555,7 @@ int add_spawn(SPool_PTP spawnpool, pthread_t thread, void *arg, SpawnAct spawnAc
 }
 
 int add_SPS_lock(pthread_mutex_t* lock, SPool_PTP spawnpool){
-
+    return 0;
 }
 
 
@@ -651,7 +650,6 @@ void init_SOA_bufs(SOA_Pack* soaPack){
 
     (*soaPack)->requestArr_buf = (Std_Buffer_PTP) malloc(ULONG_SZ);
     *((*soaPack)->requestArr_buf) = (unsigned char *) calloc(ARRBUF_LEN, sizeof(unsigned char));
-
 }
 
 void destroy_SOA_bufs(SOA_Pack* soaPack){
@@ -690,7 +688,6 @@ void destroy_SOA_bufs(SOA_Pack* soaPack){
         }
         free((*soaPack)->flags_buf);(*soaPack)->flags_buf=NULL;
     }
-
 }
 
 int make_socket_non_blocking(int sfd) {

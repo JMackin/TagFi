@@ -4,17 +4,17 @@ project(TagFI C)
 set(CMAKE_C_STANDARD 17)
 
 add_executable(TagFI hashlattice.c /usr/local/include/sodium.h
-        tagfi.h
-        tagfi.c
+        lattice_nodes.h
+        lattice_nodes.c
         lattice_works.c
-        jlm_random.c
-        jlm_random.h
-        fiforms.c
-        fiforms.h
-        fidi_masks.h
-        fidi_masks.c
-        fi_lattice.c
-        fi_lattice.h
+        CryptOps.c
+        CryptOps.h
+        FiForms.c
+        FiForms.h
+        FiDiMasks.h
+        FiDiMasks.c
+        Lattice.c
+        Lattice.h
         lattice_rsps.c
         lattice_rsps.h
         lattice_reqs.c
@@ -22,16 +22,18 @@ add_executable(TagFI hashlattice.c /usr/local/include/sodium.h
         lattice_works.h
         lattice_signals.c
         lattice_signals.h
-        profiling.c
-        consts.c
-        consts.h
-        consts.c
-        consts.h
-        reply_tools.c
-        reply_tools.h
+        Profiling.c
+        Consts.c
+        Consts.h
+        Consts.c
+        Consts.h
+        RspOps.c
+        RspOps.h
         FiOps.h
-        ops.c
-        ops.h
+        Options.c
+        Options.h
+        lattice_sessions.c
+        lattice_sessions.h
 
 )
 include_directories(/usr/local/include/sodium)

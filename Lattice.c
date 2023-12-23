@@ -15,9 +15,9 @@
 #include <errno.h>
 #include <pthread.h>
 #include <netdb.h>
-#include "jlm_random.h"
+#include "CryptOps.h"
 #include "lattice_rsps.h"
-#include "fidi_masks.h"
+#include "FiDiMasks.h"
 #include "lattice_works.h"
 
 
@@ -45,7 +45,6 @@ LttcState init_latticestate(void){
 
     return lattst;
 }
-
 
 void disassemble(Lattice* hashlattice,
                  DChains * dirchains,
@@ -550,7 +549,7 @@ int extract_name(const unsigned char* path, int length) {
     *infofrm = init_infofrm(infofrm, 1); // Request/Response Info Frame
     (*dirchains)->vessel = (*dirchains)->dir_head;
     (*infofrm)->vessel = &(*dirchains)->vessel;
-    
+
     int exit_flag = 0;
     int i = 0;
     int n_fds;
