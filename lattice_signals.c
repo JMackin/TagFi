@@ -441,11 +441,15 @@ void update_SOA(SOA_OPTS opt, SOA_Pack* soaPack, void* new_val){
         case SOA_TAG:
             (*soaPack)->tag = *((int*) new_val);
             break;
+        case SOA_MUTEX:
+            (*soaPack)->lock = (pthread_mutex_t*) new_val;
+            break;
+        case SOA_INTERNAL:
+
         default:
             return;
     }
 }
-
 
 void update_SOA_DS(SOA_Pack* soaPack, int datasocket){(*soaPack)->dataSocket = datasocket;}
 
@@ -454,7 +458,6 @@ ThreadSpawn spawn_thread(pthread_t thread_id, uint alpha_tag){
     spawn.thread = thread_id;
     spawn.tag[0] = alpha_tag;
     spawn.tag[1] = 0;
-
     return spawn;
 }
 
@@ -552,24 +555,19 @@ int add_spawn(SPool_PTP spawnpool, pthread_t thread, void *arg, SpawnAct spawnAc
     return 0;
 }
 
+int add_SPS_lock(pthread_mutex_t* lock, SPool_PTP spawnpool){
 
-SOA_Pack pack_SpinOff_Args(pthread_t tid,
-                           Lattice_PTP hashLattice,
-                           Std_Buffer_PTP request_buf,
-                           Std_Buffer_PTP response_buf,
-                           Std_Buffer_PTP requestArr_buf,
-                           Std_Buffer_PTP tempArr_buf,
-                           Flags_Buffer_PTP flags_buf,
-                           Info_Frame_PTP infoFrame,
-                           ResponseTable_PTP responseTable,
-                           epEvent epollEvent_IN,
-                           int epollFD,
-                           int dataSocket,
-                           int buf_len,
-                           int tag){
+}
+
+
+SOA_Pack
+pack_SpinOff_Args(pthread_t tid, Lattice_PTP hashLattice, Std_Buffer_PTP request_buf, Std_Buffer_PTP response_buf,
+                  Std_Buffer_PTP requestArr_buf, Std_Buffer_PTP tempArr_buf, Flags_Buffer_PTP flags_buf,
+                  Info_Frame_PTP infoFrame, ResponseTable_PTP responseTable, epEvent epollEvent_IN, int epollFD,
+                  int dataSocket, int buf_len, int tag, pthread_mutex_t* lock) {
 
     SOA_Pack soaPack = (SOA_Pack) malloc(sizeof(SpinOffArgsPack));
-    uint cnt = 5;
+    uint cnt = 4;
     uint flip = 0;
     Std_Buffer_PTP bufs[4] = {request_buf,
             response_buf,
@@ -578,20 +576,18 @@ SOA_Pack pack_SpinOff_Args(pthread_t tid,
 
     soaPack->hashLattice = hashLattice;
 
-    while((--cnt)){
+    while((cnt--)){
 
         if(flip){
             bufs[cnt] = NULL;
         }
         else {
             if (bufs[cnt] == NULL) {
-                cnt = 5;
+                cnt = 4;
                 flip = 1;
-                continue;
             }
         }
     }
-    if (flip){ init_SOA_bufs(&soaPack);}
 
     soaPack->flags_buf = flags_buf;
     soaPack->infoFrame = infoFrame;
@@ -601,7 +597,9 @@ SOA_Pack pack_SpinOff_Args(pthread_t tid,
     soaPack->dataSocket = dataSocket;
     soaPack->buf_len = buf_len;
     soaPack->tid = tid;
+    soaPack->lock = lock;
     if(tag){soaPack->tag = tag;}else{soaPack->tag = 1;}
+    soaPack->_internal.shtdn = 0;
 
     return soaPack;
 }
@@ -622,6 +620,7 @@ uint discard_SpinOff_Args(SOA_Pack* soaPack){
         (*soaPack)->infoFrame = NULL;
         (*soaPack)->responseTable = NULL;
         (*soaPack)->epollEvent_IN = NULL;
+
         (*soaPack)->epollFD = 0;
         (*soaPack)->dataSocket = 0;
         (*soaPack)->buf_len = 0;
@@ -637,11 +636,12 @@ uint discard_SpinOff_Args(SOA_Pack* soaPack){
 
 void init_SOA_bufs(SOA_Pack* soaPack){
 
-    (*soaPack)->flags_buf = (Flags_Buffer_PTP) malloc(sizeof(LttFlgs));
-    *((*soaPack)->flags_buf) = (LttFlgs) calloc(ARRBUF_LEN, sizeof(LattFlag));
 
     (*soaPack)->request_buf = (Std_Buffer_PTP) malloc(ULONG_SZ);
-    *((*soaPack)->request_buf) = (unsigned char *) calloc(BUF_LEN, sizeof(unsigned char));     // client request -> buffer
+    *((*soaPack)->request_buf) = (unsigned char *) calloc(BUF_LEN, sizeof(unsigned char));
+
+    (*soaPack)->flags_buf = (LttFlgs*) malloc(ULONG_SZ);
+    *((*soaPack)->flags_buf) = (LttFlgs) calloc(BUF_LEN, sizeof(LattFlag));     // client request -> buffer
 
     (*soaPack)->response_buf = (Std_Buffer_PTP) malloc(ULONG_SZ);
     *((*soaPack)->response_buf) = (unsigned char *) calloc(BUF_LEN, sizeof(unsigned char));
@@ -655,20 +655,42 @@ void init_SOA_bufs(SOA_Pack* soaPack){
 }
 
 void destroy_SOA_bufs(SOA_Pack* soaPack){
-    if(*(*soaPack)->request_buf != NULL){free(*(*soaPack)->request_buf);*(*soaPack)->request_buf = NULL;}
-    if((*soaPack)->request_buf != NULL){free((*soaPack)->request_buf);(*soaPack)->request_buf = NULL;}
 
-    if(*(*soaPack)->requestArr_buf != NULL){free(*(*soaPack)->requestArr_buf);(*soaPack)->requestArr_buf = NULL;}
-    if((*soaPack)->requestArr_buf != NULL){free((*soaPack)->requestArr_buf);(*soaPack)->requestArr_buf = NULL;}
+    if((*soaPack)->request_buf != NULL){
+        if(*(*soaPack)->request_buf != NULL){
+            free(*(*soaPack)->request_buf);
+        }
+        free((*soaPack)->request_buf);(*soaPack)->request_buf = NULL;
+    }
 
-    if(*(*soaPack)->response_buf != NULL){free(*(*soaPack)->response_buf);(*soaPack)->response_buf = NULL;}
-    if((*soaPack)->response_buf != NULL){free((*soaPack)->response_buf);(*soaPack)->response_buf = NULL;}
+    if((*soaPack)->requestArr_buf != NULL){
+        if(*(*soaPack)->requestArr_buf != NULL){
+            free(*(*soaPack)->requestArr_buf);
+        }
+        free((*soaPack)->requestArr_buf);(*soaPack)->requestArr_buf = NULL;
+    }
 
-    if(*(*soaPack)->tempArr_buf != NULL){free(*(*soaPack)->tempArr_buf);}(*soaPack)->tempArr_buf = NULL;
-    if((*soaPack)->tempArr_buf != NULL){free((*soaPack)->tempArr_buf);}(*soaPack)->tempArr_buf = NULL;
+    if((*soaPack)->response_buf != NULL){
+        if(*(*soaPack)->response_buf != NULL){
+            free(*(*soaPack)->response_buf);
+        }
+        free((*soaPack)->response_buf);(*soaPack)->response_buf = NULL;
+    }
 
-    if(*(*soaPack)->flags_buf != NULL){free(*(*soaPack)->flags_buf);(*soaPack)->flags_buf = NULL;}
-    if((*soaPack)->flags_buf != NULL){free((*soaPack)->flags_buf);(*soaPack)->flags_buf = NULL;}
+    if((*soaPack)->tempArr_buf != NULL){
+        if(*(*soaPack)->tempArr_buf != NULL){
+            free(*(*soaPack)->tempArr_buf);
+        }
+        free((*soaPack)->tempArr_buf);(*soaPack)->tempArr_buf = NULL;
+    }
+
+    if((*soaPack)->flags_buf != NULL){
+        if(*(*soaPack)->flags_buf != NULL){
+            free(*(*soaPack)->flags_buf);
+        }
+        free((*soaPack)->flags_buf);(*soaPack)->flags_buf=NULL;
+    }
+
 }
 
 int make_socket_non_blocking(int sfd) {

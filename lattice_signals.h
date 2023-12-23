@@ -548,7 +548,8 @@ typedef ErrorBundle* ErrBundle;
  *<li> SOA_EPOLLFD = 1024,
  *<li> SOA_DATASOCKET = 2048,
  *<li> SOA_BUFLEN = 4096,
- *<li> SOA_TAG = 8192
+ *<li> SOA_TAG = 8192,
+ *<li> SOA_MUTEX = 16384
  */
 typedef enum SOA_OPTS{
     SOA_HASHLATTICE = 1,
@@ -564,8 +565,15 @@ typedef enum SOA_OPTS{
     SOA_EPOLLFD = 1024,
     SOA_DATASOCKET = 2048,
     SOA_BUFLEN = 4096,
-    SOA_TAG = 8192
+    SOA_TAG = 8192,
+    SOA_MUTEX = 16384,
+    SOA_INTERNAL = 32768
 }SOA_OPTS;
+
+typedef struct SOA_internal{
+    unsigned int shtdn : 1;
+    unsigned int : 0;
+}SOAINTernal;
 
 /**
  *<h4><code>

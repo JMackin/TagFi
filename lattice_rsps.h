@@ -36,8 +36,7 @@ unsigned int respond(Resp_Tbl *rsp_tbl,
                      unsigned char *resp_buf);
 
 
-void destroy_metastructures(Resp_Tbl *rsp_tbl, InfoFrame *infoFrame, LttFlgs reqflg_arr, unsigned char *req_buf,
-                            unsigned char *req_arr_buf, unsigned char *tmparrbuf, unsigned char *rsp_buf);
+void destroy_metastructures(LttcState latticestate);
 /** Response actions */
 
 unsigned int  rsp_sts(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice* hltc, unsigned char **buf);

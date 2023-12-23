@@ -15,8 +15,7 @@ unsigned char form_exts[FORMCOUNT][EXTMAXLEN] = {
 
 
 		"png",
-		"NONE"
-
+		"NONE",
 		"md",
 		"jpg",
 		"svg",
@@ -116,12 +115,14 @@ unsigned int grab_ffid(unsigned char* fname, unsigned int nlen) {
     }
 
     if (n == nlen || n == 0){
+        free(buf);
         return NONE;
     }
 
     unsigned int extlen = nlen - dotpos;
     ext_buf = (unsigned char*) calloc(extlen,sizeof(unsigned char));
     memcpy(ext_buf, buf+dotpos+1, sizeof(unsigned char)*(extlen));
+    free(buf);buf=NULL;
 
     int score;
     for (i = 0; i < FORMCOUNT; i++) {
@@ -131,17 +132,14 @@ unsigned int grab_ffid(unsigned char* fname, unsigned int nlen) {
                 score++;
             }
             if (score == extlen) {
-
                 res = i;
-                free(buf);
                 free(ext_buf);
-
                 return res;
-
             }
 
             if (ext_buf[n] != form_exts[i][n]) {
                 res = NONE;
+                break;
             }
         }
 
@@ -152,9 +150,6 @@ unsigned int grab_ffid(unsigned char* fname, unsigned int nlen) {
 
     }
 
-    free(buf);
     free(ext_buf);
-
     return res;
-
 }

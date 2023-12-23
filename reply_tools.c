@@ -127,7 +127,7 @@ uint rsparr_add_msg(buff_arr buf, char* msg, uint len, uint offst)
 {
     char* newmsg = NULL;
     if (*(msg+len) != '\0'){
-        newmsg = (char*) calloc(len+1,sizeof(char));
+        newmsg = (char*) calloc(len+2,sizeof(char));
         memcpy(newmsg,msg,len);
         memset(newmsg+len,'\0',1);
         msg = newmsg;

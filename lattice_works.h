@@ -164,10 +164,12 @@ typedef struct SpinOffArgsPack{
     Info_Frame_PTP infoFrame;
     ResponseTable_PTP responseTable;       // Not implemented?
     epEvent epollEvent_IN;
+    pthread_mutex_t* lock;
     int dataSocket;
     int epollFD;
     int buf_len;
     unsigned int tag;
+    struct SOA_internal _internal;
 }SpinOffArgsPack;
 typedef SpinOffArgsPack* SOA_Pack;
 
@@ -293,20 +295,11 @@ unsigned int finode_idx(unsigned long fhshno);
 
 SPool init_spawnpool(int thread_count, int queue_size);
 
-SOA_Pack pack_SpinOff_Args(pthread_t tid,
-                  Lattice_PTP hashLattice,
-                  Std_Buffer_PTP request_buf,
-                  Std_Buffer_PTP response_buf,
-                  Std_Buffer_PTP requestArr_buf,
-                  Std_Buffer_PTP tempArr_buf,
-                  Flags_Buffer_PTP flags_buf,
-                  Info_Frame_PTP infoFrame,
-                  ResponseTable_PTP responseTable,
-                  epEvent epollEvent_IN,
-                  int epollFD,
-                  int dataSocket,
-                  int buf_len,
-                  int tag);
+SOA_Pack
+pack_SpinOff_Args(pthread_t tid, Lattice_PTP hashLattice, Std_Buffer_PTP request_buf, Std_Buffer_PTP response_buf,
+                  Std_Buffer_PTP requestArr_buf, Std_Buffer_PTP tempArr_buf, Flags_Buffer_PTP flags_buf,
+                  Info_Frame_PTP infoFrame, ResponseTable_PTP responseTable, epEvent epollEvent_IN, int epollFD,
+                  int dataSocket, int buf_len, int tag, pthread_mutex_t* lock);
 uint discard_SpinOff_Args(SOA_Pack* soaPack);
 
 int add_spawn(SPool_PTP spawnpool, pthread_t thread, void *arg, SpawnAct spawnAct);
