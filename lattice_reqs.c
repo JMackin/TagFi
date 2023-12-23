@@ -129,7 +129,7 @@ unsigned int split_cats(const unsigned int *lead_flags,
  */
 uint parse_lead(cnst_uint lead,
                 LttFlgs *flg_list,
-                StatFrame **sts_frm,
+                StatusFrame **sts_frm,
                 InfoFrame **inf_frm) {
 
     uint k = 1920;
@@ -190,7 +190,7 @@ uint parse_lead(cnst_uint lead,
 
 InfoFrame *parse_req(uchar_arr fullreqbuf, //<-- same name in spin up
                      InfoFrame **infofrm,
-                     StatFrame **stsfrm,
+                     StatusFrame **stsfrm,
                      LttFlgs* rqflgsbuf,  //<-- flgsbuf in spin up
                      uchar_arr tmparrbuf,
                      buff_arr req_arr_buf) //<-- req_arr_buf in spin up

@@ -182,9 +182,9 @@ char* convertLattErr(const LattErr* _latterr){
     return laterrstr;
 }
 
-char* convertLattSts(const LattStts * _lattsts){
+char* convertLattSts(const LattSts * _lattsts){
     char* lsttsstr = (char*) malloc(LSTS_CHARCNT);
-    LattStts _lattsts_itr;
+    LattSts _lattsts_itr;
     _lattsts_itr = LSTS_LASTELEM;
     uint i = LSTS_CNT;
 

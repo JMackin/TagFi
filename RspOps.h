@@ -39,7 +39,7 @@ unsigned char* pull_arr(buff_arr buf);
 unsigned int pull_arrtyp(LattFlag lattflg);
 
 char* convertLattErr(const LattErr* latterr_itr);
-char* convertLattSts(const LattStts * lattsts_itr);
+char* convertLattSts(const LattSts * lattsts_itr);
 
 
 #endif //TAGFI_RSPOPS_H

@@ -226,7 +226,8 @@ void gen_infofunc_arr(InfoFunc** infofuncarr){
  * * * * * * * * * * * * * * * */
 
 
-uint rsp_err(StatFrame **sts_frm, InfoFrame **inf_frm,  Lattice* hltc, buff_arr buf) {
+uint rsp_err(LSession_PTP session, InfoFrame **inf_frm, Lattice * hltc, buff_arr buf) {
+    StatusFrame** sts_frm = &(*session)->state->frame;
 
     uint ercode = (*sts_frm)->err_code;
     memcpy(buf,&ercode,sizeof(LattErr));
@@ -235,7 +236,8 @@ uint rsp_err(StatFrame **sts_frm, InfoFrame **inf_frm,  Lattice* hltc, buff_arr 
 }
 
 /** Info funcs */
-uint rsp_nfo(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, buff_arr buf) {
+uint rsp_nfo(LSession_PTP session, InfoFrame **inf_frm, Lattice * hltc, buff_arr buf) {
+    StatusFrame** sts_frm = &(*session)->state->frame;
 
     LattType lattItm;
     lattItm.n_uint = 0;
@@ -252,7 +254,7 @@ uint rsp_nfo(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, buff_arr 
     infofuncarr = (InfoFunc*) malloc(sizeof(InfoFunc));
 
     lattStruct.lattice = *hltc;
-    lattStruct.statFrame = **sts_frm;
+    lattStruct.statusFrame = **sts_frm;
 
     gen_infofunc_arr(&infofuncarr);
 
@@ -302,7 +304,8 @@ uint rsp_nfo(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, buff_arr 
 //uint bcnt;
 //lattItm.obj = LTTC;
 //bcnt = rsparr_add_lt(lattItm,buf,0);
-uint rsp_sts(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, buff_arr buf) {
+uint rsp_sts(LSession_PTP session, InfoFrame **inf_frm, Lattice * hltc, buff_arr buf) {
+    StatusFrame** sts_frm = &(*session)->state->frame;
     printf("Response: Status frame");
     uint bcnt;
     LattType lattitm;
@@ -337,7 +340,9 @@ uint rsp_sts(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, buff_arr 
     //TODO: Test and verify this function
 }
 
-uint rsp_und(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, buff_arr buf) {
+uint rsp_und(LSession_PTP session, InfoFrame **inf_frm, Lattice * hltc, buff_arr buf) {
+    StatusFrame** sts_frm = &(*session)->state->frame;
+
 
 
     return 0;
@@ -345,7 +350,8 @@ uint rsp_und(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, buff_arr 
 
 
 
-uint rsp_fiid(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, buff_arr buf) {
+uint rsp_fiid(LSession_PTP session, InfoFrame **inf_frm, Lattice * hltc, buff_arr buf) {
+    StatusFrame** sts_frm = &(*session)->state->frame;
     printf("Response: Fiid for hashno");
     LattLong* itmID = malloc(ULONG_SZ);
     LattType lattitm;
@@ -390,7 +396,8 @@ uint rsp_fiid(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, buff_arr
     return bcnt;
 }
 
-uint rsp_diid(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, buff_arr buf) {
+uint rsp_diid(LSession_PTP session, InfoFrame **inf_frm, Lattice * hltc, buff_arr buf) {
+    StatusFrame** sts_frm = &(*session)->state->frame;
     printf("Response: DirID for chain number");
 
     LattLong* itmID = malloc(sizeof(unsigned long));
@@ -439,7 +446,8 @@ uint rsp_diid(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, buff_arr
     return bcnt;
 }
 
-uint rsp_frdn(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, buff_arr buf) {
+uint rsp_frdn(LSession_PTP session, InfoFrame **inf_frm, Lattice * hltc, buff_arr buf) {
+    StatusFrame** sts_frm = &(*session)->state->frame;
     printf("Response: Resident Dir for fihashno");
     LattType lattitm;
     LattLong *fiID =(LattLong*) malloc(ULONG_SZ);
@@ -482,8 +490,9 @@ uint rsp_frdn(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, buff_arr
 
 }
 
-uint rsp_gond(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, buff_arr buf) {
+uint rsp_gond(LSession_PTP session, InfoFrame **inf_frm, Lattice * hltc, buff_arr buf) {
     printf("Response: Goto node");
+    StatusFrame** sts_frm = &(*session)->state->frame;
     LattType lattitm;
     uint bcnt;
     LattLong *dnode = malloc(sizeof(LattLong));
@@ -519,31 +528,31 @@ uint rsp_gond(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, buff_arr
     return bcnt;
 }
 
-uint rsp_fyld(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, buff_arr buf) {
+uint rsp_fyld(LSession_PTP session, InfoFrame **inf_frm, Lattice * hltc, buff_arr buf) {
     printf("Response: Yield object");
 }
 
-uint rsp_jjjj(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, buff_arr buf) {
+uint rsp_jjjj(LSession_PTP session, InfoFrame **inf_frm, Lattice * hltc, buff_arr buf) {
     printf("Response: Empty");
 }
 
-uint rsp_dsch(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, buff_arr buf) {
+uint rsp_dsch(LSession_PTP session, InfoFrame **inf_frm, Lattice * hltc, buff_arr buf) {
     printf("Response: Search for object");
 }
 
-uint rsp_iiii(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice * hltc, buff_arr buf) {
+uint rsp_iiii(LSession_PTP session, InfoFrame **inf_frm, Lattice * hltc, buff_arr buf) {
     printf("Response: Empty");
 }
 
-uint rsp_dcls(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf) {
+uint rsp_dcls(LSession_PTP session, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf) {
     printf("Response: List chain nodes");
 }
 
-uint rsp_gohd(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf) {
+uint rsp_gohd(LSession_PTP session, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf) {
     printf("Response: Go to chain head");
 }
 
-uint rsp_dnls(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf) {
+uint rsp_dnls(LSession_PTP session, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf) {
     //TODO: Protect access to the dir list
 
     printf("Response: List dir ");
@@ -553,12 +562,12 @@ uint rsp_dnls(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, buff_arr 
 
 
     if(check_base((*vessel)->did)){
-        stsErno(MISVEN,sts_frm,"Vessel is in a base node. Base node contents cannot be accessed.",
+        stsErno(MISVEN,&(*session)->state->frame,"Vessel is in a base node. Base node contents cannot be accessed.",
                 in_basenode,"basenode","rsp_dnls",NULL,0);
         return 1;
     }
     if((dnMap)->shm_fd->tag != 0){
-        stsErno(MISMAP,sts_frm,"An expanse is already in place. Close it first or switch directories to re-span.",
+        stsErno(MISMAP,&(*session)->state->frame,"An expanse is already in place. Close it first or switch directories to re-span.",
                 (dnMap)->shm_fd->prime_fd, "shm-prime_fd","rsp_dnls",NULL,0);
         return 0;
     }
@@ -571,7 +580,7 @@ uint rsp_dnls(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, buff_arr 
 
 }
 
-uint rsp_vvvv(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf) {
+uint rsp_vvvv(LSession_PTP session, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf) {
     printf("Response: Empty");
 }
 
@@ -585,32 +594,28 @@ uint rsp_vvvv(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, buff_arr 
  * <code>
  *        (*funarr[cmd])(sts_frm, inf_frm, dchns, hltc, buf);
 * */
-RspFunc *rsp_act(
-        RspMap rsp_map,
-        StatFrame **sts_frm,
-        InfoFrame **inf_frm,
-        RspFunc *funarr){
+RspFunc *rsp_act(RspMap rsp_map, InfoFrame **inf_frm, RspFunc (*funarr)) {
 
 //Info
-    uint (*und)(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
-    uint (*err)(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
-    uint (*nfo)(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
-    uint (*sts)(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
+    uint (*und)(LSession_PTP session, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
+    uint (*err)(LSession_PTP session, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
+    uint (*nfo)(LSession_PTP session, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
+    uint (*sts)(LSession_PTP session, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
 //Travel*
-    uint (*fiid)(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
-    uint (*diid)(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
-    uint (*frdn)(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
-    uint (*gond)(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
+    uint (*fiid)(LSession_PTP session, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
+    uint (*diid)(LSession_PTP session, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
+    uint (*frdn)(LSession_PTP session, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
+    uint (*gond)(LSession_PTP session, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
 //Dir*
-    uint (*fyld)(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
-    uint (*jjjj)(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
-    uint (*dsch)(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
-    uint (*iiii)(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
+    uint (*fyld)(LSession_PTP session, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
+    uint (*jjjj)(LSession_PTP session, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
+    uint (*dsch)(LSession_PTP session, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
+    uint (*iiii)(LSession_PTP session, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
 //File*
-    uint (*dcls)(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
-    uint (*gohd)(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
-    uint (*dnls)(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
-    uint (*vvvv)(StatFrame **sts_frm, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
+    uint (*dcls)(LSession_PTP session, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
+    uint (*gohd)(LSession_PTP session, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
+    uint (*dnls)(LSession_PTP session, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
+    uint (*vvvv)(LSession_PTP session, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
 
 
     und = &rsp_und; err = &rsp_err; nfo = &rsp_nfo; dnls = &rsp_dnls;
@@ -656,7 +661,7 @@ RspFunc *rsp_act(
  * Init response table
  */
 void
-init_rsptbl(int cnfg_fd, Resp_Tbl **rsp_tbl, StatFrame **sts_frm, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc) {
+init_rsptbl(int cnfg_fd, Resp_Tbl **rsp_tbl, InfoFrame **inf_frm, DChains *dchns, Lattice *hltc) {
     uint *rsp_map;
     uint fcnt = RSPARRLEN;
     RspFunc *rsp_func;
@@ -664,7 +669,7 @@ init_rsptbl(int cnfg_fd, Resp_Tbl **rsp_tbl, StatFrame **sts_frm, InfoFrame **in
     *rsp_tbl = (Resp_Tbl*) malloc(sizeof(Resp_Tbl));
     rsp_func = (RspFunc*) malloc(sizeof(RspFunc));
 
-    (*rsp_tbl)->rsp_funcarr = rsp_act(&rsp_map, sts_frm, inf_frm, rsp_func);
+    (*rsp_tbl)->rsp_funcarr = rsp_act(&rsp_map, inf_frm, rsp_func);
     (*rsp_tbl)->rsp_map = (RspMap *) &rsp_map;
     (*rsp_tbl)->fcnt = fcnt;
 }
@@ -674,7 +679,7 @@ init_rsptbl(int cnfg_fd, Resp_Tbl **rsp_tbl, StatFrame **sts_frm, InfoFrame **in
  * \DetermineResponse
  *  Returns a LattReply struct that determines the response avenue given output from request parsing.
  */
-LattType dtrm_rsp(StatFrame **sts_frm,
+LattType dtrm_rsp(LSession_PTP session,
                   InfoFrame **inf_frm,
                   LattType reply) {
 
@@ -705,8 +710,8 @@ LattType dtrm_rsp(StatFrame **sts_frm,
     }
 
     if(reply.n_uint > 15 || reply.n_int < 0){
-        setErr(sts_frm,MISCLC,reply.rpl);
-        serrOut(sts_frm,"Response determination failed.");
+        setErr(&(*session)->state->frame,MISCLC,reply.rpl);
+        serrOut(&(*session)->state->frame,"Response determination failed.");
         reply.rpl = ERRCD;
     }
     return reply;
@@ -716,7 +721,7 @@ LattType dtrm_rsp(StatFrame **sts_frm,
  * \ProcessResponse
  */
 uint respond(Resp_Tbl *rsp_tbl,
-             SttsFrame *sts_frm,
+             LSession_PTP session,
              InfoFrame **inf_frm,
              DChains *dchns,
              Lattice *hltc,
@@ -728,23 +733,23 @@ uint respond(Resp_Tbl *rsp_tbl,
 
     prpbuf(&rsp_buf,lattItm);
     /** Determine response avenue and return a reply object */
-    lattItm = dtrm_rsp(sts_frm,inf_frm,lattItm);  // Reply object returned from 'determine response'
-    printf("%u",(*sts_frm)->err_code);
+    lattItm = dtrm_rsp(session, inf_frm, lattItm);  // Reply object returned from 'determine response'
+    printf("%u",(*session)->state->frame->err_code);
 
     uint rspsz=12;
     // Update status and return 1 on failure
     // if the value of reply object is > the
     // num of function in the array.
     if (lattItm.n_uint > rsp_tbl->fcnt) {
-        setErr(sts_frm, MISCLC, lattItm.n_uint);
-        serrOut(sts_frm, "LattReply for response processing outside defined functionality.");
+        setErr(&(*session)->state->frame, MISCLC, lattItm.n_uint);
+        serrOut(&(*session)->state->frame, "LattReply for response processing outside defined functionality.");
         return 1;
     }
 
     // Insert reply item into buffer at +sizeof(LattTyp) offset
     rsp_add_replyitm(&rsp_buf,lattItm.rpl);
     // Call function at index 'rsp' (the reply object value) from function array.
-    rspsz += (*rsp_tbl->rsp_funcarr)[lattItm.rpl](sts_frm, inf_frm, hltc, &rsp_buf);
+    rspsz += (*rsp_tbl->rsp_funcarr)[lattItm.rpl](session, inf_frm, hltc, &rsp_buf);
 
     if (!rspsz){
         return 1;
@@ -763,7 +768,7 @@ uint respond(Resp_Tbl *rsp_tbl,
 
 
     // Update status and return 0 on success
-    setSts(sts_frm, RESPN, 0);
+    setSts(&(*session)->state->frame, RESPN, 0);
     return 0;
 }
 

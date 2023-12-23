@@ -7,7 +7,7 @@
 
 
 /**
- * <h4><code>
+ * <code>
  * \ResponseCMDs
  * <li> FFFF = 0 -  False
  * <li> NRSP = 1 -  Number of responses to follow
@@ -53,9 +53,7 @@ typedef enum RspFlag {
 }RspFlag;
 
 /**
- *<h4>
  * RequestCMDS
- *</h4>
  *<br><code>
 
  \Qualifiers
@@ -166,7 +164,7 @@ typedef enum ReqFlag {
 
 
 /**
- *  <h4><code>
+ *  <code>
  * \Status
  * <li> SLEEP = 0   -  sleeping
  * <li> LISTN = 1   -  listening
@@ -180,7 +178,7 @@ typedef enum ReqFlag {
  * <li> RESET = 256 -  System reset
  * <li> STERR = 512 -  Error occured, see error codes
  * */
-typedef enum LattStts{
+typedef enum LattSts{
     // No value
     NOTHN = 0,
     // listening,
@@ -207,11 +205,11 @@ typedef enum LattStts{
     SLEEP = 1024,
 
     // 256 512 1024 2048 4096 8192
-}LattStts;
+}LattSts;
 
 
 /**
- * <h4><code>
+ * <code>
  * \Errors
  *<li> IMFINE = 0     -  No error status
  *<li> MALREQ = 1     -  Malformed request
@@ -281,7 +279,7 @@ typedef enum LattErr{
 
 
 /**
- * <h4><code>
+ * <code>
  *\Actions
  *  <li> ZZZZ = 0 - Do nothing
  *  <li> RPNG = 1 - Respond True
@@ -310,7 +308,7 @@ typedef enum LattAct {
 
 
 /**
- * <h4><code>
+ * <code>
  * \LatticeObjects
  * <li> NADA = 0 - No or nonexistent object
  * <li> LTTC = 1 -  Hash Lattice
@@ -390,7 +388,7 @@ typedef enum LattObj{
 } LattObj;
 
 /**
- *<h4><code>
+ *<code>
  * Replys
  *<br>
 
@@ -476,64 +474,13 @@ typedef LattFlag* LttFlgs;
 typedef LttFlgs* Flags_Buffer_PTP; // Flags buffer, pointer to pointer.
 
 
-/**
- *<h4>
- *  \StatusFrame
- *</h4><code>
- *  [status code | err code | action | modifier ]
-
- * */
-typedef struct StatFrame{
-    LattStts status;
-    LattAct act_id;
-    LattErr err_code;
-    unsigned int modr;
-}StatFrame;
-typedef StatFrame* SttsFrame;
-typedef StatFrame** Status_Frame_PTP;
-
-typedef union uniArr{
-    unsigned int* iarr;
-    unsigned char* carr;
-}uniArr;
-
-typedef struct LatticeState{
-    SttsFrame frame;
-    unsigned long long int cwdnode;
-    unsigned int tag;
-    unsigned int misc;
-}LatticeState;
-
-typedef LatticeState* LttcState;
-typedef LatticeState** LttcState_PTP;
-
-typedef struct ErrorBundle{
-    LttcState ltcstate;
-    LattErr ltcerr;
-    unsigned long relvval;
-    char func[32];
-    char relvval_desc[64];
-    char note[128];
-    char msg[256];
-    int erno;
-    unsigned int raised;
-    /**
-     *<li> 0: Normal
-     *<li> 2: Dummy ltcState in place, alloc'd
-     *<li> 3: Dummy ltcState free'd
-     *<li> 7: dummy sttsframe in use during raise_err
-     */
-    unsigned int _internal;
-}ErrorBundle;
-
-typedef ErrorBundle* ErrBundle;
 //(char*) calloc(64,UCHAR_SZ);
 //calloc(32,UCHAR_SZ);
 //calloc(128,UCHAR_SZ);
 //alloc(256,UCHAR_SZ);
 
 /**
- *<h4><code>
+ *<code>
  * \SpinOffArgOptions
  *<li> SOA_HASHLATTICE = 1,
  *<li> SOA_REQBUF = 2,
@@ -567,7 +514,8 @@ typedef enum SOA_OPTS{
     SOA_BUFLEN = 4096,
     SOA_TAG = 8192,
     SOA_MUTEX = 16384,
-    SOA_INTERNAL = 32768
+    SOA_INTERNAL = 32768,
+    SOA_SESSION = 65536
 }SOA_OPTS;
 
 typedef struct SOA_internal{
@@ -576,7 +524,7 @@ typedef struct SOA_internal{
 }SOA_internal;
 
 /**
- *<h4><code>
+ *<code>
  * \SpawnPoolState
  * <li> SPS_INIT = 0,
  * <li> SPS_ATTHREADMAX = 2,
@@ -592,34 +540,52 @@ typedef enum SpawnPoolState{
     SPS_TAGMISMATCH = 32
 }SpawnPoolState;
 
-/** Status ops **/
+/**
+ *<code>
+ * \SessionOperations
+ * <ul>
+ * <em> Value-Update flags
+ * <br> --------------------
+ * <li> SESH_UV_STATE = 1
+ * <li> SESH_UV_THREAD = 2
+ * <li> SESH_UV_SOCKET = 4
+ * <li> SESH_UV_LASTREQ = 8
+ * <li> SESH_UV_TAG = 16
+ * <li> SESH_UV_OP = 32
+ * <br><br>
+ * <em> Session-State flags
+ * <br> --------------------
+ * <li> SESH_ST_SHTDN = 128 - Indicates the session user has requested system shutdown.
+ * <br><br>
+ * <em> Misc
+ * <br> --------------------
+ * <li> SESH_INIT = 0 - Value assigned on startup pre-thread-assignment.
+ * <li> SESH_SERIAL_UPDATE = 64 - Leads a SessionOps array to update multiple values when passed to update_session.
+ */
 
-void setSts(StatFrame** sts_frm, LattStts ltcst, unsigned int modr);
+typedef enum SessionOps{
+    // Initialized and unassigned session structure
+    SESH_INIT = 0,
+    // Load multiple values at once w/ update_session()
+    SESH_SERIAL_UPDATE = 64,
 
-void setErr(StatFrame** sts_frm, LattErr ltcerr, unsigned int modr);
+    /* Update-Value (UV) command flags */
 
-void setMdr(StatFrame** sts_frm, unsigned int modr);
+    SESH_UV_STATE = 1,
+    SESH_UV_THREAD = 2,
+    SESH_UV_SOCKET = 4,
+    SESH_UV_LASTREQ = 8,
+    SESH_UV_TAG = 16,
+    SESH_UV_OP = 32,
 
-void setAct(StatFrame** sts_frm, LattAct lttact, LattStts ltsts, unsigned int modr);
+    /* Session state flags */
 
-void setRsp(StatFrame** sts_frm, LattReply,unsigned int modr);
+    // User requests system shutdown
+    SESH_ST_SHTDN = 128,
 
-void stsReset(StatFrame** sts_frm);
 
-void stsOut(StatFrame** sts_frm);
 
-void serrOut(StatFrame** sts_frm, char* msg);
+}SessionOps;
 
-long
-stsErno(LattErr ltcerr, StatFrame **sts_frm, char *msg, unsigned long misc, char *miscdesc, char *function, char *note,
-        int erno);
-
-ErrorBundle raiseErr(ErrorBundle bundle);
-ErrorBundle init_errorbundle();
-ErrorBundle * bundle_add(ErrBundle* bundle, unsigned int attr, void* val);
-ErrorBundle bundle_addglob(ErrorBundle bundle, LattErr ltcerr, LttcState ltcstate, char *msg, unsigned long relvval,
-               const char *relvval_desc, char *func, const char *note, int erno);
-ErrorBundle bundle_and_raise(ErrorBundle bundle, LattErr ltcerr, LttcState ltcstate, char *msg, unsigned long relvval,
-                             const char *relvval_desc, char *func, const char *note, int erno);
 
 #endif //TAGFI_LATTICE_SIGNALS_H

@@ -115,7 +115,7 @@ DiChains* init_dchains() {
 }
 
 
-uint return_to_origin(TravelPath *travelPath, DChains dirChains, LttcState_PTP lttSt) {
+uint return_to_origin(TravelPath *travelPath, DChains dirChains, LState_PTP lttSt) {
     if (dirChains->vessel->did != travelPath->destination->did){
         return 1;
     }
@@ -125,7 +125,7 @@ uint return_to_origin(TravelPath *travelPath, DChains dirChains, LttcState_PTP l
 }
 
 //enroute: 1 = at origin, 0 = at destination
-void chart_travelpath(TravelPath **travelpath, Vessel vessel, int enroute, LttcState_PTP lttSt) {
+void chart_travelpath(TravelPath **travelpath, Vessel vessel, int enroute, LState_PTP lttSt) {
     if (!enroute){
         (*travelpath) = (TravelPath*) malloc(sizeof(TravelPath));
         (*travelpath)->origin = vessel;
@@ -137,7 +137,7 @@ void chart_travelpath(TravelPath **travelpath, Vessel vessel, int enroute, LttcS
 
 }
 
-void travel_dchains(Vessel *vessel, unsigned int lor, unsigned char steps, TravelPath **travelpath, LttcState_PTP lttSt) {
+void travel_dchains(Vessel *vessel, unsigned int lor, unsigned char steps, TravelPath **travelpath, LState_PTP lttSt) {
 
     if (travelpath != NULL){ chart_travelpath(travelpath, *vessel, 0, lttSt);}
     while (steps>0){
@@ -159,7 +159,7 @@ void travel_dchains(Vessel *vessel, unsigned int lor, unsigned char steps, Trave
     if (travelpath != NULL){ chart_travelpath(travelpath, *vessel, 1, lttSt);}
 }
 
-void goto_chain_tail(DiChains *dirChains, unsigned int lor, TravelPath **travelpath, LttcState_PTP lttSt) {
+void goto_chain_tail(DiChains *dirChains, unsigned int lor, TravelPath **travelpath, LState_PTP lttSt) {
 
     if (travelpath != NULL){ chart_travelpath(travelpath, dirChains->vessel, 0, lttSt);}
     (dirChains)->vessel = dirChains->dir_head;
@@ -176,7 +176,7 @@ void goto_chain_tail(DiChains *dirChains, unsigned int lor, TravelPath **travelp
 
 }
 
-void goto_base(DChains dchns, TravelPath **travelpath, LttcState_PTP lttSt) {
+void goto_base(DChains dchns, TravelPath **travelpath, LState_PTP lttSt) {
     if (travelpath != NULL){ chart_travelpath(travelpath, dchns->vessel, 0, lttSt);}
     if (is_base(dchns->vessel)){
         if (travelpath != NULL){ chart_travelpath(travelpath, dchns->vessel, 1, lttSt);}
@@ -186,13 +186,13 @@ void goto_base(DChains dchns, TravelPath **travelpath, LttcState_PTP lttSt) {
     dchns->vessel = expo_dirbase(dchns->vessel->did) ? dchns->dir_head->left : dchns->dir_head->right;
 }
 
-void switch_base(DChains dchns, TravelPath **travelpath, LttcState_PTP lttSt) {
+void switch_base(DChains dchns, TravelPath **travelpath, LState_PTP lttSt) {
     if (travelpath != NULL){ chart_travelpath(travelpath, dchns->vessel, 0, lttSt);}
     dchns->vessel = expo_dirbase(dchns->vessel->did) ? dchns->dir_head->left : dchns->dir_head->right;
     if (travelpath != NULL){ chart_travelpath(travelpath, dchns->vessel, 1, lttSt);}
 }
 
-unsigned int travel_by_chnid(unsigned long chn_id, DiChains *dchns, TravelPath **travelpath, LttcState_PTP lttSt) {
+unsigned int travel_by_chnid(unsigned long chn_id, DiChains *dchns, TravelPath **travelpath, LState_PTP lttSt) {
     if (travelpath != NULL){ chart_travelpath(travelpath, dchns->vessel, 0, lttSt);}
 
     unsigned int lor = expo_dirbase(dchns->vessel->did);
@@ -220,7 +220,7 @@ unsigned int travel_by_chnid(unsigned long chn_id, DiChains *dchns, TravelPath *
     return 1;
 }
 
-unsigned int travel_by_diid(unsigned long long did, DiChains *dchns, TravelPath **travelpath, LttcState_PTP lttSt) {
+unsigned int travel_by_diid(unsigned long long did, DiChains *dchns, TravelPath **travelpath, LState_PTP lttSt) {
     if (travelpath != NULL) {
         chart_travelpath(travelpath, dchns->vessel, 0, lttSt);
         (*travelpath)->origin = (dchns)->vessel;
@@ -548,7 +548,7 @@ uint add_entry(FiNode* finode, Armature* armatr, PathParts pathparts) {
     return 0;
 }
 
-HashLattice *init_hashlattice(DChains *dirchains, LttcKey lattcKey, LttcState lttcstt) {
+HashLattice *init_hashlattice(DChains *dirchains, LttcKey lattcKey, LState lttcstt) {
 
 
     HashLattice* hashlattice = (HashLattice *) malloc(sizeof(HashLattice));
@@ -639,7 +639,7 @@ __attribute__((unused)) int filter_dirscan(const struct dirent *entry) {
     return ((entry->d_name[0] == 46)) || (strnlen(entry->d_name, 4) > 3);
 }
 
-double long *map_dir(StatFrame **statusFrame, const char *dir_path, unsigned int path_len, unsigned char *rootdirname,
+double long *map_dir(StatusFrame **statusFrame, const char *dir_path, unsigned int path_len, unsigned char *rootdirname,
                      unsigned int dnlen, HashLattice *hashlattice, Armature **armatr, LttcKey latticeKey) {
     int i;
     int j=0;

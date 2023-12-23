@@ -86,7 +86,7 @@ typedef struct HashLattice {
     unsigned long count;
     unsigned long max;
     LttcKey lattcKey;
-    LttcState state;
+    LState state;
 } HashLattice;
 
 typedef HashLattice* Lattice;
@@ -131,12 +131,13 @@ InfoFrame *init_infofrm(InfoFrame **info_frm, uint startup);
 
 typedef struct LattStruct{
     Lattice lattice;
-    StatFrame statFrame;
     unsigned long* itmID;
+    StatusFrame statusFrame;
+    LSession session;
 }LattStruct;
 
 typedef unsigned int** RspMap;
-typedef unsigned int (*RspFunc[RSPARRLEN])(StatFrame**, InfoFrame**, Lattice*, unsigned char**);
+typedef unsigned int (*RspFunc[RSPARRLEN])(LSession_PTP session, InfoFrame**, Lattice*, unsigned char**);
 
 typedef struct Resp_Tbl{
     unsigned int fcnt;
@@ -150,7 +151,7 @@ typedef Resp_Tbl** ResponseTable_PTP;
 typedef struct stat* stptr;
 typedef struct epoll_event* epEvent;
 typedef InfoFrame** Info_Frame_PTP;
-typedef StatFrame** Status_Frame_PTP;
+typedef StatusFrame** StsFrame_PTP;
 typedef unsigned char** Std_Buffer_PTP; // Standard buffer, pointer-to-pointer
 
 typedef struct SpinOffArgsPack{
@@ -165,6 +166,7 @@ typedef struct SpinOffArgsPack{
     ResponseTable_PTP responseTable;       // Not implemented?
     epEvent epollEvent_IN;
     pthread_mutex_t* lock;
+    LSession_PTP session;
     int dataSocket;
     int epollFD;
     int buf_len;
@@ -205,12 +207,12 @@ typedef SpawnPool** SPool_PTP;
 
 
 
-double long *map_dir(StatFrame **statusFrame, const char *dir_path, unsigned int path_len, unsigned char *dirname,
+double long *map_dir(StatusFrame **statusFrame, const char *dir_path, unsigned int path_len, unsigned char *dirname,
                      unsigned int dnlen, HashLattice *hashlattice, Armature **fitbl, LttcKey latticeKey);
 
 DiChains* init_dchains();
 
-HashLattice *init_hashlattice(DChains *dirchains, LttcKey lattcKey, LttcState lttcstt);
+HashLattice *init_hashlattice(DChains *dirchains, LttcKey lattcKey, LState lttcstt);
 
 FiNode* mk_finnode(unsigned int nlen,
                    unsigned char* finame,
@@ -224,17 +226,17 @@ uint add_entry(FiNode* entry,
                Armature* fiTbl,
                PathParts pp);
 
-uint return_to_origin(TravelPath *travelPath, DChains dirChains, LttcState_PTP lttSt);
+uint return_to_origin(TravelPath *travelPath, DChains dirChains, LState_PTP lttSt);
 
-void travel_dchains(Vessel *vessel, unsigned int lor, unsigned char steps, TravelPath **travelpath, LttcState_PTP lttSt);
+void travel_dchains(Vessel *vessel, unsigned int lor, unsigned char steps, TravelPath **travelpath, LState_PTP lttSt);
 
-void goto_chain_tail(DiChains *dirChains, unsigned int lor, TravelPath **travelpath, LttcState_PTP lttSt);
+void goto_chain_tail(DiChains *dirChains, unsigned int lor, TravelPath **travelpath, LState_PTP lttSt);
 
-void goto_base(DChains dchns, TravelPath **travelpath, LttcState_PTP lttSt);
+void goto_base(DChains dchns, TravelPath **travelpath, LState_PTP lttSt);
 
-void switch_base(DChains dchns, TravelPath **travelpath, LttcState_PTP lttSt);
+void switch_base(DChains dchns, TravelPath **travelpath, LState_PTP lttSt);
 
-unsigned int travel_by_chnid(unsigned long chn_id, DiChains *dchns, TravelPath **travelpath, LttcState_PTP lttSt);
+unsigned int travel_by_chnid(unsigned long chn_id, DiChains *dchns, TravelPath **travelpath, LState_PTP lttSt);
 
 DiNode* add_dnode(unsigned long long did,
                   unsigned char* dname,
@@ -265,7 +267,7 @@ HashBridge * yield_bridge_for_fihsh(Lattice lattice,unsigned long fiHsh);
 
 LattFD make_bridgeanchor(Armatr *armatr, DiNode **dirnode, char **path, unsigned int pathlen);
 
-unsigned int travel_by_diid(unsigned long long did, DiChains *dchns, TravelPath **travelpath, LttcState_PTP lttSt);
+unsigned int travel_by_diid(unsigned long long did, DiChains *dchns, TravelPath **travelpath, LState_PTP lttSt);
 
 void yield_dnhsh(DiNode** dirnode, unsigned char** dn_hash);
 
@@ -273,7 +275,7 @@ __attribute__((unused)) char *yield_dnhstr(DiNode** dirnode);
 
 InfoFrame * parse_req(unsigned char* fullreqbuf,
                       InfoFrame **infofrm,
-                      StatFrame** stsfrm,
+                      StatusFrame** stsfrm,
                       LttFlgs* rqflgsbuf,
                       unsigned char* tmparrbuf,
                       unsigned char** req_arr_buf);
@@ -299,7 +301,7 @@ SOA_Pack
 pack_SpinOff_Args(pthread_t tid, Lattice_PTP hashLattice, Std_Buffer_PTP request_buf, Std_Buffer_PTP response_buf,
                   Std_Buffer_PTP requestArr_buf, Std_Buffer_PTP tempArr_buf, Flags_Buffer_PTP flags_buf,
                   Info_Frame_PTP infoFrame, ResponseTable_PTP responseTable, epEvent epollEvent_IN, int epollFD,
-                  int dataSocket, int buf_len, int tag, pthread_mutex_t* lock);
+                  int dataSocket, int buf_len, int tag, pthread_mutex_t *lock, LSession_PTP session);
 uint discard_SpinOff_Args(SOA_Pack* soaPack);
 
 int add_spawn(SPool_PTP spawnpool, pthread_t thread, void *arg, SpawnAct spawnAct);

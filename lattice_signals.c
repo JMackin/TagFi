@@ -24,7 +24,7 @@
 
 
 /** Set error */
-void setErr(StatFrame **sts_frm, LattErr ltcerr, unsigned int modr) {
+void setErr(StatusFrame **sts_frm, LattErr ltcerr, unsigned int modr) {
     (*sts_frm)->status = STERR;
     (*sts_frm)->err_code = ltcerr;
     if (modr) {
@@ -33,7 +33,7 @@ void setErr(StatFrame **sts_frm, LattErr ltcerr, unsigned int modr) {
 }
 
 /** Set status */
-void setSts(StatFrame **sts_frm, LattStts ltcst, unsigned int modr) {
+void setSts(StatusFrame **sts_frm, LattSts ltcst, unsigned int modr) {
     (*sts_frm)->status = ltcst;
     if (modr) {
         (*sts_frm)->modr = modr;
@@ -45,7 +45,7 @@ void setSts(StatFrame **sts_frm, LattStts ltcst, unsigned int modr) {
 
 //TODO: OPTIMIZE THIS
 long
-stsErno(LattErr ltcerr, StatFrame **sts_frm, char *msg,
+stsErno(LattErr ltcerr, StatusFrame **sts_frm, char *msg,
         unsigned long misc, char *miscdesc,
         char *function, char *note, int erno) {
 
@@ -102,7 +102,7 @@ stsErno(LattErr ltcerr, StatFrame **sts_frm, char *msg,
 
 
 /** Set action id*/
-void setAct(StatFrame **sts_frm, LattAct lttact, LattStts ltsts, unsigned int modr) {
+void setAct(StatusFrame **sts_frm, LattAct lttact, LattSts ltsts, unsigned int modr) {
     (*sts_frm)->act_id = lttact;
     if (ltsts != NOTHN) {
         (*sts_frm)->status = ltsts;
@@ -119,7 +119,7 @@ void setAct(StatFrame **sts_frm, LattAct lttact, LattStts ltsts, unsigned int mo
 }
 
 /** Set modifier */
-void setMdr(StatFrame **sts_frm, unsigned int modr) {
+void setMdr(StatusFrame **sts_frm, unsigned int modr) {
     (*sts_frm)->modr = modr ? modr : ++((*sts_frm)->modr);
     if (modr == SELFRESET) {
         (*sts_frm)->modr = 0;
@@ -127,7 +127,7 @@ void setMdr(StatFrame **sts_frm, unsigned int modr) {
 }
 
 /** Reset StatusFrame fields*/
-void stsReset(StatFrame **sts_frm) {
+void stsReset(StatusFrame **sts_frm) {
     (*sts_frm)->status = LISTN;
     (*sts_frm)->act_id = ZZZZ;
     (*sts_frm)->err_code = IMFINE;
@@ -135,7 +135,7 @@ void stsReset(StatFrame **sts_frm) {
 }
 
 /** Output current StatusFrame */
-void stsOut(StatFrame **sts_frm) {
+void stsOut(StatusFrame **sts_frm) {
     printf("\n--------------\n");
     printf("[ Status: %d ]\n", (*sts_frm)->status);
     if ((*sts_frm)->status == SHTDN) {
@@ -150,7 +150,7 @@ void stsOut(StatFrame **sts_frm) {
  *  - A message string can be passed in for display or pass in NULL
  *  for none;
  * */
-void serrOut(StatFrame **sts_frm, char *msg) {
+void serrOut(StatusFrame **sts_frm, char *msg) {
     stsErno((*sts_frm)->err_code, sts_frm, msg, 0, NULL, NULL, NULL, errno);
 }
 
@@ -173,8 +173,8 @@ ErrorBundle init_errorbundle(){
     return bundle;
 }
 
-SttsFrame mk_dummy_stsframe(){
-    SttsFrame dummy_sf = malloc(sizeof(StatFrame));
+StsFrame mk_dummy_stsframe(){
+    StsFrame dummy_sf = malloc(sizeof(StatusFrame));
     dummy_sf->status = STERR;
     dummy_sf->modr = 0;
     dummy_sf->err_code = NOINFO;
@@ -183,8 +183,8 @@ SttsFrame mk_dummy_stsframe(){
     return dummy_sf;
 }
 
-LttcState mk_dummy_ltcstate(){
-    LttcState dummystate = malloc(sizeof(LatticeState));
+LState mk_dummy_ltcstate(){
+    LState dummystate = malloc(sizeof(LatticeState));
 
     dummystate->frame = mk_dummy_stsframe();
     dummystate->tag = 0;
@@ -194,7 +194,7 @@ LttcState mk_dummy_ltcstate(){
 }
 
 ErrorBundle
-bundle_addglob(ErrorBundle bundle, LattErr ltcerr, LttcState ltcstate, char *msg, unsigned long relvval,
+bundle_addglob(ErrorBundle bundle, LattErr ltcerr, LState ltcstate, char *msg, unsigned long relvval,
                const char *relvval_desc, char *func, const char *note, int erno) {
 
 
@@ -277,7 +277,7 @@ ErrorBundle * bundle_add(ErrBundle* bundle, uint attr, void* val){
 ErrorBundle raiseErr(ErrorBundle bundle) {
     const char* errno_msg = (bundle).erno ? strerror(bundle.erno) : "";
     clock_t ca = clock();
-    SttsFrame sttsFrm;
+    StsFrame sttsFrm;
 
     bundle.raised = 1;
 
@@ -366,7 +366,7 @@ ErrorBundle raiseErr(ErrorBundle bundle) {
 }
 
 
-ErrorBundle bundle_and_raise(ErrorBundle bundle, LattErr ltcerr, LttcState ltcstate, char *msg, unsigned long relvval,
+ErrorBundle bundle_and_raise(ErrorBundle bundle, LattErr ltcerr, LState ltcstate, char *msg, unsigned long relvval,
                              const char *relvval_desc, char *func, const char *note, int erno){
 
     bundle = raiseErr(bundle_addglob(bundle, ltcerr, ltcstate, msg, relvval,relvval_desc, func, note, erno));
@@ -444,7 +444,10 @@ void update_SOA(SOA_OPTS opt, SOA_Pack* soaPack, void* new_val){
             (*soaPack)->lock = (pthread_mutex_t*) new_val;
             break;
         case SOA_INTERNAL:
-
+            break;
+        case SOA_SESSION:
+            (*soaPack)->session = (LSession) new_val;
+            break;
         default:
             return;
     }
@@ -563,7 +566,7 @@ SOA_Pack
 pack_SpinOff_Args(pthread_t tid, Lattice_PTP hashLattice, Std_Buffer_PTP request_buf, Std_Buffer_PTP response_buf,
                   Std_Buffer_PTP requestArr_buf, Std_Buffer_PTP tempArr_buf, Flags_Buffer_PTP flags_buf,
                   Info_Frame_PTP infoFrame, ResponseTable_PTP responseTable, epEvent epollEvent_IN, int epollFD,
-                  int dataSocket, int buf_len, int tag, pthread_mutex_t* lock) {
+                  int dataSocket, int buf_len, int tag, pthread_mutex_t *lock, LSession_PTP session) {
 
     SOA_Pack soaPack = (SOA_Pack) malloc(sizeof(SpinOffArgsPack));
     uint cnt = 4;
@@ -597,6 +600,7 @@ pack_SpinOff_Args(pthread_t tid, Lattice_PTP hashLattice, Std_Buffer_PTP request
     soaPack->buf_len = buf_len;
     soaPack->tid = tid;
     soaPack->lock = lock;
+    soaPack->session = session;
     if(tag){soaPack->tag = tag;}else{soaPack->tag = 1;}
     soaPack->_internal.shtdn = 0;
 
@@ -619,7 +623,7 @@ uint discard_SpinOff_Args(SOA_Pack* soaPack){
         (*soaPack)->infoFrame = NULL;
         (*soaPack)->responseTable = NULL;
         (*soaPack)->epollEvent_IN = NULL;
-
+        (*soaPack)->session = NULL;
         (*soaPack)->epollFD = 0;
         (*soaPack)->dataSocket = 0;
         (*soaPack)->buf_len = 0;

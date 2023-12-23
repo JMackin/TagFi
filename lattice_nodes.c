@@ -592,7 +592,6 @@ uint lattice_span(DNMap* DNMap){
         close_shm_lattfd(&((*DNMap)->shm_fd));
         return 1;
     }
-
     return 0;
 }
 

@@ -19,7 +19,7 @@
 #include "lattice_rsps.h"
 #include "FiDiMasks.h"
 #include "lattice_works.h"
-
+#include "lattice_sessions.h"
 
 
 #define CNFIGPTH "/home/ujlm/CLionProjects/TagFI/config"
@@ -32,19 +32,6 @@
 #define PARAMX 65535
 
 int erno;
-
-LttcState init_latticestate(void){
-    SttsFrame status_frm = (SttsFrame) malloc(sizeof(StatFrame));
-    LttcState lattst = (LttcState) malloc(sizeof(LatticeState));
-    (status_frm)->status=RESET;
-    (status_frm)->err_code=IMFINE;
-    (status_frm)->modr=0;
-    lattst->frame = status_frm;
-    lattst->cwdnode = 1;
-    lattst->misc = 0;
-
-    return lattst;
-}
 
 void disassemble(Lattice* hashlattice,
                  DChains * dirchains,
@@ -288,12 +275,12 @@ void destroy_rsp_items(Resp_Tbl *rsp_tbl, InfoFrame *infoFrame){
     if ((rsp_tbl)->rsp_funcarr != NULL){free(((rsp_tbl)->rsp_funcarr));free(rsp_tbl);}
 }
 
-void destroy_metastructures(LttcState latticestate) {
+void destroy_metastructures(LState latticestate) {
     if (latticestate != NULL){free(latticestate);latticestate=NULL;}
 }
 
 
-size_t read_conf(unsigned char **dnconf_addr, int cnfdir_fd, LttcState ltcSt) {
+size_t read_conf(unsigned char **dnconf_addr, int cnfdir_fd, LState ltcSt) {
     struct stat sb;
     size_t length;
     ErrorBundle errBndl = init_errorbundle();
@@ -381,17 +368,16 @@ int extract_name(const unsigned char* path, int length) {
         int dataSocket;
         int BUF_LEN;
 */
-
      clock_t ca = clock();
+
      SOA_Pack soa_pack = (SOA_Pack) sp;
-
-     init_SOA_bufs(&soa_pack);
-
      int exit_flag = 0;
+     init_SOA_bufs(&soa_pack);
      ErrorBundle errBndl = init_errorbundle();
 
-     LttcState_PTP latticeState =  &(*soa_pack->hashLattice)->state;
-     Status_Frame_PTP statusFrame = &(*latticeState)->frame;
+     LSession_PTP session = soa_pack->session;
+     LState_PTP latticeState =  &(*session)->state;
+     StsFrame_PTP statusFrame = &(*latticeState)->frame;
      epEvent epoll_event = soa_pack->epollEvent_IN;
 
      /**
@@ -424,8 +410,9 @@ int extract_name(const unsigned char* path, int length) {
 
      if ((*statusFrame)->err_code) {
          if ((*statusFrame)->act_id == GBYE){
+             (*session)->op == SESH_ST_SHTDN;
              exit_flag = 1;
-
+             setSts(statusFrame, SHTDN, 0);
              goto endpoint;
          }
          setErr(statusFrame, MALREQ, 0);
@@ -438,7 +425,7 @@ int extract_name(const unsigned char* path, int length) {
 
      /** DETERMINE RESPONSE */
      if (respond(*soa_pack->responseTable,
-                 statusFrame,
+                 soa_pack->session,
                  soa_pack->infoFrame,
                  &(*soa_pack->hashLattice)->chains,
                  soa_pack->hashLattice,
@@ -449,17 +436,16 @@ int extract_name(const unsigned char* path, int length) {
      }
      //TODO: Optimize response processing time
 
-
      if ((*statusFrame)->act_id == GBYE) {
          /**
           * ACTION:
           *  shutdown
           * */
          setSts(statusFrame, SHTDN, 0);
+         (*session)->op == SESH_ST_SHTDN;
          exit_flag = 1;
      }else {
          setSts(statusFrame, RESPN, 0);
-
          pthread_mutex_lock(soa_pack->lock);
 
          /** WRITEOUT REPLY */
@@ -503,7 +489,9 @@ int extract_name(const unsigned char* path, int length) {
      endpoint:
 
      if(exit_flag){
+
          soa_pack->_internal.shtdn=1;
+         (*session)->op == SESH_ST_SHTDN;
      }
 
      pthread_mutex_lock(soa_pack->lock);
@@ -532,7 +520,7 @@ int extract_name(const unsigned char* path, int length) {
 
  int spin_up(unsigned char **rsp_buf, unsigned char **req_arr_buf, unsigned char **req_buf, InfoFrame **infofrm,
              Resp_Tbl **rsp_tbl, HashLattice **hashlattice, DiChains **dirchains, const int *cnfdir_fd,
-             unsigned char **tmparrbuf, LttcState ltcSt) {
+             unsigned char **tmparrbuf, LState ltcSt) {
 
     ErrorBundle errBndl = init_errorbundle();
     pthread_t tid; // Thread id;
@@ -697,17 +685,16 @@ int extract_name(const unsigned char* path, int length) {
                  continue;
              }else{
                  ssize_t count;
-                 //char buf[BUF_LEN];
                  pthread_t thread;
-                 //long* retval = (long*) malloc(ULONG_SZ);
-//                 int *new_data_socket = malloc(sizeof(int));
-//                 *new_data_socket = epEvents[i].data.fd;
+                 int spawn_socket = epINIT_event[i].data.fd;
+                 LSession session = init_session();
+                 session = tailor_session(&session,&thread,spawn_socket,1);
+
+
                  SOA_Pack soaPack = pack_SpinOff_Args(0, hashlattice,
                                                       NULL, NULL, NULL, NULL, NULL,
                                                       infofrm, rsp_tbl, epINIT_event,
-                                                      efd, epINIT_event[i].data.fd, BUF_LEN, 0, &ep_lock);
-
-
+                                                      efd, epINIT_event[i].data.fd, BUF_LEN, 0, &ep_lock, &session);
                  if(pthread_create(&thread, NULL, spin_off, soaPack)){
                      perror("pthread");
                      abort();
@@ -717,11 +704,12 @@ int extract_name(const unsigned char* path, int length) {
                      abort();
                  }
 
-                 if(soaPack->_internal.shtdn == 1){
+                 if(session->state->frame->status == SHTDN){
                      pthread_mutex_lock(&ep_lock);
                      exit_flag=1;
-                     ltcSt->frame->status=SHTDN;
+                     ltcSt->frame->status = SHTDN;
                      destroy_SOA_bufs(&soaPack);
+                     end_session(&session);
                      pthread_mutex_unlock(&ep_lock);
                      if (pthread_self() != 1){
                          if (soaPack != NULL) {free(soaPack);soaPack = NULL;}
@@ -734,7 +722,7 @@ int extract_name(const unsigned char* path, int length) {
 
              }
          }
-         (ltcSt->frame)->status <<= 1;
+         //(ltcSt->frame)->status <<= 1;
 
         if (ltcSt->frame->status == SHTDN){
                 fprintf(stderr,"\n>> 123\n\n");
@@ -765,7 +753,7 @@ void summon_lattice() {
     /**
      * INIT GLOBAL STATFRAME
      */
-    LttcState latticestate = init_latticestate();
+    LState latticestate = init_latticestate();
 
     /**
      * START SODIUM
@@ -906,7 +894,6 @@ void summon_lattice() {
          Resp_Tbl* rsp_tbl;
         init_rsptbl(cnfdir_fd,
                     &rsp_tbl,
-                    &latticestate->frame,
                     &info_frm,
                     &dirchains,
                     &hashlattice);

@@ -21,7 +21,7 @@ typedef union LattType{
     LattReply rpl;
     LattAct act;
     LattObj obj;
-    LattStts sts;
+    LattSts sts;
     LattFlag flg;
     int n_int;
     unsigned int n_uint;
@@ -37,6 +37,15 @@ typedef union LattLong{
     unsigned char l_uchar_16[16];
 }LattLong;
 
+typedef union multsz_int{
+    unsigned long long_ui;
+    unsigned long* long_ui_ptr;
+    unsigned int reg_ui;
+    unsigned int* reg_ui_ptr;
+    int reg_i;
+    int* reg_i_ptr;
+}multsz_int;
+
 typedef unsigned int uint;
 typedef unsigned char uchar;
 typedef unsigned long ulong;
@@ -44,8 +53,6 @@ typedef const unsigned int cnst_uint;
 typedef unsigned char** buff_arr;
 typedef unsigned char* uchar_arr;
 typedef unsigned int* ptr_uint;
-
-
 
 extern const unsigned int UINT_SZ;
 extern const unsigned int UCHAR_SZ;
@@ -68,7 +75,7 @@ extern const int ARRBUF_LEN;
 
 extern const LattErr latt_err_arr[LERR_CNT];
 extern const char latt_err_strs[LERR_CNT][LERR_CHARCNT];
-extern const LattStts latt_sts_arr[LSTS_CNT];
+extern const LattSts latt_sts_arr[LSTS_CNT];
 extern const char latt_stts_strs[LSTS_CNT][LSTS_CHARCNT];
 
 extern const char potntl_args[POTENTL_ARG_CNT][ARGS_MAX_LEN];
