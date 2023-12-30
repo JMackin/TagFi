@@ -12,11 +12,24 @@
 #include "RspOps.h"
 
 #define SELFRESET 333
-#define SPAWNTAG_CEIL 0x80000000 // Last tag in sequence to be assigned before rolling over to 1 - (1<<31)
-#define THREADCNT_MAX 0x7f  // Threadpool threads capacity - (127)
-#define TASKQUEUE_MAX 0x1ff // Threadpool Tasks capacity - (511)
-#define ISTAG 0
-#define ISID 1
+
+LState init_latticestate(void){
+    StsFrame status_frm = (StsFrame) malloc(sizeof(StatusFrame));
+    LState lattstate = (LState) malloc(sizeof(LatticeState));
+
+    (status_frm)->status=RESET;
+    (status_frm)->err_code=IMFINE;
+    (status_frm)->act_id = ZZZZ;
+    (status_frm)->modr=0;
+
+    lattstate->frame = status_frm;
+    lattstate->misc = 0;
+
+    lattstate->tag[0] = 1; // 1 = Lattice state init'd
+    lattstate->tag[1] = 0;
+
+    return lattstate;
+}
 
 /* * * * * * * * * * * * * *
 *  StatusFrame Functions   *
@@ -174,7 +187,7 @@ ErrorBundle init_errorbundle(){
 }
 
 StsFrame mk_dummy_stsframe(){
-    StsFrame dummy_sf = malloc(sizeof(StatusFrame));
+    StsFrame dummy_sf = (StsFrame) malloc(sizeof(StatusFrame));
     dummy_sf->status = STERR;
     dummy_sf->modr = 0;
     dummy_sf->err_code = NOINFO;
@@ -187,7 +200,8 @@ LState mk_dummy_ltcstate(){
     LState dummystate = malloc(sizeof(LatticeState));
 
     dummystate->frame = mk_dummy_stsframe();
-    dummystate->tag = 0;
+    dummystate->tag[0] = 1;
+    dummystate->tag[1] = 31; // Indicates stsframe is a dummy.
     dummystate->misc = 0;
 
     return dummystate;
@@ -446,7 +460,7 @@ void update_SOA(SOA_OPTS opt, SOA_Pack* soaPack, void* new_val){
         case SOA_INTERNAL:
             break;
         case SOA_SESSION:
-            (*soaPack)->session = (LSession) new_val;
+            (*soaPack)->session = (SSession) new_val;
             break;
         default:
             return;
@@ -455,118 +469,11 @@ void update_SOA(SOA_OPTS opt, SOA_Pack* soaPack, void* new_val){
 
 void update_SOA_DS(SOA_Pack* soaPack, int datasocket){(*soaPack)->dataSocket = datasocket;}
 
-ThreadSpawn spawn_thread(pthread_t thread_id, uint alpha_tag){
-    ThreadSpawn spawn;
-    spawn.thread = thread_id;
-    spawn.tag[0] = alpha_tag;
-    spawn.tag[1] = 0;
-    return spawn;
-}
-
-SPool init_spawnpool(int thread_count, int queue_size){
-    SPool spawnpool = malloc(sizeof(SpawnPool));
-    spawnpool->spawn = NULL;
-    spawnpool->running_tag = 0;
-    spawnpool->_internal = SPS_INIT;   // 0: Init / all normal
-    spawnpool->count = 0;
-    spawnpool->head = 0;
-    spawnpool->queue_size = 0;
-    spawnpool->stop = 0;
-    spawnpool->tail = 0;
-    spawnpool->task_queue = 0;
-    spawnpool->thread_count = 0;
-    return spawnpool;
-}
-
-// tag_or_id: ISTAG = 0, ISID = 1
-Spawn find_spawn(uint tag_or_id, ulong tagid, SPool sPool){
-
-    uint pos = 0;
-
-    if (tag_or_id){
-        pthread_t id;
-        do{
-            if (sPool->spawn+(pos) == NULL){
-                return NULL;
-            }
-            id = ((sPool->spawn+(pos++)))->thread;
-        }while (id != tagid && id != 0);
-        if (id == 0){
-            return NULL;
-        }
-    }else{
-        uint tag;
-        do{
-            if (sPool->spawn+(pos) == NULL){
-                return NULL;
-            }
-            tag = ((sPool->spawn+(pos++)))->tag[0];
-        }while (tag != tagid);
-    }
-
-    return (sPool->spawn+(pos++));
-}
-
-uint push_spawn_task(SPool_PTP spawnpool, SpawnAct task, uint pos, uint tag){
-
-    if ((*spawnpool)->queue_size - 1 >= TASKQUEUE_MAX){
-        (*spawnpool)->_internal = SPS_ATTASKMAX;  // 8: Full task capacity
-        return 1;
-    }
-    Spawn spawn_pos = find_spawn(ISTAG,tag,*spawnpool);
-    if (spawn_pos == NULL){
-        (*spawnpool)->_internal = SPS_SPAWNNOTFOUND;
-        return 1;
-    }
-    if (spawn_pos->tag[0] != task.tag[0]){
-        (*spawnpool)->_internal = SPS_TAGMISMATCH;
-        return 1;
-    }
-    if(spawn_pos->tag[1] > 0){
-        ++spawn_pos->tag[1];
-        task.tag[1] = spawn_pos->tag[1];
-    }
-    *((*spawnpool)->task_queue+((*spawnpool)->queue_size++)) = task;
-
-    return 0;
-
-}
-
-int add_spawn(SPool_PTP spawnpool, pthread_t thread, void *arg, SpawnAct spawnAct) {
-
-    if((*spawnpool)->thread_count-1 >= THREADCNT_MAX){
-        (*spawnpool)->_internal = SPS_ATTHREADMAX;  // 2: Full thread capacity
-        return 1;
-    }if ((*spawnpool)->queue_size - 1 >= TASKQUEUE_MAX){
-        (*spawnpool)->_internal = SPS_ATTASKMAX;  // 8: Full task capacity
-        return 1;
-    }
-
-    (*spawnpool)->thread_count++;
-    (*spawnpool)->running_tag++;
-
-    if (((*spawnpool)->running_tag) >= SPAWNTAG_CEIL){
-        (*spawnpool)->running_tag = 1;
-        (*spawnpool)->_internal = SPS_TAGROLLOVER; // 4: Running_tag rolled over
-    }
-
-    uint newtag = ++(*spawnpool)->running_tag;
-    *((*spawnpool)->spawn + (*spawnpool)->thread_count) = spawn_thread(thread, (newtag));
-    push_spawn_task(spawnpool,spawnAct,0,newtag);
-
-    return 0;
-}
-
-int add_SPS_lock(pthread_mutex_t* lock, SPool_PTP spawnpool){
-    return 0;
-}
-
-
 SOA_Pack
 pack_SpinOff_Args(pthread_t tid, Lattice_PTP hashLattice, Std_Buffer_PTP request_buf, Std_Buffer_PTP response_buf,
                   Std_Buffer_PTP requestArr_buf, Std_Buffer_PTP tempArr_buf, Flags_Buffer_PTP flags_buf,
                   Info_Frame_PTP infoFrame, ResponseTable_PTP responseTable, epEvent epollEvent_IN, int epollFD,
-                  int dataSocket, int buf_len, int tag, pthread_mutex_t *lock, LSession_PTP session) {
+                  int dataSocket, int buf_len, int tag, pthread_mutex_t *lock, SSession session) {
 
     SOA_Pack soaPack = (SOA_Pack) malloc(sizeof(SpinOffArgsPack));
     uint cnt = 4;
@@ -637,60 +544,60 @@ uint discard_SpinOff_Args(SOA_Pack* soaPack){
     }
 }
 
-void init_SOA_bufs(SOA_Pack* soaPack){
+void init_bufferpool(BufferPool * bufferPool){
 
 
-    (*soaPack)->request_buf = (Std_Buffer_PTP) malloc(ULONG_SZ);
-    *((*soaPack)->request_buf) = (unsigned char *) calloc(BUF_LEN, sizeof(unsigned char));
+    (bufferPool)->request_buf = (Std_Buffer_PTP) malloc(ULONG_SZ);
+    *((bufferPool)->request_buf) = (unsigned char *) calloc(BUF_LEN, sizeof(unsigned char));
 
-    (*soaPack)->flags_buf = (LttFlgs*) malloc(ULONG_SZ);
-    *((*soaPack)->flags_buf) = (LttFlgs) calloc(BUF_LEN, sizeof(LattFlag));     // client request -> buffer
+    (bufferPool)->flags_buf = (LttFlgs*) malloc(ULONG_SZ);
+    *((bufferPool)->flags_buf) = (LttFlgs) calloc(BUF_LEN, sizeof(LattFlag));     // client request -> buffer
 
-    (*soaPack)->response_buf = (Std_Buffer_PTP) malloc(ULONG_SZ);
-    *((*soaPack)->response_buf) = (unsigned char *) calloc(BUF_LEN, sizeof(unsigned char));
+    (bufferPool)->response_buf = (Std_Buffer_PTP) malloc(ULONG_SZ);
+    *((bufferPool)->response_buf) = (unsigned char *) calloc(BUF_LEN, sizeof(unsigned char));
 
-    (*soaPack)->tempArr_buf = (Std_Buffer_PTP) malloc(ULONG_SZ);
-    *((*soaPack)->tempArr_buf) = (unsigned char *) calloc(BUF_LEN, sizeof(unsigned char));
+    (bufferPool)->tempArr_buf = (Std_Buffer_PTP) malloc(ULONG_SZ);
+    *((bufferPool)->tempArr_buf) = (unsigned char *) calloc(BUF_LEN, sizeof(unsigned char));
 
-    (*soaPack)->requestArr_buf = (Std_Buffer_PTP) malloc(ULONG_SZ);
-    *((*soaPack)->requestArr_buf) = (unsigned char *) calloc(ARRBUF_LEN, sizeof(unsigned char));
+    (bufferPool)->requestArr_buf = (Std_Buffer_PTP) malloc(ULONG_SZ);
+    *((bufferPool)->requestArr_buf) = (unsigned char *) calloc(ARRBUF_LEN, sizeof(unsigned char));
 }
 
-void destroy_SOA_bufs(SOA_Pack* soaPack){
+void destroy_bufferpool(BufferPool * bufferPool){
 
-    if((*soaPack)->request_buf != NULL){
-        if(*(*soaPack)->request_buf != NULL){
-            free(*(*soaPack)->request_buf);
+    if((bufferPool)->request_buf != NULL){
+        if(*(bufferPool)->request_buf != NULL){
+            free(*(bufferPool)->request_buf);
         }
-        free((*soaPack)->request_buf);(*soaPack)->request_buf = NULL;
+        free((bufferPool)->request_buf);(bufferPool)->request_buf = NULL;
     }
 
-    if((*soaPack)->requestArr_buf != NULL){
-        if(*(*soaPack)->requestArr_buf != NULL){
-            free(*(*soaPack)->requestArr_buf);
+    if((bufferPool)->requestArr_buf != NULL){
+        if(*(bufferPool)->requestArr_buf != NULL){
+            free(*(bufferPool)->requestArr_buf);
         }
-        free((*soaPack)->requestArr_buf);(*soaPack)->requestArr_buf = NULL;
+        free((bufferPool)->requestArr_buf);(bufferPool)->requestArr_buf = NULL;
     }
 
-    if((*soaPack)->response_buf != NULL){
-        if(*(*soaPack)->response_buf != NULL){
-            free(*(*soaPack)->response_buf);
+    if((bufferPool)->response_buf != NULL){
+        if(*(bufferPool)->response_buf != NULL){
+            free(*(bufferPool)->response_buf);
         }
-        free((*soaPack)->response_buf);(*soaPack)->response_buf = NULL;
+        free((bufferPool)->response_buf);(bufferPool)->response_buf = NULL;
     }
 
-    if((*soaPack)->tempArr_buf != NULL){
-        if(*(*soaPack)->tempArr_buf != NULL){
-            free(*(*soaPack)->tempArr_buf);
+    if((bufferPool)->tempArr_buf != NULL){
+        if(*(bufferPool)->tempArr_buf != NULL){
+            free(*(bufferPool)->tempArr_buf);
         }
-        free((*soaPack)->tempArr_buf);(*soaPack)->tempArr_buf = NULL;
+        free((bufferPool)->tempArr_buf);(bufferPool)->tempArr_buf = NULL;
     }
 
-    if((*soaPack)->flags_buf != NULL){
-        if(*(*soaPack)->flags_buf != NULL){
-            free(*(*soaPack)->flags_buf);
+    if((bufferPool)->flags_buf != NULL){
+        if(*(bufferPool)->flags_buf != NULL){
+            free(*(bufferPool)->flags_buf);
         }
-        free((*soaPack)->flags_buf);(*soaPack)->flags_buf=NULL;
+        free((bufferPool)->flags_buf);(bufferPool)->flags_buf=NULL;
     }
 }
 
@@ -710,4 +617,9 @@ int make_socket_non_blocking(int sfd) {
         return -1;
     }
     return 0;
+}
+
+void init_Tag(Tag* tag){
+    (*tag)[0] = 0;
+    (*tag)[1] = 0;
 }

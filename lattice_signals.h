@@ -4,7 +4,7 @@
 
 #ifndef TAGFI_LATTICE_SIGNALS_H
 #define TAGFI_LATTICE_SIGNALS_H
-
+#include "Tools.h"
 
 /**
  * <code>
@@ -88,7 +88,7 @@ typedef enum RspFlag {
  *  <li> INFO = 524288  > Produce info assoc. with the following ID code. StatusFrame if defaults
  *  <li> SAVE = 1048576 - Save this sequence
  *  <li> EXIT = 2097152 - Reset/Sleep/Shutdown
- *  <li> UUUU = 4194304 - Empty
+ *  <li> INIT = 4194304 - Initialize Session
  \Structure
  *  <li> LEAD = 536870912 -  Carry byte
  *  <li> END = 2147483647 - End sequence and masking byte
@@ -153,9 +153,8 @@ typedef enum ReqFlag {
     SAVE  = 1048576,
 // Exit/Sleep/Shutdown
     EXIT = 2097152,
-//
-    UUUU = 4194304,
-
+// Initialize Session
+    INIT = 4194304,
 // Carry byte
     LEAD = 536870912,
 // End sequence and masking byte
@@ -540,6 +539,33 @@ typedef enum SpawnPoolState{
     SPS_TAGMISMATCH = 32
 }SpawnPoolState;
 
+
+/**
+ * \brief Identifiers for various structs and values used by a client during a session.
+ * \SpawnPieces
+ * <li> PIECE_NONE = 0
+ * <li> PIECE_BODY = 1      // ThreadSpawn = 64 + 8N bytes
+ * <li> PIECE_SESSION = 2   // SpawnSession = 200 + 8N bytes
+ * <li> PIECE_STATE = 4     // LatticeState = 40 btyes
+ * <li> PIECE_AUTHMAP = 8   // SpawnAuthTagMap = 224 bytes
+ * <li> PIECE_KIT = 16      // SpawnKit = 192 bytes
+ * <li> PIECE_ID = 32       // LattID = 32 bytes
+ * <li> PIECE_KEY = 6       // LatticeAuthTag = 32 bytes
+ *
+ * */
+typedef enum SpawnPieces{
+    PIECE_NONE = 0,
+    PIECE_BODY = 1, // ThreadSpawn = 64 + 8N bytes
+    PIECE_SESSION = 2, // SpawnSession = 200 + 8N bytes
+    PIECE_STATE = 4, // LatticeState = 40 btyes
+    PIECE_AUTHMAP = 8, // SpawnAuthTagMap = 224 bytes
+    PIECE_KIT = 16, // SpawnKit = 192 bytes
+    PIECE_ID = 32, // LattID = 32 bytes
+    PIECE_KEY = 64 // LatticeAuthTag = 32 bytes
+}SpawnPieces;
+
+
+
 /**
  *<code>
  * \SessionOperations
@@ -562,7 +588,6 @@ typedef enum SpawnPoolState{
  * <li> SESH_INIT = 0 - Value assigned on startup pre-thread-assignment.
  * <li> SESH_SERIAL_UPDATE = 64 - Leads a SessionOps array to update multiple values when passed to update_session.
  */
-
 typedef enum SessionOps{
     // Initialized and unassigned session structure
     SESH_INIT = 0,
@@ -579,13 +604,76 @@ typedef enum SessionOps{
     SESH_UV_OP = 32,
 
     /* Session state flags */
-
     // User requests system shutdown
     SESH_ST_SHTDN = 128,
 
-
-
 }SessionOps;
 
+typedef struct StatusFrame{
+    LattSts status;
+    LattAct act_id;
+    LattErr err_code;
+    unsigned int modr;
+}StatusFrame;
+typedef StatusFrame* StsFrame;
+typedef StatusFrame** StsFrame_PTP;
+
+typedef struct LatticeState{
+    StsFrame frame;
+    Tag tag;
+    unsigned long misc;
+}LatticeState;
+typedef LatticeState* LState;
+typedef LatticeState** LState_PTP;
+
+typedef struct ErrorBundle{
+    LState ltcstate;
+    LattErr ltcerr;
+    unsigned long relvval;
+    char func[32];
+    char relvval_desc[64];
+    char note[128];
+    char msg[256];
+    int erno;
+    unsigned int raised;
+    /**
+     *<li> 0: Normal
+     *<li> 2: Dummy ltcState in place, alloc'd
+     *<li> 3: Dummy ltcState free'd
+     *<li> 7: dummy sttsframe in use during raise_err
+     */
+    unsigned int _internal;
+}ErrorBundle;
+typedef ErrorBundle* ErrBundle;
+
+/** Status ops **/
+
+void setSts(StatusFrame** sts_frm, LattSts ltcst, unsigned int modr);
+
+void setErr(StatusFrame** sts_frm, LattErr ltcerr, unsigned int modr);
+
+void setMdr(StatusFrame** sts_frm, unsigned int modr);
+
+void setAct(StatusFrame** sts_frm, LattAct lttact, LattSts ltsts, unsigned int modr);
+
+void setRsp(StatusFrame** sts_frm, LattReply, unsigned int modr);
+
+void stsReset(StatusFrame** sts_frm);
+
+void stsOut(StatusFrame** sts_frm);
+
+void serrOut(StatusFrame** sts_frm, char* msg);
+
+long
+stsErno(LattErr ltcerr, StatusFrame **sts_frm, char *msg, unsigned long misc, char *miscdesc, char *function, char *note,
+        int erno);
+
+ErrorBundle raiseErr(ErrorBundle bundle);
+ErrorBundle init_errorbundle();
+ErrorBundle * bundle_add(ErrBundle* bundle, unsigned int attr, void* val);
+ErrorBundle bundle_addglob(ErrorBundle bundle, LattErr ltcerr, LState ltcstate, char *msg, unsigned long relvval,
+                           const char *relvval_desc, char *func, const char *note, int erno);
+ErrorBundle bundle_and_raise(ErrorBundle bundle, LattErr ltcerr, LState ltcstate, char *msg, unsigned long relvval,
+                             const char *relvval_desc, char *func, const char *note, int erno);
 
 #endif //TAGFI_LATTICE_SIGNALS_H

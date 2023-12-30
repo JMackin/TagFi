@@ -116,3 +116,5 @@ void coll_upup(){
     inc_collA();
     upd_collrat();
 }
+
+

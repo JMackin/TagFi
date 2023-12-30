@@ -46,6 +46,11 @@ typedef union multsz_int{
     int* reg_i_ptr;
 }multsz_int;
 
+typedef union uniArr{
+    unsigned int* iarr;
+    unsigned char* carr;
+}uniArr;
+
 typedef unsigned int uint;
 typedef unsigned char uchar;
 typedef unsigned long ulong;
@@ -79,5 +84,7 @@ extern const LattSts latt_sts_arr[LSTS_CNT];
 extern const char latt_stts_strs[LSTS_CNT][LSTS_CHARCNT];
 
 extern const char potntl_args[POTENTL_ARG_CNT][ARGS_MAX_LEN];
+
+
 
 #endif

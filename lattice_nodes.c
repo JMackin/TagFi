@@ -14,6 +14,7 @@
 //TODO: implement Async IO
 // #include <aio.h> --> https://www.gnu.org/savannah-checkouts/gnu/libc/manual/html_node/Asynchronous-I_002fO.html
 
+
 const char r_strm = 'r';  const int r_mv_fd = O_RDONLY;
 const char w_strm = 'w';  const int w_mv_fd = O_WRONLY | O_CREAT | O_TRUNC;
 const char a_strm = 'a';  const int a_mv_fd = O_WRONLY | O_CREAT | O_APPEND;
@@ -40,6 +41,8 @@ const int fd_mode_vars[6] = {r_mv_fd,w_mv_fd,a_mv_fd,R_mv_fd,W_mv_fd,A_mv_fd};
 │   6   │     a+     │ O_RDWR | O_CREAT | O_APPEND   │
 ┼───────┼────────────┼───────────────────────────────┼
  */
+
+
 
 MultiFormMode ret_oflags_ofaform(uint form, StreamMode streammode){
     //void* mode = NULL;
@@ -111,10 +114,11 @@ __attribute__((unused)) char chk_fmt(const char** dir_path, int op) {
     return 0;
 }
 
-__attribute__((unused)) int fd_getstat(const char* dir_path, int op) {
+int fd_getstat(const char* dir_path, int op) {
 
 
     int dir_fd = open(dir_path, O_DIRECTORY | O_RDONLY | O_NONBLOCK );
+    int type;
     struct stat *statbuf = (struct stat*) malloc(sizeof(struct stat));
 
     if(fstat(dir_fd, statbuf) == -1){
@@ -123,22 +127,21 @@ __attribute__((unused)) int fd_getstat(const char* dir_path, int op) {
     }
 
     switch (statbuf->st_mode & S_IFMT) {                                 // x >> 13
-        case S_IFBLK:  printf("block device\n");            break;//0060000 3
-        case S_IFCHR:  printf("character device\n");        break;//0020000 1
-        case S_IFDIR:  printf("directory\n");               break;//0040000 2
-        case S_IFIFO:  printf("FIFO/pipe\n");               break;//0010000 0
-        case S_IFLNK:  printf("symlink\n");                 break;//0120000 5
-        case S_IFREG:  printf("regular file\n");            break;//0100000 4
-        case S_IFSOCK: printf("socket\n");                  break;//0140000 6
-        default:       printf("unknown?\n");                break;
+        case S_IFBLK:  printf("block device\n");    type = 3; break;//0060000 3
+        case S_IFCHR:  printf("character device\n");type = 1; break;//0020000 1
+        case S_IFDIR:  printf("directory\n");       type = 2; break;//0040000 2
+        case S_IFIFO:  printf("FIFO/pipe\n");       type = 0; break;//0010000 0
+        case S_IFLNK:  printf("symlink\n");         type = 5; break;//0120000 5
+        case S_IFREG:  printf("regular file\n");    type = 4; break;//0100000 4
+        case S_IFSOCK: printf("socket\n");          type = 6; break;//0140000 6
+        default:       printf("unknown?\n");        type = -1; break;
     }
 
     free(statbuf);
     close(dir_fd);
 
-    return 0;
+    return type;
 }
-
 
 unsigned long cwd_ino(const char* dir_path) {
 
@@ -160,28 +163,49 @@ unsigned long cwd_ino(const char* dir_path) {
 
 int open_dnode_fd(char* path, int add_modes, int res_dnodefd){
 
+    if (path == NULL){
+        fprintf(stderr,"Provided path is null @open_dnode_fd\n");
+        return -1;
+    }
     if (res_dnodefd == 0){
         res_dnodefd = AT_FDCWD;
     }
 
     int dnode_fd = openat(res_dnodefd, path, O_DIRECTORY, add_modes);
 
-    if (dnode_fd < 0 ){perror("open_dnode_fd failed");return -1;
+    if (dnode_fd < 0 ){
+        perror("Failed to produce directory fd @open_dnode_fd");
+        fprintf(stderr,"\t>Failed path: %s\n",path);
+        return -1;
     }else{
         return dnode_fd;
     }
+}
 
+unsigned int check_dir_existence(const char* path){
+    if (fd_getstat(path,0) != 2){
+        return 1;
+    }else{
+        return 0;
+    }
 }
 
 int open_low_fd(char* fipath, int add_ops, int add_modes, int res_dnodefd){
 
+    if (fipath == NULL){
+        fprintf(stderr,"Provided path is NULL. @open_low_fd\n");
+        return -1;
+    }
     if (res_dnodefd == 0){
         res_dnodefd = AT_FDCWD;
     }
 
     int dnode_fd = openat(res_dnodefd, fipath, add_ops, add_modes);
 
-    if (dnode_fd < 0 ){perror("open_dnode_fd failed");return -1;
+    if (dnode_fd < 0 ){
+        perror("Failed to produce fd @open_low_fd");
+        fprintf(stderr,"\t>Failed path: %s\n",fipath);
+        return -1;
     }else{
         return dnode_fd;
     }
@@ -201,7 +225,7 @@ void set_lattfd_empty(LattFD* lattFd){
         close(((*lattFd))->duped_fd);
     }
     if(((*lattFd))->dir_fd > 2){
-        close(((*lattFd))->duped_fd);
+        close(((*lattFd))->dir_fd);
     }
 
     ((*lattFd))->prime_fd = 0;
@@ -213,7 +237,6 @@ void set_lattfd_empty(LattFD* lattFd){
     (*lattFd)->tag = 0;
     (*lattFd)->len = 0;
     (*lattFd)->addr = NULL;
-
 }
 
 LattFD open_blank_lattfd(void){
@@ -225,7 +248,6 @@ LattFD open_blank_lattfd(void){
     lattfd->dir_fd = 0;
     set_lattfd_empty(&lattfd);
     return lattfd;
-
 }
 
 int cycle_nodeFD(LattFD* lattFd){
@@ -241,7 +263,7 @@ int cycle_nodeFD(LattFD* lattFd){
     (*lattFd)->duped_fd = dup((*lattFd)->prime_fd);
 
     if((*lattFd)->duped_fd == -1){
-        perror("fd cycle failed");
+        perror("fd cycle failed @cycle_nodeFD");
         //fprintf(stderr,"\nPath: %s\n",(*lattFd)->path);
         (*lattFd)->duped_fd;
         return -1;
@@ -270,7 +292,7 @@ int cycle_nodeFD(LattFD* lattFd){
 FILE* open_lattfdstream(LattFD lattfd, StreamMode streammode){
     if (streammode){
         if (set_streammode(&lattfd,streammode) == -1){
-            fprintf(stderr,"Error setting streammode to open stream");
+            fprintf(stderr,"Error setting streammode to open stream. @open_lattfdstream\n");
         }
     }else{
         if (lattfd->stream_mode == 0){
@@ -282,9 +304,8 @@ FILE* open_lattfdstream(LattFD lattfd, StreamMode streammode){
 
     FILE* stream = fdopen(cycle_nodeFD(&lattfd),mode.ca);
 
-    if (stream == NULL){ perror("Failed to make stream from fd held in LattFD"); return NULL;}
+    if (stream == NULL){ perror("Failed to make stream from fd held in LattFD. @open_lattfdstream\n"); return NULL;}
     return stream;
-
 }
 
 uint set_fisz(LattFD* lattfd, uint sz){
@@ -293,7 +314,7 @@ uint set_fisz(LattFD* lattfd, uint sz){
     }else{
         struct stat fi_stat;
         if (fstat(cycle_nodeFD(lattfd), &fi_stat)==-1) {
-            perror("Error stat-ing Provided lattFd\n");
+            perror("Error stat-ing Provided lattFd. @set_fisz\n");
             return 1;
         }
         long fi_sz = fi_stat.st_size;
@@ -305,6 +326,12 @@ uint set_fisz(LattFD* lattfd, uint sz){
 
 LattFD open_lattfd(char *fipath, int res_dnodefd, int add_ops, int add_modes, uint fi_sz, StreamMode streammode) {
     int fd_hold;
+
+    if(fipath == NULL){
+        fprintf(stderr,"Provided path is NULL. @open_lattfd.\n");
+        return NULL;
+    }
+
     LattFD lattfd = malloc(sizeof(Lattice_FD));
 
     if (res_dnodefd == 0){
@@ -313,12 +340,20 @@ LattFD open_lattfd(char *fipath, int res_dnodefd, int add_ops, int add_modes, ui
     if (streammode){
         MultiFormMode modeform;
         modeform = ret_oflags_ofaform(INTBITMASK_MODEFORM,streammode);
-        if (modeform.i == -1){fprintf(stderr,"Invalid streammode arg.");return NULL;}
+        if (modeform.i == -1){
+            fprintf(stderr,"Invalid streammode arg. @open_lattfd\n");
+            free(lattfd);
+            return NULL;}
         add_ops |= modeform.i;
     }
 
     fd_hold = open_low_fd(fipath,add_ops,add_modes,res_dnodefd);
-    if (fd_hold == -1){fprintf(stderr,"Failed to open LattFD prime");return NULL;}
+    if (fd_hold == -1){
+        fprintf(stderr,"Failed to open LattFD prime. @open_lattfd\n");
+        fprintf(stderr,"\t>Failed path: %s\n",fipath);
+        free(lattfd);
+        return NULL;
+    }
 
 
     lattfd->prime_fd = fd_hold;
@@ -334,7 +369,7 @@ LattFD open_lattfd(char *fipath, int res_dnodefd, int add_ops, int add_modes, ui
     if (fi_sz == 0) {
         struct stat fi_stat;
         if (fstat(cycle_nodeFD(&lattfd), &fi_stat)==-1) {
-            perror("Error stat-ing Provided lattFd\n");
+            perror("Error stat-ing provided lattFd. @open_lattfd\n");
             free(lattfd);
             return NULL;
         }
@@ -342,7 +377,6 @@ LattFD open_lattfd(char *fipath, int res_dnodefd, int add_ops, int add_modes, ui
         lattfd->len = fi_sz;
 
     }
-
     return lattfd;
 }
 
@@ -574,7 +608,7 @@ uint close_shm_lattfd(LattFD* shm_lattfd){
 }
 
 
-uint lattice_span(DNMap* DNMap){
+uint lattice_span(DNGate* DNMap){
     if ((*DNMap)->shm_fd->tag != 0){
         fprintf(stderr,"Shm already in place for given lattfd, close it first with 'close_shm_lattfd'\n");
         return 1;
@@ -595,3 +629,436 @@ uint lattice_span(DNMap* DNMap){
     return 0;
 }
 
+uint dump_socketname(int confdir_fd, char* name, char* outfile_name, void* opts, uint namelen){
+
+    if (outfile_name == NULL){
+        outfile_name = "cw_socket";
+    }
+
+    int fiout = openat(confdir_fd,outfile_name,O_CREAT|O_TRUNC|O_WRONLY,S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH);
+    if (fiout == -1){
+        fprintf(stderr,"Error writing out socketname\n");
+        return 1;
+    }
+
+    if (write(fiout,name,namelen)==-1){
+        perror("Error dumpingsocket name.");
+        return 1;
+    }
+
+    return 0;
+}
+
+/* free_buf:
+*      1 = function will free buffer passed in after writing,
+*      0 = function will write and return w/o free'ing.
+ * */
+ssize_t writeto_lattfd(LattFD lattFd, void* out, size_t out_len, uint free_buf){
+    ssize_t res;
+    uchar_arr wo = (uchar_arr) malloc(out_len);
+    memcpy(wo,out,out_len);
+    int fd_out = cycle_nodeFD(&lattFd);
+    if(fd_out == -1){
+        fprintf(stderr,"Failed to cycle lattFd @writeto_lattfd.\n"
+                       "Nothing written out.\n");
+        if(free_buf){fprintf(stderr,"Output buffer free'd anyway.\n");free(out);}
+        free(wo);
+        return -1;
+    }
+
+    res = write(fd_out,wo,out_len);
+    if(res==-1){ perror("Failed writing to lattfd.");}
+    else{
+        fsync(fd_out);
+    }
+
+    if(close(fd_out) == -1){ perror("Failed to close output lattFd @writeto_lattfd.");res = -1;}
+    if(free_buf){free(out);}
+    free(wo);
+    (lattFd)->duped_fd = 0;
+
+    return res;
+}
+
+/*
+ * close_resdir:
+ *      1: Close the FD for the resident directory if there is one
+ *      0: Destroy LattFD but don't close resident dir
+ */
+uint close_and_destroy_lattFD(LattFD_PTP lattfd, uint close_resdir){
+
+    if ((*lattfd)->tag == 8){
+        fprintf(stderr,"This function isn't meant to be used on type 8 LattFd's (SHM type). @close_and_destroy_lattFD\n");
+        return 1; // 1 = General error, nothing done
+    }
+
+    uint res_field = 0;
+    uint res_mask = 14;
+
+    if((*lattfd)->prime_fd > 2){
+        if(close((*lattfd)->prime_fd)==-1){
+            perror("Failed to close prime_fd @ close_and_destroy_lattFD. @close_and_destroy_lattFD");
+            res_field |= 2;   // 2 = error cloeing prime fd
+        }else{
+            (*lattfd)->prime_fd = 0;
+        }
+    }
+    if((*lattfd)->duped_fd > 2){
+        if(close((*lattfd)->duped_fd)==-1){
+            perror("Failed to close duped_fd @ close_and_destroy_lattFD. @close_and_destroy_lattFD");
+            res_field |= 4;   // 4 = error closing dup'ed fd
+        }else{
+            (*lattfd)->duped_fd = 0;
+        }
+    }
+    if(close_resdir){
+        if((*lattfd)->dir_fd > 2){
+            if(close((*lattfd)->dir_fd)==-1){
+                perror("Failed to close dir_fd @ close_and_destroy_lattFD. @close_and_destroy_lattFD");
+                res_field |= 8;   // 8 = error closing dir_fd fd
+            }else{
+                (*lattfd)->dir_fd = 0;
+            }
+
+        }
+    }
+
+    if (!(res_field&res_mask)) {
+        if ((*lattfd)->path != NULL) {
+            free((*lattfd)->path);
+            (*lattfd)->path = NULL;
+        }
+        if ((*lattfd)->addr != NULL) {
+            free(((*lattfd)->addr));
+            (*lattfd)->addr = NULL;
+        }
+    }
+
+    ((*lattfd))->modes = 0;
+    ((*lattfd))->o_flgs = 0;
+    ((*lattfd))->stream_mode = 0;
+    (*lattfd)->tag = 0;
+    (*lattfd)->len = 0;
+
+    if(!(res_field&res_mask)){
+        free(*lattfd);
+        lattfd=NULL;
+    }
+    return res_field;
+}
+
+
+
+LattFD open_spawnfi(LatticeID_PTA id){
+
+    //char out_path[SPAWNFI_NAME_LEN] = {0};
+    char* out_path = (char*) calloc(SPAWNFI_NAME_LEN,UCHAR_SZ);
+
+    memcpy(out_path,*id,LATT_AUTH_BYTES);
+    memcpy(out_path+LATT_AUTH_BYTES,SPAWNPIECES_EXT,SPAWNPIECES_EXT_LEN);
+
+    int spawnDir_fd = open_dnode_fd(getenv("SPAWN_DIR"),S_IRWXU,0);
+    if (spawnDir_fd == -1){
+        fprintf(stderr,"Failed to open spawn directory. @open_spawnfi\n");
+        fprintf(stderr,"\t>Failed path: %s\n",getenv("SPAWN_DIR"));
+        return NULL;
+    }
+
+    LattFD spawnfi_fd = open_lattfd(out_path,spawnDir_fd,O_CREAT|O_RDWR,S_IRWXU,0,0);
+    if (spawnfi_fd == NULL){
+        fprintf(stderr,"Failed to open LattFD for SpawnFile. @open_spawnfi\n");
+        fprintf(stderr,"\t>Failed path: %s\n",out_path);
+        return NULL;
+    }
+
+    return spawnfi_fd;
+}
+
+
+LattFD open_spawnfi_keyfi(LatticeID_PTA id, uint init){
+
+    //char out_path[SPAWNFI_NAME_LEN] = {0};
+    char* out_path = (char*) calloc(SPAWNFI_NAME_LEN,UCHAR_SZ);
+
+    memcpy(out_path,*id,LATT_AUTH_BYTES);
+    memcpy(out_path+LATT_AUTH_BYTES,SPAWNPIECES_EXT,SPAWNPIECES_EXT_LEN);
+
+    int spawnDir_fd = open_dnode_fd(getenv("SPAWN_DIR"),S_IRWXU,0);
+    if (spawnDir_fd == -1){
+        fprintf(stderr,"Failed to open spawn directory. @open_spawnfi\n");
+        fprintf(stderr,"\t>Failed path: %s\n",getenv("SPAWN_DIR"));
+        free(out_path);
+        return NULL;
+    }
+
+    LattFD spawnfi_fd = open_lattfd(out_path,spawnDir_fd,O_CREAT|O_RDWR,S_IRWXU,0,0);
+    if (spawnfi_fd == NULL){
+        fprintf(stderr,"Failed to open LattFD for SpawnFile. @open_spawnfi\n");
+        fprintf(stderr,"\t>Failed path: %s\n",out_path);
+        close(spawnDir_fd);
+        free(out_path);
+        return NULL;
+    }
+
+    return spawnfi_fd;
+}
+
+
+//#define LEAD_BMARK 0x1f10081f
+//#define LEN_HEAD_BMARK 0x7f40207f
+//#define LEN_TAIL_BMARK 0x1ff601ff
+//#define ITEM_VALS_BMARK 0xffef0b03
+//#define ITEM_VALS_SUBLIST_BMARK 0xc0600c18
+//#define TERMINATOR_BMARK 0x31a81431
+//#define DELIM_BMARK 0x00
+
+// TODO: Implement
+//uint dumpto_spawn_fi(LatticeID id){
+//
+//    ConfigMultiTool cnfmt = init_CNFGMT(SPAWNPIECES_CNT);
+//
+//}
+
+uint init_spawn_fi2(LatticeID_PTA id){
+
+    uint total_lens[SPAWNPIECES_CNT] = {0};
+
+    ConfigMultiTool cnfmt = init_CNFGMT(SPAWNPIECES_CNT);
+    ConfigMT cmt = &cnfmt;
+    SpawnPieces piece = PIECE_BODY;
+    SpawnPieces* piece_ptr = &piece;
+    uint subheader = 1;
+    uint subsize = 0;
+    uint sizehold;
+
+    LattFD spawnfi_fd = open_spawnfi(id);
+    if (spawnfi_fd == NULL){
+        fprintf(stderr,"Failed opening/init'ing spawnfi @init_spawn_fi\n");
+        return 1;
+    }
+
+    // Lead - config start
+    cnfmt.add_conf_lead(cmt);
+    // Lens - Spawn item lengths
+    cnfmt.add_len_seg(cmt);
+
+
+    // body
+    sizehold = 1;
+    subheader = 1;
+    cnfmt.into_buffer(piece_ptr,cnfmt.ret_typesize(UINT_F),cmt);
+    cnfmt.add_newline(cmt);
+    cnfmt.add_marker(cmt,SUBLIST);
+
+    cnfmt.into_buffer(&subheader,cnfmt.ret_typesize(UCHAR_F),cmt);  //None
+    cnfmt.add_delim(cmt);
+    cnfmt.into_buffer(&sizehold,cnfmt.ret_typesize(UINT_F),cmt);
+    cnfmt.add_delim(cmt);
+
+    cnfmt.add_marker(cmt,SUBLIST);
+    cnfmt.add_newline(cmt);
+    total_lens[0] = subsize+2;
+
+
+    // Sessions
+    piece <<= 1;
+    cnfmt.into_buffer(piece_ptr,cnfmt.ret_typesize(UINT_F),cmt);
+    cnfmt.add_newline(cmt);
+    cnfmt.add_marker(cmt,SUBLIST);
+
+    sizehold = cnfmt.ret_typesize(UINT_F);
+    cnfmt.into_buffer(&subheader,cnfmt.ret_typesize(UCHAR_F),cmt);  //SessionOps
+    cnfmt.add_delim(cmt);
+    cnfmt.into_buffer(&sizehold,cnfmt.ret_typesize(UINT_F),cmt);
+    cnfmt.add_delim(cmt);
+    subsize += sizehold;
+
+    subheader <<= 1;
+    sizehold = cnfmt.ret_typesize(ULONG_F);
+    cnfmt.into_buffer(&subheader,cnfmt.ret_typesize(UCHAR_F),cmt); // LastRequest
+    cnfmt.add_delim(cmt);
+    cnfmt.into_buffer(&sizehold,cnfmt.ret_typesize(UINT_F),cmt);
+    cnfmt.add_delim(cmt);
+    subsize += sizehold;
+
+    subheader <<= 1;
+    sizehold = sizeof(SpawnSession);
+    cnfmt.into_buffer(&subheader,cnfmt.ret_typesize(UCHAR_F),cmt);  // LatticeState
+    cnfmt.add_delim(cmt);
+    cnfmt.into_buffer(&sizehold,cnfmt.ret_typesize(UINT_F),cmt);
+    cnfmt.add_delim(cmt);
+    subsize += sizehold;
+
+    cnfmt.add_marker(cmt,SUBLIST);
+    cnfmt.add_newline(cmt);
+    total_lens[1] = subsize+6;
+    subsize = 0;
+
+
+    // State
+    piece <<= 1;
+    cnfmt.into_buffer(piece_ptr,cnfmt.ret_typesize(UINT_F),cmt);
+    cnfmt.add_newline(cmt);
+    cnfmt.add_marker(cmt,SUBLIST);
+
+    subheader = 1;
+    sizehold = sizeof(StatusFrame);
+    cnfmt.into_buffer(&subheader,cnfmt.ret_typesize(UCHAR_F),cmt);  //StatusFrame
+    cnfmt.add_delim(cmt);
+    cnfmt.into_buffer(&sizehold,cnfmt.ret_typesize(UINT_F),cmt);
+    cnfmt.add_delim(cmt);
+    subsize += sizehold;
+
+    subheader <<= 1;
+    sizehold = cnfmt.ret_typesize(ULONG_F);
+    cnfmt.into_buffer(&subheader,cnfmt.ret_typesize(UCHAR_F),cmt); // Cur working Dirnode
+    cnfmt.add_delim(cmt);
+    cnfmt.into_buffer(&sizehold,cnfmt.ret_typesize(UINT_F),cmt);
+    cnfmt.add_delim(cmt);
+    subsize += sizehold;
+
+    subheader <<= 1;
+    sizehold = cnfmt.ret_typesize(ULONG_F);
+    cnfmt.into_buffer(&subheader,cnfmt.ret_typesize(UCHAR_F),cmt);  // misc
+    cnfmt.add_delim(cmt);
+    cnfmt.fill_with_temp(cmt,cnfmt.ret_typesize(UINT_F));
+    cnfmt.add_delim(cmt);
+    subsize += sizehold;
+
+    cnfmt.add_marker(cmt,SUBLIST);
+    cnfmt.add_newline(cmt);
+    total_lens[2] = subsize+6;
+    subsize = 0;
+
+
+    // TagMap
+    piece <<= 1;
+    sizehold = 64;
+    cnfmt.into_buffer(piece_ptr,cnfmt.ret_typesize(UINT_F),cmt);
+    cnfmt.add_newline(cmt);
+    cnfmt.add_marker(cmt,SUBLIST);
+
+    subheader = 1;
+    cnfmt.into_buffer(&subheader,cnfmt.ret_typesize(UCHAR_F),cmt);  //spawnbodyBase
+    cnfmt.add_delim(cmt);
+    cnfmt.into_buffer(&sizehold,cnfmt.ret_typesize(UINT_F),cmt);
+    cnfmt.add_delim(cmt);
+    subsize += sizehold;
+
+    subheader <<= 1;
+    cnfmt.into_buffer(&subheader,cnfmt.ret_typesize(UCHAR_F),cmt);  //kitBase
+    cnfmt.add_delim(cmt);
+    cnfmt.into_buffer(&sizehold,cnfmt.ret_typesize(UINT_F),cmt);
+    cnfmt.add_delim(cmt);
+    subsize += sizehold;
+
+    subheader <<= 1;
+    cnfmt.into_buffer(&subheader,cnfmt.ret_typesize(UCHAR_F),cmt);  //miscBase
+    cnfmt.add_delim(cmt);
+    cnfmt.into_buffer(&sizehold,cnfmt.ret_typesize(UINT_F),cmt);
+    cnfmt.add_delim(cmt);
+    subsize += sizehold;
+
+    cnfmt.add_marker(cmt,SUBLIST);
+    cnfmt.add_newline(cmt);
+    total_lens[3] = subsize+6;
+    subsize = 0;
+
+
+    // Kit
+    piece <<= 1;
+    sizehold = 1;
+    subheader = 1;
+    cnfmt.into_buffer(piece_ptr,cnfmt.ret_typesize(UINT_F),cmt);
+    cnfmt.add_newline(cmt);
+    cnfmt.add_marker(cmt,SUBLIST);
+
+    cnfmt.into_buffer(&subheader,cnfmt.ret_typesize(UCHAR_F),cmt);  //None
+    cnfmt.add_delim(cmt);
+    cnfmt.into_buffer(&sizehold,cnfmt.ret_typesize(UINT_F),cmt);
+    cnfmt.add_delim(cmt);
+
+    cnfmt.add_marker(cmt,SUBLIST);
+    cnfmt.add_newline(cmt);
+    total_lens[4] = subsize+2;
+
+
+    // Latt ID
+    piece <<= 1;
+    sizehold = 32;
+    cnfmt.into_buffer(piece_ptr,cnfmt.ret_typesize(UINT_F),cmt);
+    cnfmt.add_newline(cmt);
+    cnfmt.add_marker(cmt,SUBLIST);
+
+    cnfmt.into_buffer(&subheader,cnfmt.ret_typesize(UCHAR_F),cmt);
+    cnfmt.add_delim(cmt);
+    cnfmt.into_buffer(&sizehold,cnfmt.ret_typesize(UINT_F),cmt);
+    cnfmt.add_delim(cmt);
+    total_lens[5] = subsize+2;
+
+    cnfmt.add_marker(cmt,SUBLIST);
+    cnfmt.add_newline(cmt);
+
+
+    // LatticeAuthTag
+    piece <<= 1;
+    cnfmt.into_buffer(piece_ptr,cnfmt.ret_typesize(UINT_F),cmt);
+    cnfmt.add_newline(cmt);
+    cnfmt.add_marker(cmt,SUBLIST);
+
+    cnfmt.into_buffer(&subheader,cnfmt.ret_typesize(UCHAR_F),cmt);
+    cnfmt.add_delim(cmt);
+    cnfmt.into_buffer(&sizehold,cnfmt.ret_typesize(UINT_F),cmt);
+    cnfmt.add_delim(cmt);
+    total_lens[6] = subsize + 2;
+
+    cnfmt.add_marker(cmt,SUBLIST);
+    cnfmt.add_newline(cmt);
+
+
+    // END LENGTH SEGMENT
+    cnfmt.add_marker(cmt,LENTAIL);
+    cnfmt.add_newline(cmt);
+
+
+    /* Item Values Segment */
+    piece = 1;
+    cnfmt.add_marker(cmt,ITMVALS);
+    cnfmt.add_newline(cmt);
+
+
+    for (int i = 0; i < SPAWNPIECES_CNT; i++) {
+
+        cnfmt.into_buffer(piece_ptr, cnfmt.ret_typesize(UINT_F), cmt);
+        cnfmt.add_newline(cmt);
+        cnfmt.add_marker(cmt, SUBLIST);
+        cnfmt.add_delim(cmt);
+        cnfmt.fill_with_temp(cmt, total_lens[i]);
+        cnfmt.add_delim(cmt);
+        cnfmt.add_marker(cmt, SUBLIST);
+        cnfmt.add_newline(cmt);
+
+        piece <<= 1;
+    }
+
+    cnfmt.add_marker(cmt,ITMVALS);
+    cnfmt.add_newline(cmt);
+    cnfmt.add_marker(cmt,TERMINTR);
+    cnfmt.add_newline(cmt);
+
+    uint res;
+    if (writeto_lattfd(spawnfi_fd,cnfmt.output_buf,cnfmt.pos,1) == -1){
+        perror("Error writing to file @init_spawnFI");
+        res = 1;
+    }else{
+        res = 0;
+    }
+
+    uint cadlfd_res = close_and_destroy_lattFD(&spawnfi_fd,1);
+    if(cadlfd_res !=0 ){
+        res |= cadlfd_res;
+    }
+
+    return res;
+
+}

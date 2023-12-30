@@ -1,10 +1,11 @@
 #ifndef TAGFILES_TAGFILES_H
 #define TAGFILES_TAGFILES_H
 #include <sys/types.h>
-#include "FiOps.h"
 #include "Consts.h"
 #include "lattice_works.h"
+#include "FiOps.h"
 
+/* File access specifiers */
 #define SINGLECHAR_MODEFORM 0
 #define CHARSTRING_MODEFORM 1
 #define INTBITMASK_MODEFORM 2
@@ -35,13 +36,6 @@ extern const char R_strm; extern const int R_mv_fd;
 extern const char W_strm; extern const int W_mv_fd;
 extern const char A_strm; extern const int A_mv_fd;
 
-typedef union MultiFormMode{
-    char c;
-    int i;
-    char ca[3];
-}MultiFormMode;
-
-
 int scanfiinodes(const char* dir_path);
 int fd_getstat(const char* dir_path, int op);
 int scanfi(const char* dir_path);
@@ -54,8 +48,13 @@ int open_low_fd(char* path, int add_ops, int add_modes, int res_dnodefd);
 LattFD open_blank_lattfd(void);
 LattFD open_dir_lattfd(char *fipath, int res_dnodefd, int add_modes, uint entry_cnt);
 uint close_shm_lattfd(LattFD* shm_lattfd);
-uint lattice_span(DNMap* DNMap);
+uint lattice_span(DNGate* DNMap);
 uint set_fisz(LattFD* lattfd,unsigned int sz);
+unsigned int check_dir_existence(const char* path);
+uint dump_socketname(int confdir_fd, char* name, char* outfile_name, void* opts, uint namelen);
+ssize_t writeto_lattfd(LattFD lattFd, void* out, size_t out_len, uint free_buf);
+uint close_and_destroy_lattFD(LattFD_PTP lattfd, uint close_resdir);
+
 
 
 __attribute__((unused)) char chk_fmt(const char** dir_path, int op);

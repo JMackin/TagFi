@@ -226,7 +226,7 @@ void gen_infofunc_arr(InfoFunc** infofuncarr){
  * * * * * * * * * * * * * * * */
 
 
-uint rsp_err(LSession_PTP session, InfoFrame **inf_frm, Lattice * hltc, buff_arr buf) {
+uint rsp_err(SSession_PTP session, InfoFrame **inf_frm, Lattice * hltc, buff_arr buf) {
     StatusFrame** sts_frm = &(*session)->state->frame;
 
     uint ercode = (*sts_frm)->err_code;
@@ -236,7 +236,7 @@ uint rsp_err(LSession_PTP session, InfoFrame **inf_frm, Lattice * hltc, buff_arr
 }
 
 /** Info funcs */
-uint rsp_nfo(LSession_PTP session, InfoFrame **inf_frm, Lattice * hltc, buff_arr buf) {
+uint rsp_nfo(SSession_PTP session, InfoFrame **inf_frm, Lattice * hltc, buff_arr buf) {
     StatusFrame** sts_frm = &(*session)->state->frame;
 
     LattType lattItm;
@@ -304,7 +304,7 @@ uint rsp_nfo(LSession_PTP session, InfoFrame **inf_frm, Lattice * hltc, buff_arr
 //uint bcnt;
 //lattItm.obj = LTTC;
 //bcnt = rsparr_add_lt(lattItm,buf,0);
-uint rsp_sts(LSession_PTP session, InfoFrame **inf_frm, Lattice * hltc, buff_arr buf) {
+uint rsp_sts(SSession_PTP session, InfoFrame **inf_frm, Lattice * hltc, buff_arr buf) {
     StatusFrame** sts_frm = &(*session)->state->frame;
     printf("Response: Status frame");
     uint bcnt;
@@ -340,7 +340,7 @@ uint rsp_sts(LSession_PTP session, InfoFrame **inf_frm, Lattice * hltc, buff_arr
     //TODO: Test and verify this function
 }
 
-uint rsp_und(LSession_PTP session, InfoFrame **inf_frm, Lattice * hltc, buff_arr buf) {
+uint rsp_und(SSession_PTP session, InfoFrame **inf_frm, Lattice * hltc, buff_arr buf) {
     StatusFrame** sts_frm = &(*session)->state->frame;
 
 
@@ -350,7 +350,7 @@ uint rsp_und(LSession_PTP session, InfoFrame **inf_frm, Lattice * hltc, buff_arr
 
 
 
-uint rsp_fiid(LSession_PTP session, InfoFrame **inf_frm, Lattice * hltc, buff_arr buf) {
+uint rsp_fiid(SSession_PTP session, InfoFrame **inf_frm, Lattice * hltc, buff_arr buf) {
     StatusFrame** sts_frm = &(*session)->state->frame;
     printf("Response: Fiid for hashno");
     LattLong* itmID = malloc(ULONG_SZ);
@@ -396,7 +396,7 @@ uint rsp_fiid(LSession_PTP session, InfoFrame **inf_frm, Lattice * hltc, buff_ar
     return bcnt;
 }
 
-uint rsp_diid(LSession_PTP session, InfoFrame **inf_frm, Lattice * hltc, buff_arr buf) {
+uint rsp_diid(SSession_PTP session, InfoFrame **inf_frm, Lattice * hltc, buff_arr buf) {
     StatusFrame** sts_frm = &(*session)->state->frame;
     printf("Response: DirID for chain number");
 
@@ -446,7 +446,7 @@ uint rsp_diid(LSession_PTP session, InfoFrame **inf_frm, Lattice * hltc, buff_ar
     return bcnt;
 }
 
-uint rsp_frdn(LSession_PTP session, InfoFrame **inf_frm, Lattice * hltc, buff_arr buf) {
+uint rsp_frdn(SSession_PTP session, InfoFrame **inf_frm, Lattice * hltc, buff_arr buf) {
     StatusFrame** sts_frm = &(*session)->state->frame;
     printf("Response: Resident Dir for fihashno");
     LattType lattitm;
@@ -490,7 +490,7 @@ uint rsp_frdn(LSession_PTP session, InfoFrame **inf_frm, Lattice * hltc, buff_ar
 
 }
 
-uint rsp_gond(LSession_PTP session, InfoFrame **inf_frm, Lattice * hltc, buff_arr buf) {
+uint rsp_gond(SSession_PTP session, InfoFrame **inf_frm, Lattice * hltc, buff_arr buf) {
     printf("Response: Goto node");
     StatusFrame** sts_frm = &(*session)->state->frame;
     LattType lattitm;
@@ -528,36 +528,36 @@ uint rsp_gond(LSession_PTP session, InfoFrame **inf_frm, Lattice * hltc, buff_ar
     return bcnt;
 }
 
-uint rsp_fyld(LSession_PTP session, InfoFrame **inf_frm, Lattice * hltc, buff_arr buf) {
+uint rsp_fyld(SSession_PTP session, InfoFrame **inf_frm, Lattice * hltc, buff_arr buf) {
     printf("Response: Yield object");
 }
 
-uint rsp_jjjj(LSession_PTP session, InfoFrame **inf_frm, Lattice * hltc, buff_arr buf) {
+uint rsp_jjjj(SSession_PTP session, InfoFrame **inf_frm, Lattice * hltc, buff_arr buf) {
     printf("Response: Empty");
 }
 
-uint rsp_dsch(LSession_PTP session, InfoFrame **inf_frm, Lattice * hltc, buff_arr buf) {
+uint rsp_dsch(SSession_PTP session, InfoFrame **inf_frm, Lattice * hltc, buff_arr buf) {
     printf("Response: Search for object");
 }
 
-uint rsp_iiii(LSession_PTP session, InfoFrame **inf_frm, Lattice * hltc, buff_arr buf) {
+uint rsp_iiii(SSession_PTP session, InfoFrame **inf_frm, Lattice * hltc, buff_arr buf) {
     printf("Response: Empty");
 }
 
-uint rsp_dcls(LSession_PTP session, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf) {
+uint rsp_dcls(SSession_PTP session, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf) {
     printf("Response: List chain nodes");
 }
 
-uint rsp_gohd(LSession_PTP session, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf) {
+uint rsp_gohd(SSession_PTP session, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf) {
     printf("Response: Go to chain head");
 }
 
-uint rsp_dnls(LSession_PTP session, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf) {
+uint rsp_dnls(SSession_PTP session, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf) {
     //TODO: Protect access to the dir list
 
     printf("Response: List dir ");
     Vessel* vessel = &((*hltc)->chains->vessel);
-    DNMap dnMap = ((*hltc)->armature->nodemap);
+    DNGate dnMap = ((*vessel)->node_gate);
     uint in_basenode = check_base((*vessel)->did);
 
 
@@ -577,10 +577,9 @@ uint rsp_dnls(LSession_PTP session, InfoFrame **inf_frm, Lattice *hltc, buff_arr
     close_shm_lattfd(&(dnMap)->shm_fd);
     return 0;
 
-
 }
 
-uint rsp_vvvv(LSession_PTP session, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf) {
+uint rsp_vvvv(SSession_PTP session, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf) {
     printf("Response: Empty");
 }
 
@@ -597,25 +596,25 @@ uint rsp_vvvv(LSession_PTP session, InfoFrame **inf_frm, Lattice *hltc, buff_arr
 RspFunc *rsp_act(RspMap rsp_map, InfoFrame **inf_frm, RspFunc (*funarr)) {
 
 //Info
-    uint (*und)(LSession_PTP session, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
-    uint (*err)(LSession_PTP session, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
-    uint (*nfo)(LSession_PTP session, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
-    uint (*sts)(LSession_PTP session, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
+    uint (*und)(SSession_PTP session, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
+    uint (*err)(SSession_PTP session, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
+    uint (*nfo)(SSession_PTP session, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
+    uint (*sts)(SSession_PTP session, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
 //Travel*
-    uint (*fiid)(LSession_PTP session, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
-    uint (*diid)(LSession_PTP session, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
-    uint (*frdn)(LSession_PTP session, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
-    uint (*gond)(LSession_PTP session, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
+    uint (*fiid)(SSession_PTP session, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
+    uint (*diid)(SSession_PTP session, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
+    uint (*frdn)(SSession_PTP session, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
+    uint (*gond)(SSession_PTP session, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
 //Dir*
-    uint (*fyld)(LSession_PTP session, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
-    uint (*jjjj)(LSession_PTP session, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
-    uint (*dsch)(LSession_PTP session, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
-    uint (*iiii)(LSession_PTP session, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
+    uint (*fyld)(SSession_PTP session, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
+    uint (*jjjj)(SSession_PTP session, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
+    uint (*dsch)(SSession_PTP session, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
+    uint (*iiii)(SSession_PTP session, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
 //File*
-    uint (*dcls)(LSession_PTP session, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
-    uint (*gohd)(LSession_PTP session, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
-    uint (*dnls)(LSession_PTP session, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
-    uint (*vvvv)(LSession_PTP session, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
+    uint (*dcls)(SSession_PTP session, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
+    uint (*gohd)(SSession_PTP session, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
+    uint (*dnls)(SSession_PTP session, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
+    uint (*vvvv)(SSession_PTP session, InfoFrame **inf_frm, Lattice *hltc, buff_arr buf);
 
 
     und = &rsp_und; err = &rsp_err; nfo = &rsp_nfo; dnls = &rsp_dnls;
@@ -679,7 +678,7 @@ init_rsptbl(int cnfg_fd, Resp_Tbl **rsp_tbl, InfoFrame **inf_frm, DChains *dchns
  * \DetermineResponse
  *  Returns a LattReply struct that determines the response avenue given output from request parsing.
  */
-LattType dtrm_rsp(LSession_PTP session,
+LattType dtrm_rsp(SSession_PTP session,
                   InfoFrame **inf_frm,
                   LattType reply) {
 
@@ -721,7 +720,7 @@ LattType dtrm_rsp(LSession_PTP session,
  * \ProcessResponse
  */
 uint respond(Resp_Tbl *rsp_tbl,
-             LSession_PTP session,
+             SSession_PTP session,
              InfoFrame **inf_frm,
              DChains *dchns,
              Lattice *hltc,

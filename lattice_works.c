@@ -115,29 +115,29 @@ DiChains* init_dchains() {
 }
 
 
-uint return_to_origin(TravelPath *travelPath, DChains dirChains, LState_PTP lttSt) {
+uint return_to_origin(TravelPath *travelPath, DChains dirChains, SState_PTP lttSt) {
     if (dirChains->vessel->did != travelPath->destination->did){
         return 1;
     }
     dirChains->vessel = travelPath->origin;
-    (*lttSt)->cwdnode = dirChains->vessel->did;
+    (*lttSt)->cw_dnode = dirChains->vessel->did;
     return 0;
 }
 
 //enroute: 1 = at origin, 0 = at destination
-void chart_travelpath(TravelPath **travelpath, Vessel vessel, int enroute, LState_PTP lttSt) {
+void chart_travelpath(TravelPath **travelpath, Vessel vessel, int enroute, SState_PTP lttSt) {
     if (!enroute){
         (*travelpath) = (TravelPath*) malloc(sizeof(TravelPath));
         (*travelpath)->origin = vessel;
     }else{
         (*travelpath)->destination = vessel;
-        (*lttSt)->cwdnode = vessel->did;
+        (*lttSt)->cw_dnode = vessel->did;
 
     }
 
 }
 
-void travel_dchains(Vessel *vessel, unsigned int lor, unsigned char steps, TravelPath **travelpath, LState_PTP lttSt) {
+void travel_dchains(Vessel *vessel, unsigned int lor, unsigned char steps, TravelPath **travelpath, SState_PTP lttSt) {
 
     if (travelpath != NULL){ chart_travelpath(travelpath, *vessel, 0, lttSt);}
     while (steps>0){
@@ -159,7 +159,7 @@ void travel_dchains(Vessel *vessel, unsigned int lor, unsigned char steps, Trave
     if (travelpath != NULL){ chart_travelpath(travelpath, *vessel, 1, lttSt);}
 }
 
-void goto_chain_tail(DiChains *dirChains, unsigned int lor, TravelPath **travelpath, LState_PTP lttSt) {
+void goto_chain_tail(DiChains *dirChains, unsigned int lor, TravelPath **travelpath, SState_PTP lttSt) {
 
     if (travelpath != NULL){ chart_travelpath(travelpath, dirChains->vessel, 0, lttSt);}
     (dirChains)->vessel = dirChains->dir_head;
@@ -176,7 +176,7 @@ void goto_chain_tail(DiChains *dirChains, unsigned int lor, TravelPath **travelp
 
 }
 
-void goto_base(DChains dchns, TravelPath **travelpath, LState_PTP lttSt) {
+void goto_base(DChains dchns, TravelPath **travelpath, SState_PTP lttSt) {
     if (travelpath != NULL){ chart_travelpath(travelpath, dchns->vessel, 0, lttSt);}
     if (is_base(dchns->vessel)){
         if (travelpath != NULL){ chart_travelpath(travelpath, dchns->vessel, 1, lttSt);}
@@ -186,13 +186,13 @@ void goto_base(DChains dchns, TravelPath **travelpath, LState_PTP lttSt) {
     dchns->vessel = expo_dirbase(dchns->vessel->did) ? dchns->dir_head->left : dchns->dir_head->right;
 }
 
-void switch_base(DChains dchns, TravelPath **travelpath, LState_PTP lttSt) {
+void switch_base(DChains dchns, TravelPath **travelpath, SState_PTP lttSt) {
     if (travelpath != NULL){ chart_travelpath(travelpath, dchns->vessel, 0, lttSt);}
     dchns->vessel = expo_dirbase(dchns->vessel->did) ? dchns->dir_head->left : dchns->dir_head->right;
     if (travelpath != NULL){ chart_travelpath(travelpath, dchns->vessel, 1, lttSt);}
 }
 
-unsigned int travel_by_chnid(unsigned long chn_id, DiChains *dchns, TravelPath **travelpath, LState_PTP lttSt) {
+unsigned int travel_by_chnid(unsigned long chn_id, DiChains *dchns, TravelPath **travelpath, SState_PTP lttSt) {
     if (travelpath != NULL){ chart_travelpath(travelpath, dchns->vessel, 0, lttSt);}
 
     unsigned int lor = expo_dirbase(dchns->vessel->did);
@@ -220,7 +220,7 @@ unsigned int travel_by_chnid(unsigned long chn_id, DiChains *dchns, TravelPath *
     return 1;
 }
 
-unsigned int travel_by_diid(unsigned long long did, DiChains *dchns, TravelPath **travelpath, LState_PTP lttSt) {
+unsigned int travel_by_diid(unsigned long long did, DiChains *dchns, TravelPath **travelpath, SState_PTP lttSt) {
     if (travelpath != NULL) {
         chart_travelpath(travelpath, dchns->vessel, 0, lttSt);
         (*travelpath)->origin = (dchns)->vessel;
@@ -272,7 +272,7 @@ DiNode* add_dnode(unsigned long long did, unsigned char* dname, unsigned short n
     base->did += (16);
 
     (*lattice)->chains->vessel = ((*lattice)->chains->dir_head);
-    goto_chain_tail((*lattice)->chains, mord, NULL, &(*lattice)->state);
+    goto_chain_tail((*lattice)->chains, mord, NULL, NULL);
 
 
     //MEDA
@@ -290,9 +290,8 @@ DiNode* add_dnode(unsigned long long did, unsigned char* dname, unsigned short n
         dnode->tag = 16;
     }
 
-    (*armatr)->dinode=dnode;
-
-//    dnode->armature = armatr;
+    dnode->armatr = *armatr;
+    dnode->node_gate=NULL;
 
     return dnode;
 }
@@ -331,8 +330,8 @@ __attribute__((unused)) char* yield_dnhstr(DiNode** dirnode){
     return str_buf;
 }
 
-DNMap chart_node(uint dirpathlen, uint entriesnamelen, char **entriesname, char **dirpath, LattFD entrieslist_lfd, LattFD dirnodefd) {
-    DNMap dnMap = malloc(sizeof(DiNodeMap));
+DNGate chart_node(uint dirpathlen, uint entriesnamelen, char **entriesname, char **dirpath, LattFD entrieslist_lfd, LattFD dirnodefd) {
+    DNGate dnMap = malloc(sizeof(DiNodeGate));
 
     char* pathbuf = calloc(entriesnamelen+dirpathlen+2,UCHAR_SZ);
     char* pathbufB = calloc(ANCHORNMLEN,UCHAR_SZ);
@@ -355,7 +354,7 @@ DNMap chart_node(uint dirpathlen, uint entriesnamelen, char **entriesname, char 
     return dnMap;
 }
 
-LattFD make_bridgeanchor(Armatr *armatr, DiNode **dirnode, char **path, unsigned int pathlen) {
+LattFD make_bridgeanchor(Armatr *armatr, DNode *dirnode, char **path, unsigned int pathlen) {
 
     LattFD lattFd_entr;
     LattFD lattFd_dir;
@@ -417,28 +416,28 @@ LattFD make_bridgeanchor(Armatr *armatr, DiNode **dirnode, char **path, unsigned
 
     close(lattFd_entr->duped_fd);
 
-    (*armatr)->nodemap = chart_node(pathlen+expo_dirnmlen((*dirnode)->did)+1, ANCHORNMLEN, &dn_hdid, path, lattFd_entr, lattFd_dir);
-    free(dn_hdid);
+    //(*armatr)->node_gate = chart_node(pathlen + expo_dirnmlen((*dirnode)->did) + 1, ANCHORNMLEN, &dn_hdid, path, lattFd_entr, lattFd_dir);
 
+    (*dirnode)->node_gate = chart_node(pathlen + expo_dirnmlen((*dirnode)->did) + 1, ANCHORNMLEN, &dn_hdid, path, lattFd_entr, lattFd_dir);
+    free(dn_hdid);
     return lattFd_entr;
 }
 
-void init_armatr(Armature*** armatr, unsigned int size, unsigned char** hkey){
+void init_armatr(Armatr* armatr, unsigned int size, unsigned char** hkey){
 
-    (**armatr) = (Armature*) malloc(sizeof(Armature));
+    (*armatr) = (Armatr) malloc(sizeof(DNodeArmature));
 
-    (**armatr)->totsize=size;
-    (**armatr)->count=0;
-    ((**armatr)->entries) = (FiEntry*) calloc(size, sizeof(FiEntry));
+    (*armatr)->totsize=size;
+    (*armatr)->count=0;
+    ((*armatr)->entries) = (FiEntry*) calloc(size, sizeof(FiEntry));
 
-    for(int i = 0; i<(**armatr)->totsize; i++){
-        (**armatr)->entries->hshno = 0;
-        (**armatr)->entries->tag = 0;
-        (**armatr)->entries->path = NULL;
+    for(int i = 0; i<(*armatr)->totsize; i++){
+        (*armatr)->entries->hshno = 0;
+        (*armatr)->entries->tag = 0;
+        (*armatr)->entries->path = NULL;
     }
 
-    memcpy((&(**armatr)->lttc_key),*hkey,LKEYSZ);
-    (**armatr)->nodemap = NULL;
+    memcpy((&(*armatr)->dnode_key), *hkey, LLKEYSZ);
 }
 
 FiNode* mk_finnode(unsigned int nlen, unsigned char* finame,
@@ -511,7 +510,7 @@ unsigned int cat_path(char** catpath_out, PathParts pp){
     return tot_pathlen == running_len ? tot_pathlen : 1;
 }
 
-uint add_entry(FiNode* finode, Armature* armatr, PathParts pathparts) {
+uint add_entry(FiNode* finode, DNodeArmature* armatr, PathParts pathparts) {
     int x = 0;
     timr_st();
     FiEntry ne;
@@ -548,7 +547,7 @@ uint add_entry(FiNode* finode, Armature* armatr, PathParts pathparts) {
     return 0;
 }
 
-HashLattice *init_hashlattice(DChains *dirchains, LttcKey lattcKey, LState lttcstt) {
+HashLattice *init_hashlattice(DChains *dirchains, LttcHashKey lattcKey, LState lttcstt) {
 
 
     HashLattice* hashlattice = (HashLattice *) malloc(sizeof(HashLattice));
@@ -563,13 +562,13 @@ HashLattice *init_hashlattice(DChains *dirchains, LttcKey lattcKey, LState lttcs
     hashlattice->chains = *dirchains;
     hashlattice->chains->vessel = hashlattice->chains->dir_head;
 
-    hashlattice->lattcKey = lattcKey;
+    hashlattice->lhashKey = lattcKey;
 
     hashlattice->state = lttcstt;
     return hashlattice;
 }
 
-void build_bridge2(LatticeKey lattkey, FiNode* fiNode, DiNode* dnode, HashLattice* hashlattice, unsigned char* obuf){
+void build_bridge2(LatticeLittleKey lattkey, FiNode* fiNode, DiNode* dnode, HashLattice* hashlattice, unsigned char* obuf){
 
     timr_st();
     if (hashlattice->count > hashlattice->max-3){
@@ -615,7 +614,7 @@ HashBridge *yield_bridge_for_fihsh(Lattice lattice,unsigned long fiHsh){
     unsigned char oBuf [16] = {0};
     unsigned long long int biidBufL;
 
-    unsigned long brdgIdx = latt_hsh_idx(lattice->lattcKey,fiHsh,oBuf);
+    unsigned long brdgIdx = latt_hsh_idx(lattice->lhashKey, fiHsh, oBuf);
     hshBrdg = lattice->bridges[brdgIdx];
 
     if (hshBrdg == NULL){
@@ -639,8 +638,10 @@ __attribute__((unused)) int filter_dirscan(const struct dirent *entry) {
     return ((entry->d_name[0] == 46)) || (strnlen(entry->d_name, 4) > 3);
 }
 
+
+
 double long *map_dir(StatusFrame **statusFrame, const char *dir_path, unsigned int path_len, unsigned char *rootdirname,
-                     unsigned int dnlen, HashLattice *hashlattice, Armature **armatr, LttcKey latticeKey) {
+                     unsigned int dnlen, HashLattice *hashlattice, DNodeArmature **armatr, LttcHashKey latticeKey) {
     int i;
     int j=0;
     int k=0;
@@ -662,7 +663,7 @@ double long *map_dir(StatusFrame **statusFrame, const char *dir_path, unsigned i
     unsigned long long roothshno;
     unsigned long rootino = cwd_ino(".");
     // Each dir node is a link in the dir chains
-    DiNode* dirNode_ptr;
+    DNode dirNode_ptr;
 
     // Gen numbers for the root first, to be used in the creation of values for its entries
     mk_one_dir_hashes(&rootiid,&roothshno,rootino);
@@ -674,7 +675,7 @@ double long *map_dir(StatusFrame **statusFrame, const char *dir_path, unsigned i
     dump_little_hash_key(hkey,rootdirname,dnlen);
 
     // Initialize file table assigned to the root
-    init_armatr(&armatr,HTSIZE,&hkey);
+    init_armatr(armatr,HTSIZE,&hkey);
     dirNode_ptr = add_dnode(rootiid,rootdirname,dnlen,1,&hashlattice,armatr);
     pp.resdir_name = (char*) dirNode_ptr->diname;
     pp.resdirname_len = expo_dirnmlen(dirNode_ptr->did);
@@ -712,7 +713,6 @@ double long *map_dir(StatusFrame **statusFrame, const char *dir_path, unsigned i
         free((*dentrys)[i]);
     }
     free(*dentrys);
-
     set_fisz(&lattFd,anchorsz);
 
     // Alloc arrays for file/dir hash value (assigned random num), and id number derived from inode and hash value.
@@ -762,11 +762,8 @@ double long *map_dir(StatusFrame **statusFrame, const char *dir_path, unsigned i
         return NULL;
     }
 
-
     time_supr();
 
-//*
-// *
 // *  Begin test section...
 // *  -------------------------------
 // */
@@ -775,7 +772,7 @@ double long *map_dir(StatusFrame **statusFrame, const char *dir_path, unsigned i
     hashlattice->chains->vessel = hashlattice->chains->dir_head;
     for (i=0;i<7;i++) {
         if (hashlattice->chains->vessel->did == 0){break;}
-        travel_dchains(&(hashlattice->chains->vessel), 1, 1, NULL, &hashlattice->state);
+        travel_dchains(&(hashlattice->chains->vessel), 1, 1, NULL, NULL);
         printf("%s\n", hashlattice->chains->vessel->diname);
         printf("^^%llu\n", (hashlattice->chains->vessel->did));
         printf("^^%u\n", expo_dirnmlen(hashlattice->chains->vessel->did));

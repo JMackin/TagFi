@@ -41,7 +41,7 @@
  *                  \____ char: '0xbddbdbbd' (3185302461)
  */
 
-
+unsigned int auth_session(const unsigned char* buf){return 0;}
 /**
  * \SplitCategories
  *  Recursively iterate array of masked integers representing the OR'd value for
@@ -102,7 +102,7 @@ unsigned int split_cats(const unsigned int *lead_flags,
                         unsigned int trfidi,
                         unsigned int *subflg) {
 
-    if (l_itr > 5 || (flg_itr->req) >= UUUU) {
+    if (l_itr > 5 || (flg_itr->req) >= LEAD) {
         return cnt;
     } else {
         if (l_itr == 2) {
@@ -135,7 +135,7 @@ uint parse_lead(cnst_uint lead,
     uint k = 1920;
     uint i = 0;
     uint flg_suffx = 15;
-    uint flgcnt = 0;
+    uint flgcnt;
 
     /** Alloc buffer to hold OR'd category flag values
      * and an array for the final parsed flag list.
@@ -203,6 +203,12 @@ InfoFrame *parse_req(uchar_arr fullreqbuf, //<-- same name in spin up
     uint dflt_flg = 0;  // Signals DFLT flag present in lead
     ReqFlag uni_flag;   // OR'd lead flags
 
+    /* Initiate Session after 1 trigger and a 2
+     * Initiate new client after 2 trigger and value 4
+     * Update client after 3 trigger and value 8
+     */
+    uint init_flag = 1;
+
     /**
      * Parse request sequence-lead and init CMD struct
      * */
@@ -242,6 +248,7 @@ InfoFrame *parse_req(uchar_arr fullreqbuf, //<-- same name in spin up
         stsErno(MALREQ, stsfrm, "Request structure malformed", 0, NULL, "parse_req", NULL, errno);return (NULL);
     }
     exit_flg = uni_flag == ENDBYTES ? (exit_flg << 1) : 1; //   EXIT trigger 1
+    init_flag = uni_flag & INIT ? (init_flag << 1) : 1; // INIT trigger 1;
 
     /**
      * Alloc and populate int buffer with the cmd sequence
@@ -251,6 +258,7 @@ InfoFrame *parse_req(uchar_arr fullreqbuf, //<-- same name in spin up
 
     exit_flg = *((*infofrm)->arr+(2 * UINT_SZ)) == 255 ? (exit_flg << 1) : 1; // EXIT trigger 2
     exit_flg = *tmparrbuf == SHTDN ? (exit_flg << 1) : 1;    //  EXIT trigger 3
+
 
     /**
      * Exit for shutdown upon receiving three shutdown triggers

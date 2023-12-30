@@ -10,6 +10,10 @@
 #include "lattice_works.h"
 #include <stdint.h>
 
+
+#define rspsz_b 8
+#define arr_b 12
+
 void rsparr_out(unsigned char ** buf, unsigned int arrlen);
 unsigned char* rsparr_pos(buff_arr buf);
 void rsparr_len_set(unsigned int sz, unsigned char ** buf);

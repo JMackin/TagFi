@@ -108,7 +108,6 @@ def main(path: list, maxlength: int = 7, dump: bool = False, topres: int = 0, ex
     shutil.copyfile(f'../FiForms.h', f'../BKUP/fiforms{ts}.h')
     shutil.copyfile(f'../FiForms.c', f'../BKUP/fiforms{ts}.c')
 
-
     with open('../FiForms.h', 'w') as f:
         with open('FIFORMSDOTHTEMP', 'r') as ff:
             with open('FIFORMSDOTCTEMPL', 'r') as fff:
@@ -130,10 +129,10 @@ def main(path: list, maxlength: int = 7, dump: bool = False, topres: int = 0, ex
                                 elif int(elem[0]) == 1:
                                     if int(elem[1]) == 0:
                                         (f if flip else ffff).writelines(f"\t\t{r[0]} = {r[1]},\n" for r in res)
-                                        (f if flip else ffff).write(f"\t\tNONE = 0\n")
+                                        (f if flip else ffff).write(f"\t\tNONE = 0,\n")
                                     elif int(elem[1]) == 1:
                                         ffff.writelines(
-                                            f"\t\t\"{r[0]}\"" + (",\n" if r[0] != last[0] else f",\n\t\t\"NONE\"\n\n")
+                                            f"\t\t\"{r[0]}\"" + (",\n" if r[0] != last[0] else f",\n\t\t\"NONE\",\n\n")
                                             for r in res)
                                 cnt = 0
                             else:

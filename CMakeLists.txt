@@ -34,6 +34,9 @@ add_executable(TagFI hashlattice.c /usr/local/include/sodium.h
         Options.h
         lattice_sessions.c
         lattice_sessions.h
+        Tools.c
+        Tools.h
+        FiOps.c
 
 )
 include_directories(/usr/local/include/sodium)

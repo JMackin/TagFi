@@ -19,12 +19,12 @@
 #include "lattice_rsps.h"
 #include "FiDiMasks.h"
 #include "lattice_works.h"
-#include "lattice_sessions.h"
+#include "lattice_nodes.h"
 
 
 #define CNFIGPTH "/home/ujlm/CLionProjects/TagFI/config"
 #define DNCONFFI "dirnodes"
-#define SOCKET_NAME "/tmp/9Lq7BNBnBycd6nxy.socket"
+//#define SOCKET_NAME "/tmp/9Lq7BNBnBycd6nxy.socket"
 #define CMDCNT 16
 #define ARRSZ 256
 #define FLGSCNT 16
@@ -32,6 +32,47 @@
 #define PARAMX 65535
 
 int erno;
+
+uint estab_socket(void* base, char* dest_dir, char** nameout){
+    uint strlen;
+    uint pos;
+    uint extlen = 7;
+    char* ext = ".socket";
+    if (dest_dir != NULL){
+        if (check_dir_existence(dest_dir)){ fprintf(stderr,"Dir invalid - estab-socket()\n");return 1;}
+        strlen = strnlen(dest_dir,ARRBUF_LEN-(ULONG_SZ*4));
+
+    }else{
+        dest_dir = "/tmp/";
+        strlen = 5;
+    }
+    pos = strlen;
+
+    *nameout = (char*) calloc(ARRBUF_LEN,UCHAR_SZ);
+    char* name = gen_socket_name(base);
+
+    memcpy((*nameout),dest_dir,strlen);
+    strlen = strnlen(name,ULONG_SZ*4);
+    if(pos+strlen > ARRBUF_LEN){
+        fprintf(stderr,"Out of buffer - estab-socket()\n");
+        free((*nameout));
+        free(name);
+        return 1;
+    }
+    memcpy((*nameout)+pos,name,strlen);
+    pos += strlen;
+    free(name);
+
+    if(pos+extlen > ARRBUF_LEN){
+        fprintf(stderr,"Out of buffer - estab-socket()\n");
+        free((*nameout));
+        return 1;
+    }
+    memcpy((*nameout)+pos,ext,extlen);
+    pos += extlen;
+
+    return pos;
+}
 
 void disassemble(Lattice* hashlattice,
                  DChains * dirchains,
@@ -88,12 +129,12 @@ void disassemble(Lattice* hashlattice,
     //MEDA
     (*hashlattice)->chains->vessel = (*hashlattice)->chains->dir_head->right;
     cnt = expo_basedir_cnt((*hashlattice)->chains->vessel->did);
-    goto_chain_tail((*hashlattice)->chains, 1, NULL, &(*hashlattice)->state);
+    goto_chain_tail((*hashlattice)->chains, 1, NULL, NULL);
     if ((*hashlattice)->chains->vessel->left->tag == 7){
         free((*hashlattice)->chains->vessel->left);
     }
 
-    Armatr armatr_hold;
+    DNode node;
     entr_cnt = 0;
     for (i = 0; i< cnt; i++){
         if (is_base((*hashlattice)->chains->vessel)) {
@@ -107,76 +148,76 @@ void disassemble(Lattice* hashlattice,
             free((*hashlattice)->chains->vessel->right);
         }
 
-        armatr_hold = tbl_list[i];
+        node = (*hashlattice)->chains->vessel;
         struct stat statbuf;
 
         //Prime fd's
-        if ((armatr_hold->nodemap->entrieslist_fd->prime_fd) > 2){
-            if (fstat((armatr_hold->nodemap->entrieslist_fd->prime_fd),&statbuf) != -1){
-                close((armatr_hold->nodemap->entrieslist_fd->prime_fd));
+        if ((node->node_gate->entrieslist_fd->prime_fd) > 2){
+            if (fstat((node->node_gate->entrieslist_fd->prime_fd), &statbuf) != -1){
+                close((node->node_gate->entrieslist_fd->prime_fd));
             }
-            (armatr_hold->nodemap->entrieslist_fd->prime_fd) = 0;
+            (node->node_gate->entrieslist_fd->prime_fd) = 0;
         }
-        if ((armatr_hold->nodemap->dirnode_fd->prime_fd) > 2){
-            if (fstat((armatr_hold->nodemap->dirnode_fd->prime_fd),&statbuf) != -1){
-                close((armatr_hold->nodemap->dirnode_fd->prime_fd));
+        if ((node->node_gate->dirnode_fd->prime_fd) > 2){
+            if (fstat((node->node_gate->dirnode_fd->prime_fd), &statbuf) != -1){
+                close((node->node_gate->dirnode_fd->prime_fd));
             }
-            (armatr_hold->nodemap->dirnode_fd->prime_fd) = 0;
+            (node->node_gate->dirnode_fd->prime_fd) = 0;
         }
-        if ((armatr_hold->nodemap->shm_fd->prime_fd) > 2){
-            if (fstat((armatr_hold->nodemap->shm_fd->prime_fd),&statbuf) != -1){
-                close((armatr_hold->nodemap->shm_fd->prime_fd));
+        if ((node->node_gate->shm_fd->prime_fd) > 2){
+            if (fstat((node->node_gate->shm_fd->prime_fd), &statbuf) != -1){
+                close((node->node_gate->shm_fd->prime_fd));
             }
-            (armatr_hold->nodemap->shm_fd->prime_fd) = 0;
+            (node->node_gate->shm_fd->prime_fd) = 0;
         }
 
         //Duped fd's
-        if ((armatr_hold->nodemap->entrieslist_fd->duped_fd) > 2){
-            if (fstat((armatr_hold->nodemap->entrieslist_fd->duped_fd),&statbuf) != -1){
-                close((armatr_hold->nodemap->entrieslist_fd->duped_fd));
+        if ((node->node_gate->entrieslist_fd->duped_fd) > 2){
+            if (fstat((node->node_gate->entrieslist_fd->duped_fd), &statbuf) != -1){
+                close((node->node_gate->entrieslist_fd->duped_fd));
             }
-            (armatr_hold->nodemap->entrieslist_fd->duped_fd) = 0;
+            (node->node_gate->entrieslist_fd->duped_fd) = 0;
         }
-        if ((armatr_hold->nodemap->dirnode_fd->duped_fd) > 2){
-            if (fstat((armatr_hold->nodemap->dirnode_fd->duped_fd),&statbuf) != -1){
-                close((armatr_hold->nodemap->dirnode_fd->duped_fd));
+        if ((node->node_gate->dirnode_fd->duped_fd) > 2){
+            if (fstat((node->node_gate->dirnode_fd->duped_fd), &statbuf) != -1){
+                close((node->node_gate->dirnode_fd->duped_fd));
             }
-            (armatr_hold->nodemap->dirnode_fd->duped_fd) = 0;
+            (node->node_gate->dirnode_fd->duped_fd) = 0;
         }
-        if ((armatr_hold->nodemap->shm_fd->duped_fd) > 2){
-            if (fstat((armatr_hold->nodemap->shm_fd->duped_fd),&statbuf) != -1){
-                close((armatr_hold->nodemap->shm_fd->duped_fd));
+        if ((node->node_gate->shm_fd->duped_fd) > 2){
+            if (fstat((node->node_gate->shm_fd->duped_fd), &statbuf) != -1){
+                close((node->node_gate->shm_fd->duped_fd));
             }
-            (armatr_hold->nodemap->shm_fd->duped_fd) = 0;
+            (node->node_gate->shm_fd->duped_fd) = 0;
         }
 
-        if (armatr_hold->nodemap->dirnode_fd->path != NULL){
-            free(armatr_hold->nodemap->dirnode_fd->path);
+        if (node->node_gate->dirnode_fd->path != NULL){
+            free(node->node_gate->dirnode_fd->path);
         }
-        if (armatr_hold->nodemap->entrieslist_fd->path != NULL){
-            free(armatr_hold->nodemap->entrieslist_fd->path);
+        if (node->node_gate->entrieslist_fd->path != NULL){
+            free(node->node_gate->entrieslist_fd->path);
         }
-        if (armatr_hold->nodemap->shm_fd->path != NULL){
-            free(armatr_hold->nodemap->entrieslist_fd->path);
+        if (node->node_gate->shm_fd->path != NULL){
+            free(node->node_gate->entrieslist_fd->path);
         }
 
-        free(armatr_hold->nodemap->entrieslist_fd);
-        free(armatr_hold->nodemap->dirnode_fd);
-        free(armatr_hold->nodemap->shm_fd);
-        //free(armatr_hold->nodemap->path);
-        free(armatr_hold->nodemap);
-        armatr_hold->nodemap = NULL;
+        free(node->node_gate->entrieslist_fd);
+        free(node->node_gate->dirnode_fd);
+        free(node->node_gate->shm_fd);
+        //free(node->node_gate->path);
+        free(node->node_gate);
+        node->node_gate = NULL;
 
-        for (k = 0; k < armatr_hold->totsize; k++){
-            if (armatr_hold->entries[k].tag){
-                free(armatr_hold->entries[k].path);
-                armatr_hold->entries[k].path = NULL;
-                armatr_hold->entries[k].tag = 0;
+        for (k = 0; k < node->armatr->totsize; k++){
+            if (node->armatr->entries[k].tag){
+                free(node->armatr->entries[k].path);
+                node->armatr->entries[k].path = NULL;
+                node->armatr->entries[k].tag = 0;
             }
         }
-        free(armatr_hold->entries);
-        free(armatr_hold);
-        armatr_hold=NULL;
+        free(node->armatr->entries);
+        free(node->armatr);
+        node->armatr=NULL;
 
 //       free((*hashlattice)->armature->entries);
 //        free((*hashlattice)->armature);
@@ -189,7 +230,7 @@ void disassemble(Lattice* hashlattice,
     //DOCS
     (*hashlattice)->chains->vessel = (*dirchains)->dir_head->left;
     cnt = expo_basedir_cnt((*hashlattice)->chains->vessel->did);
-    goto_chain_tail((*hashlattice)->chains, 0, NULL, &(*hashlattice)->state);
+    goto_chain_tail((*hashlattice)->chains, 0, NULL, NULL);
     if ((*hashlattice)->chains->vessel->left->tag == 7){
         free((*hashlattice)->chains->vessel->left);
     }
@@ -257,7 +298,7 @@ void disassemble(Lattice* hashlattice,
     printf("\n-----\nfreed: %d\ncount: %lu\n-----\n",hb_cnt,(*hashlattice)->count);
     free((*hashlattice)->bridges);
     free(*hashlattice);
-    free(tbl_list);
+    //free(tbl_list);
     //free(idxlst);
 
     if (lengths != NULL && paths != NULL) {
@@ -312,28 +353,38 @@ size_t read_conf(unsigned char **dnconf_addr, int cnfdir_fd, LState ltcSt) {
 
 int nodepaths(unsigned char* dn_conf_addr, int** lengths, unsigned char*** paths){
 
-    int dn_count = *(dn_conf_addr+3);
-    *lengths = calloc(dn_count,sizeof(int));
-    int byte_strcnt = 7;
-    int i;
-    int addn = 0;
+    //TODO: Update function so as not to use magic numbers
 
+    int dn_count;
+    //TODO: Fix error surrounding endianess
+    memcpy(&dn_count,(dn_conf_addr+7), UCHAR_SZ);   //Node count @ pos 4-7
+
+    *lengths = (int*) calloc(dn_count,UINT_SZ);
+
+    int byte_strcnt = 12;    // 12 = Lengths section start pos.
+    int i;
     int tot_len = 0;
 
     for (i = 0; i < dn_count; i++){
-
-        *(*lengths+i) = (int) *(dn_conf_addr+byte_strcnt);
-        tot_len += *(*lengths+i)+4;
+        //*(*lengths+i) = (int) *(dn_conf_addr+byte_strcnt);
+        // Each length is a 4-byte int followed by a single-byte NULL
+        memcpy((*lengths+i),(dn_conf_addr+byte_strcnt),UCHAR_SZ);
+        tot_len += *(*lengths+i)+2;
         byte_strcnt += 2;
     }
+    // End of lengths segment. Lengths tail marker = 4 bytes.
 
-    byte_strcnt += 6;
+    // Begin Item value segment. Item value flank marker = 4 bytes
+    byte_strcnt += 8;
+    // 8 bytes = length-seg tail width + item-value starting marker width
 
+    // Paths is a pointer to an array of pointers to item values mem-mapped from the config file
     *paths = (unsigned char**) calloc(dn_count, sizeof(unsigned char*));
 
     for (i = 0; i < dn_count; i++) {
-
+        // Each value is a pointer to a location in the mmap'd config containing a char-array w/ the node paths.
         *(*paths+i) = dn_conf_addr+byte_strcnt;
+        // Each subsequent value exists at len(item)+1 bytes from the start of the previous
         byte_strcnt += *(*lengths+i)+1;
     }
 
@@ -350,6 +401,17 @@ int extract_name(const unsigned char* path, int length) {
     return fs_pos + 1;
 }
 
+SpawnKit set_spawnkit(Lattice lattice){
+    Vessel vessel;
+    TravelPath travelPath;
+    BufferPool bufferPool;
+
+
+    vessel = (Vessel) malloc(sizeof(Vessel));
+    travelPath.origin = lattice->chains->dir_head;
+    travelPath.destination = NULL;
+    init_bufferpool(&bufferPool);
+}
 
  /* * * * * * * * * * * * * *
  *  SPool thread & respond *
@@ -372,19 +434,19 @@ int extract_name(const unsigned char* path, int length) {
 
      SOA_Pack soa_pack = (SOA_Pack) sp;
      int exit_flag = 0;
-     init_SOA_bufs(&soa_pack);
+     //init_SOA_bufs(&soa_pack);
      ErrorBundle errBndl = init_errorbundle();
-
-     LSession_PTP session = soa_pack->session;
-     LState_PTP latticeState =  &(*session)->state;
-     StsFrame_PTP statusFrame = &(*latticeState)->frame;
+     SSession session = soa_pack->session;
+     SState latticeState =  (session)->state;
+     StsFrame statusFrame = (latticeState)->frame;
      epEvent epoll_event = soa_pack->epollEvent_IN;
+     pthread_mutex_t* lock = soa_pack->lock;
 
+     pthread_mutex_lock(lock);
      /**
       * READ REQUEST INTO BUFFER
       * */
      ssize_t ret = read(soa_pack->dataSocket, *soa_pack->request_buf, soa_pack->buf_len);  // READ 'R'
-
      if (ret == -1) {
          errBndl = bundle_addglob(errBndl, BADSOK, NULL, "Issue reading from data socket", soa_pack->dataSocket,
                                   "datasocket",
@@ -392,8 +454,8 @@ int extract_name(const unsigned char* path, int length) {
          raiseErr(errBndl);
          return NULL;
      }
-
-     (*statusFrame)->status <<= 1;
+     pthread_mutex_unlock(lock);
+     (statusFrame)->status <<= 1;
 
 /**
  * CMD RECEIVED
@@ -403,20 +465,20 @@ int extract_name(const unsigned char* path, int length) {
       * */
      *soa_pack->infoFrame = parse_req(*soa_pack->request_buf,   // <<< Raw Request
                                       soa_pack->infoFrame,
-                                      statusFrame,
+                                      &statusFrame,
                                       soa_pack->flags_buf,
                                       *soa_pack->tempArr_buf, //TODO: Cleanup data types here
                                       soa_pack->requestArr_buf); // >>> Extracted array
 
-     if ((*statusFrame)->err_code) {
-         if ((*statusFrame)->act_id == GBYE){
-             (*session)->op == SESH_ST_SHTDN;
+     if ((statusFrame)->err_code) {
+         if ((statusFrame)->act_id == GBYE){
+             (session)->op == SESH_ST_SHTDN;
              exit_flag = 1;
-             setSts(statusFrame, SHTDN, 0);
+             setSts(&statusFrame, SHTDN, 0);
              goto endpoint;
          }
-         setErr(statusFrame, MALREQ, 0);
-         serrOut(statusFrame, "Failed to process request.");
+         setErr(&statusFrame, MALREQ, 0);
+         serrOut(&statusFrame, "Failed to process request.");
          goto endpoint;
 
          // TODO: replace w/ better option.
@@ -425,31 +487,31 @@ int extract_name(const unsigned char* path, int length) {
 
      /** DETERMINE RESPONSE */
      if (respond(*soa_pack->responseTable,
-                 soa_pack->session,
+                 &soa_pack->session,
                  soa_pack->infoFrame,
                  &(*soa_pack->hashLattice)->chains,
                  soa_pack->hashLattice,
                  *soa_pack->response_buf)){
-         setErr(statusFrame, MISSPK, 0);
-         serrOut(statusFrame, "Failed to stage a response");
+         setErr(&statusFrame, MISSPK, 0);
+         serrOut(&statusFrame, "Failed to stage a response");
          // TODO: replace w/ better option.
      }
      //TODO: Optimize response processing time
 
-     if ((*statusFrame)->act_id == GBYE) {
+     if ((statusFrame)->act_id == GBYE) {
          /**
           * ACTION:
           *  shutdown
           * */
-         setSts(statusFrame, SHTDN, 0);
-         (*session)->op == SESH_ST_SHTDN;
+         setSts(&statusFrame, SHTDN, 0);
+         (session)->op == SESH_ST_SHTDN;
          exit_flag = 1;
      }else {
-         setSts(statusFrame, RESPN, 0);
-         pthread_mutex_lock(soa_pack->lock);
+         setSts(&statusFrame, RESPN, 0);
 
          /** WRITEOUT REPLY */
          // TODO: Need to handle multiple users using their own buffers or assign them to a queue for writing out.
+         //pthread_mutex_lock(lock);
          if (epoll_wait(soa_pack->epollFD,epoll_event,0,100)){
              fprintf(stderr,"\n1!\n");
              if ((epoll_event->events & EPOLLERR) == EPOLLERR) {
@@ -469,8 +531,7 @@ int extract_name(const unsigned char* path, int length) {
              fprintf(stderr,"\n3!\n");
 
          }
-         pthread_mutex_unlock(soa_pack->lock);
-
+         //pthread_mutex_unlock(lock);
      }
 
      /**
@@ -478,7 +539,6 @@ int extract_name(const unsigned char* path, int length) {
       *  save received sequence
       * */
      //TODO: Implement cmd saving
-
      /**
       * CLEAR CONNECTION
       * */
@@ -487,18 +547,13 @@ int extract_name(const unsigned char* path, int length) {
      printf("\n<<TIME: %lu>>\n",cb-ca);
 
      endpoint:
-
      if(exit_flag){
-
          soa_pack->_internal.shtdn=1;
-         (*session)->op == SESH_ST_SHTDN;
+         (session)->op == SESH_ST_SHTDN;
      }
 
-     pthread_mutex_lock(soa_pack->lock);
      init_infofrm(soa_pack->infoFrame,0);
-     //bzero(*soa_pack->request_buf, soa_pack->buf_len - 1);
-     //bzero(soa_pack->flags_buf,FLGSCNT);
-    // bzero(soa_pack->response_buf, soa_pack->buf_len - 1);
+
      if (close(soa_pack->dataSocket) == -1){
          bundle_addglob(errBndl, BADSOK, NULL, "Error writiting response to buffer", soa_pack->dataSocket, "datasocket",
                         "endpoint", NULL, errno);
@@ -506,10 +561,15 @@ int extract_name(const unsigned char* path, int length) {
          return NULL;
      }
 
+     pthread_mutex_lock(lock);
      epoll_ctl(soa_pack->epollFD, EPOLL_CTL_DEL, soa_pack->dataSocket, soa_pack->epollEvent_IN);
-     destroy_SOA_bufs(&soa_pack);
+     pthread_mutex_unlock(lock);
 
-     pthread_mutex_unlock(soa_pack->lock);
+     //destroy_SOA_bufs(&soa_pack);
+     discard_SpinOff_Args(&soa_pack);
+     end_session(&session);
+     pthread_mutex_destroy(lock);
+
      pthread_exit(&exit_flag);
 }
 
@@ -538,7 +598,21 @@ int extract_name(const unsigned char* path, int length) {
     (*dirchains)->vessel = (*dirchains)->dir_head;
     (*infofrm)->vessel = &(*dirchains)->vessel;
 
-    int exit_flag = 0;
+    char* socketName;
+    uint namelen = estab_socket(NULL,NULL,&socketName);
+    if(namelen == 1){
+        bundle_and_raise(errBndl,MISCLC,ltcSt,"Error establishing a named socket. Likely ran out of buffer."
+                         ,ARRBUF_LEN,"buffer-length-max",
+                         "estab_socket",NULL,0);
+        return 1;
+    }
+    if(dump_socketname(*cnfdir_fd, socketName, NULL, NULL, namelen)){
+        free(socketName);
+        return 1;
+    }
+
+
+         int exit_flag = 0;
     int i = 0;
     int n_fds;
     int k, res;
@@ -558,7 +632,7 @@ int extract_name(const unsigned char* path, int length) {
     int data_socket;
 
     name.sun_family = AF_UNIX;
-    strncpy(name.sun_path, SOCKET_NAME, sizeof(name.sun_path) - 1);
+    strncpy(name.sun_path, socketName, sizeof(name.sun_path) - 1);
 
     /**
      * OPEN CONNECTION SOCKET
@@ -570,9 +644,10 @@ int extract_name(const unsigned char* path, int length) {
         setAct(&ltcSt->frame, GBYE, 0, 0);
         return 1;
     }
+
     memset(&name, 0, sizeof(name));
     name.sun_family = AF_UNIX;
-    strncpy(name.sun_path, SOCKET_NAME, sizeof(name.sun_path) - 1);
+    strncpy(name.sun_path, socketName, sizeof(name.sun_path) - 1);
 
     /**
      * BIND SOCKET TO LISTENING FD
@@ -589,6 +664,7 @@ int extract_name(const unsigned char* path, int length) {
      * EPOLL
      */
     make_socket_non_blocking(connection_socket);
+
 
     /**
     * LISTEN ON A SOCKET
@@ -624,7 +700,7 @@ int extract_name(const unsigned char* path, int length) {
 
      if (epoll_ctl(efd, EPOLL_CTL_ADD, connection_socket, epINIT_event) == -1) {
          perror("epoll_ctl");
-         exit(1);
+         return 1;
      }
 
       /* * * * * * * * *
@@ -661,8 +737,6 @@ int extract_name(const unsigned char* path, int length) {
                      struct sockaddr in_addr;
                      socklen_t in_len;
                      int infd;
-                     char hbuf[NI_MAXHOST], sbuf[NI_MAXSERV];
-
                      in_len = sizeof in_addr;
                      infd = accept(connection_socket, &in_addr, &in_len);
                      if (infd == -1) {
@@ -687,39 +761,52 @@ int extract_name(const unsigned char* path, int length) {
                  ssize_t count;
                  pthread_t thread;
                  int spawn_socket = epINIT_event[i].data.fd;
-                 LSession session = init_session();
-                 session = tailor_session(&session,&thread,spawn_socket,1);
 
+                 pthread_mutex_t spawn_lock;
+                 if (pthread_mutex_init(&spawn_lock,NULL) != 0){
+                     perror(("Error making spawn lock."));
+                     abort();
+                 }
+                 pthread_mutex_lock(&spawn_lock);
 
+                 // TESTING
+                 SpawnSecrets secrets;
+                 Kit kit = malloc(sizeof(SpawnKit));
+//               Spawn spawn_thread(pthread_t thread_id, SpawnLock lock, SpawnNotify notify, uint tag_alpha){
+                     //init_spawn_fi2(&id);
+
+                 SSession session = init_session(secrets);
+                 pthread_mutex_unlock(&spawn_lock);
+                 session = tailor_session(&session, spawn_socket, NULL, NULL);
                  SOA_Pack soaPack = pack_SpinOff_Args(0, hashlattice,
-                                                      NULL, NULL, NULL, NULL, NULL,
-                                                      infofrm, rsp_tbl, epINIT_event,
-                                                      efd, epINIT_event[i].data.fd, BUF_LEN, 0, &ep_lock, &session);
-                 if(pthread_create(&thread, NULL, spin_off, soaPack)){
+                                                    NULL, NULL, NULL, NULL, NULL,
+                                                    infofrm, rsp_tbl, epINIT_event,
+                                                    efd, spawn_socket, BUF_LEN, 0, &spawn_lock, session);
+                 pthread_mutex_unlock(&spawn_lock);
+
+                 if(pthread_create(&thread, NULL, spin_off, (void*)(soaPack))){
                      perror("pthread");
                      abort();
                  }
-                 if(pthread_join(thread,NULL)){
-                     perror("pthread join");
+                 if(pthread_detach(thread)){
+                     perror("pthread detach");
                      abort();
                  }
 
-                 if(session->state->frame->status == SHTDN){
+                 if(ltcSt->frame->status == SHTDN){
                      pthread_mutex_lock(&ep_lock);
                      exit_flag=1;
                      ltcSt->frame->status = SHTDN;
-                     destroy_SOA_bufs(&soaPack);
-                     end_session(&session);
+                     //destroy_SOA_bufs(&soaPack);
                      pthread_mutex_unlock(&ep_lock);
                      if (pthread_self() != 1){
                          if (soaPack != NULL) {free(soaPack);soaPack = NULL;}
                          break;
                      }
                  }
-                 discard_SpinOff_Args(&soaPack);
-                 if (soaPack != NULL) {free(soaPack);soaPack = NULL;}
+                 //discard_SpinOff_Args(&soaPack);
+                 //if (soaPack != NULL) {free(soaPack);soaPack = NULL;}
                  continue;
-
              }
          }
          //(ltcSt->frame)->status <<= 1;
@@ -731,20 +818,29 @@ int extract_name(const unsigned char* path, int length) {
     }// END WHILE !EXITFLAG
 
 
+    pthread_mutex_destroy(&ep_lock);
     fprintf(stderr,"CLOSING\n");
     //close(connection_socket);
+    close(efd);
     closefrom(connection_socket);
     free(epINIT_event);
     free(epEvents);
     fprintf(stderr,"CLOSING\n");
 
-    unlink(SOCKET_NAME);
-    return 0;
+     unlink(socketName);
+     free(socketName);
+     return 0;
 }
-    /* * * * *
-      * CLOSE *
-       * * * * */
 
+LState init_lattstate() {
+    LState lState = (LState) malloc(sizeof(LatticeState));
+    lState->frame = (StsFrame) malloc(sizeof(StatusFrame));
+    stsReset(&lState->frame);
+    init_Tag(&lState->tag); //TODO: impliment a consistent tag system
+    lState->misc = 0;
+
+    return lState;
+}
 
 
 void summon_lattice() {
@@ -753,7 +849,7 @@ void summon_lattice() {
     /**
      * INIT GLOBAL STATFRAME
      */
-    LState latticestate = init_latticestate();
+    LState latticestate = init_lattstate();
 
     /**
      * START SODIUM
@@ -787,7 +883,7 @@ void summon_lattice() {
 
     InfoFrame *info_frm;    // Frame for storing request info
 
-    LttcKey latticeKey = sodium_malloc(ULONG_SZ * 2);
+    LttcHashKey latticeKey = sodium_malloc(ULONG_SZ * 2);
     unsigned char* headname = malloc(sizeof(unsigned char)*5);
     unsigned char headnm[5] = {'H','E','A','D','\0'};
     memcpy(headname,headnm,5);
@@ -854,7 +950,7 @@ void summon_lattice() {
 
         dn_cnt = nodepaths(dn_conf, &lengths, &paths);
         // Array of FileTables connected to DirNodes
-        Armature **tbl_list = (Armature **) calloc(dn_cnt, sizeof(Armature *));
+        DNodeArmature **tbl_list = (DNodeArmature **) calloc(dn_cnt, sizeof(DNodeArmature *));
 
 
 //        errBndl = bundle_addglob(errBndl, ESHTDN, "DirectoryMapping failed", 333, 0, "map_dir", NULL, 0);
