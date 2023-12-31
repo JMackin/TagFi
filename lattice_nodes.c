@@ -1000,7 +1000,7 @@ uint init_spawn_fi2(LatticeID_PTA id){
     cnfmt.add_newline(cmt);
 
 
-    // LatticeAuthTag
+    // LattAuthTag64
     piece <<= 1;
     cnfmt.into_buffer(piece_ptr,cnfmt.ret_typesize(UINT_F),cmt);
     cnfmt.add_newline(cmt);

@@ -26,4 +26,14 @@ unsigned int bytes_tostr(char** strout, const unsigned char* bytes, size_t b_len
 char* gen_socket_name(void* namebase);
 void gen_master_key(void);
 void derive_master_subkeys(void);
+void gen_signing_key(void);
+void gen_crypt_key(void);
+void gen_hash_key(void);
+void gen_auth_key();
+//uint mk_auth_tag(LattTag authTagOut, LattTagBase* tagbase, unsigned long long int tagbase_len);
+
+uint mk_sign_tag(ULattTag* signTagOut, unsigned long long int** tag_len, LattTagBase* tagbase, unsigned long long int tagbase_len);
+uint mk_auth_tag(ULattTag* authTagOut, unsigned long long int* tag_len, LattTagBase* tagbase, unsigned long long int tagbase_len);
+void gen_rand_tag_base(LattTagBase* base_out,uint tagsize);
+
 

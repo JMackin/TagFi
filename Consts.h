@@ -51,6 +51,7 @@ typedef union uniArr{
     unsigned char* carr;
 }uniArr;
 
+typedef unsigned long long int ullint;
 typedef unsigned int uint;
 typedef unsigned char uchar;
 typedef unsigned long ulong;

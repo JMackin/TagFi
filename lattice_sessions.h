@@ -11,8 +11,11 @@
 
 #define SPAWNPIECES_CNT 7
 #define LATT_AUTH_BYTES 32U
-#define LATT_AUTH_MSGBASE_LEN 64U
-#define SESH_UV_CMD_CEIL 32
+#define LATT_AUTH16_BYTES 16U
+#define LATT_AUTHTAG_64_LEN 64U
+#define LATT_AUTHTAG_32_LEN 32U
+#define LATT_AUTH_MSGBASE_64_LEN 65 // Needs to be >= 2 * bin_in + 1
+#define LATT_AUTH_MSGBASE_32_LEN 33
 #define SPAWNPIECES_EXT ".spwn"
 #define SPAWNPIECES_EXT_LEN 5
 #define SPAWNFI_NAME_LEN (LATT_AUTH_BYTES+SPAWNPIECES_EXT_LEN+1)
@@ -23,12 +26,17 @@
 #define ISID 1
 
 typedef char LatticeID [LATT_AUTH_BYTES]; // Session Persistence and user ID handle
-typedef unsigned char* LattTagBase; // uchar string used as the "message" to generate an auth tag.
+typedef char* LattTagBase; // char string used as the "message" to generate an auth tag.
+typedef unsigned char* ULattTagBase; // char string used as the "message" to generate an auth tag.
+typedef char* LattTag; // Detached Auth tag derived from signing a TagBase.
+typedef unsigned char* ULattTag; // Detached Auth tag derived from signing a TagBase.
 typedef char (* LatticeID_PTA)[LATT_AUTH_BYTES]; // const pointer to LatticeID.
 typedef unsigned char LatticeSessionTag[LATT_AUTH_BYTES]; // Authentication tag to tie session resources back to a client
 typedef unsigned char (* LattSessionTag_PTA)[LATT_AUTH_BYTES]; // Authentication tag to tie session resources back to a client
-typedef unsigned char LatticeAuthTag[LATT_AUTH_BYTES]; // Access to resources and previous sessions
-typedef unsigned char (* LattAuthTag_PTA)[LATT_AUTH_BYTES]; // const pointer to LatticeAuthTag
+typedef unsigned char LattAuthTag64[LATT_AUTHTAG_64_LEN]; // Access to resources and previous sessions
+typedef unsigned char LattAuthTag32[LATT_AUTHTAG_32_LEN]; // Access to resources and previous sessions
+typedef unsigned char (* LattAuthTag32_PTA)[LATT_AUTHTAG_32_LEN]; // const pointer to LattAuthTag64
+typedef unsigned char (* LattAuthTag64_PTA)[LATT_AUTHTAG_64_LEN]; // const pointer to LattAuthTag64
 
 
 typedef pthread_key_t* KitKey;
@@ -59,14 +67,14 @@ typedef struct SpawnSecrets{
  * \AuthTag_Map
  *  This struct is to bundle the "messages" that are generated for each of the major resources
  *  assigned to a client. These messages are generated when resources are allocated and assigned,
- *  and from them an authentication tag is generated using the client's LatticeAuthTag. The authentication
+ *  and from them an authentication tag is generated using the client's LattAuthTag64. The authentication
  *  tags (declared with type LatticeSessionTag) are then included with the resources so they may be securely tied
  *  back to the client, and can allow for session persistance upon reconnection.
  *
  * <br><br><small><i>
  *  Dereffed Size:
  *  <br>        = 32 + (64?*3)
- *  <br>        = 32 + (3 * LATT_AUTH_MSGBASE_LEN)
+ *  <br>        = 32 + (3 * LATT_AUTH_MSGBASE_32_LEN)
  *  <br>        = 224
  */
 typedef struct SpawnAuthTagMap{

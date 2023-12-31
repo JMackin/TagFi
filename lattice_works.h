@@ -17,6 +17,7 @@
 #define HASHSTRLEN 64
 #define LLKEYSZ 16
 #define LKEYSZ 32u
+#define MAJORKEYCNT 5
 
 #define AUTH_TAG_SIZE 32
 
@@ -24,11 +25,36 @@
 typedef unsigned char LatticeLittleKey[LLKEYSZ];
 typedef unsigned char* LatticeKey;
 
-// 0 = sig, 1 = enc, 2 = hash
-typedef LatticeKey (*LttcTriSubKey)[3];
+// 0 = sig, 1 = enc, 2 = hash, 3 = pub, 4 = auth
+typedef LatticeKey (*LttcKeySum)[MAJORKEYCNT];
+
 
 typedef unsigned char* LttcHashKey;
-typedef unsigned char* LttcSigKey;
+
+/*
+ *
+ *   LK_SIG = 0 - Signing key.
+ *   LK_ENC = 1 - Encryption key.
+ *   LK_HSH = 2 - Keyed-hash key.
+ *   LK_PUB = 3 - Public key for client use.
+ *   LK_ATH = 4 - Generating auth/session tags.
+ *
+ * */
+typedef enum LttcKeyType{
+    // Signing key.
+    LK_SIG = 0,
+    // Encryption key.
+    LK_ENC = 1,
+    // Keyed-hash key.
+    LK_HSH = 2,
+    // Public key for client use.
+    LK_PUB = 3,
+    // Generating auth/session tags.
+    LK_ATH = 4
+
+}LttcKeyType;
+
+typedef char KeyNames[5][3];
 
 typedef struct FiEntry{
     //unsigned long long fiid;
@@ -96,7 +122,7 @@ typedef struct HashLattice {
     HashBridge** bridges;
     unsigned long count;
     unsigned long max;
-    LttcHashKey lhashKey;
+    LatticeKey lhashKey;
     LState state;
 } HashLattice;
 typedef HashLattice* Lattice;

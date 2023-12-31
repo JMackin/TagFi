@@ -550,7 +550,7 @@ typedef enum SpawnPoolState{
  * <li> PIECE_AUTHMAP = 8   // SpawnAuthTagMap = 224 bytes
  * <li> PIECE_KIT = 16      // SpawnKit = 192 bytes
  * <li> PIECE_ID = 32       // LattID = 32 bytes
- * <li> PIECE_KEY = 6       // LatticeAuthTag = 32 bytes
+ * <li> PIECE_KEY = 6       // LattAuthTag64 = 32 bytes
  *
  * */
 typedef enum SpawnPieces{
@@ -561,7 +561,7 @@ typedef enum SpawnPieces{
     PIECE_AUTHMAP = 8, // SpawnAuthTagMap = 224 bytes
     PIECE_KIT = 16, // SpawnKit = 192 bytes
     PIECE_ID = 32, // LattID = 32 bytes
-    PIECE_KEY = 64 // LatticeAuthTag = 32 bytes
+    PIECE_KEY = 64 // LattAuthTag64 = 32 bytes
 }SpawnPieces;
 
 
