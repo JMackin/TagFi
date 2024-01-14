@@ -16,12 +16,11 @@
 
 
 /* Create new struct to encapsulate a thread and bundle it with sync resources.*/
-Spawn spawn_thread(pthread_t thread_id, SpawnLock lock, SpawnNotify notify, uint tag_alpha){
+Spawn spawn_thread(pthread_t thread_id, SpawnLock lock, uint tag_alpha) {
 
     Spawn spawn = (Spawn) malloc(sizeof(ThreadSpawn));
     spawn->thread = thread_id;
     spawn->lock = lock;
-    spawn->notify = notify;
 //    spawn->res_keys = calloc(8,sizeof(pthread_key_t*));
 
     /*
@@ -35,6 +34,7 @@ Spawn spawn_thread(pthread_t thread_id, SpawnLock lock, SpawnNotify notify, uint
      */
     spawn->tag[0] = (tag_alpha == 0) ? 1 : tag_alpha; //TODO: enum for representing tag vals
     spawn->tag[1] = 0;
+
     return spawn;
 }
 
@@ -51,18 +51,22 @@ uint destroy_spawn(Spawn spawn){
     }
 }
 
-SPool init_spawnpool(int thread_count, int queue_size){
+SPool init_spawnpool(uint max_thread_count) {
     SPool spawnpool = malloc(sizeof(SpawnPool));
-    spawnpool->spawn = NULL;
+    if (max_thread_count == 0){
+        max_thread_count = 50;
+    }
+    spawnpool->spawn = calloc(max_thread_count,sizeof(Spawn));
     spawnpool->running_tag = 0;
     spawnpool->_internal = SPS_INIT;   // 0: Init / all normal
-    spawnpool->count = 0;
-    spawnpool->head = 0;
+//    spawnpool->count = 0;
+//    spawnpool->head = 0;
     spawnpool->queue_size = 0;
-    spawnpool->stop = 0;
-    spawnpool->tail = 0;
-    spawnpool->task_queue = 0;
+//    spawnpool->stop = 0;
+//    spawnpool->tail = 0;
+//    spawnpool->task_queue = 0;
     spawnpool->thread_count = 0;
+    //spawnpool->sessionTag
     return spawnpool;
 }
 
@@ -95,7 +99,7 @@ Spawn find_spawn(uint tag_or_id, ulong tagid, SPool sPool){
     return (sPool->spawn+(pos++));
 }
 
-uint push_spawn_task(SPool_PTP spawnpool, SpawnAct task, uint pos, uint tag){
+uint push_spawn_task(SPool_PTP spawnpool, SpawnTask task, uint pos, uint tag){
 
     if ((*spawnpool)->queue_size - 1 >= TASKQUEUE_MAX){
         (*spawnpool)->_internal = SPS_ATTASKMAX;  // 8: Full task capacity
@@ -114,12 +118,12 @@ uint push_spawn_task(SPool_PTP spawnpool, SpawnAct task, uint pos, uint tag){
         ++spawn_pos->tag[1];
         task.tag[1] = spawn_pos->tag[1];
     }
-    *((*spawnpool)->task_queue+((*spawnpool)->queue_size++)) = task;
+    //*((*spawnpool)->task_queue+((*spawnpool)->queue_size++)) = task;
 
     return 0;
 }
 
-int add_spawn(SPool_PTP spawnpool, pthread_t thread, SpawnLock lock, SpawnAct spawnAct) {
+int add_spawn(SPool_PTP spawnpool, pthread_t **thread, SpawnLock lock) {
 
     if((*spawnpool)->thread_count-1 >= THREADCNT_MAX){
         (*spawnpool)->_internal = SPS_ATTHREADMAX;  // 2: Full thread capacity
@@ -129,18 +133,20 @@ int add_spawn(SPool_PTP spawnpool, pthread_t thread, SpawnLock lock, SpawnAct sp
         return 1;
     }
 
-    (*spawnpool)->thread_count++;
-    (*spawnpool)->running_tag++;
+    ++(*spawnpool)->thread_count;
+    ++(*spawnpool)->running_tag;
 
     if (((*spawnpool)->running_tag) >= SPAWNTAG_CEIL){
         (*spawnpool)->running_tag = 1;
         (*spawnpool)->_internal = SPS_TAGROLLOVER; // 4: Running_tag rolled over
     }
 
-    uint newtag = ++(*spawnpool)->running_tag;
-    *((*spawnpool)->spawn + (*spawnpool)->thread_count) = *spawn_thread(thread, lock, NULL, 0);
+    //uint newtag = ++(*spawnpool)->running_tag;
 
-    push_spawn_task(spawnpool,spawnAct,0,newtag);
+    *((*spawnpool)->spawn + (*spawnpool)->thread_count) = *spawn_thread(**thread, lock, 5);
+
+
+    //push_spawn_task(spawnpool,spawnAct,0,newtag);
 
     return 0;
 
@@ -164,6 +170,7 @@ SSession init_session(SpawnSecrets secrets){
 *      56 = latticestate free'd
 */
     SSession lSession = (SSession) malloc(sizeof(SpawnSession));
+    SState Sstate = (SState) malloc(sizeof(SpawnState));
     lSession->tag[0] = 1;
     lSession->tag[1] = 0;
     lSession->secrets = secrets;
@@ -172,6 +179,10 @@ SSession init_session(SpawnSecrets secrets){
     lSession->kit_key = NULL;
     lSession->op = SESH_INIT;
     lSession->spawn = NULL;
+    lSession->state = Sstate;
+    lSession->state->cw_dnode = 0;
+
+    init_bufferpool(&lSession->bufferPool);
 
     return lSession;
 }
@@ -236,7 +247,16 @@ SSession init_session(SpawnSecrets secrets){
 //    return *lSession;
 //}
 
-SSession tailor_session(SSession_PTP    session, int socket, Spawn spawn, KitKey key) {
+SSession build_spawn_session(SSession_PTP session, int socket, Spawn spawn, KitKey kitkey) {
+    /* int socket;
+    SessionOps op;
+    Tag tag;
+    unsigned long lastreq;
+    Spawn spawn;
+    KitKey kit_key;
+    SpawnSecrets secrets;
+    SState state;
+     */
 
     if ((*session)->tag[0] != 1){
         fprintf(stderr,"Session must be newly initialized with init_session()\n");
@@ -246,18 +266,9 @@ SSession tailor_session(SSession_PTP    session, int socket, Spawn spawn, KitKey
         fprintf(stderr,"ThreadSpawn must be newly initialized with spawn_thread()\n");
         return NULL;
     }
-//    int socket;
-//    SessionOps op;
-//    Tag tag;
-//    unsigned long lastreq;
-//    LState state;
-//    Spawn spawn;
-//    KitKey kit_key;
-//    SpawnSecrets secrets;
 
     (*session)->spawn = spawn;
     (*session)->socket = socket;
-    (*session)->kit_key = key;
 
     return *session;
 
@@ -285,61 +296,61 @@ void end_session(SSession_PTP session) {
 }
 
 
-//uint dump_spawn_pieces(LatticeID_PTA id, SpawnPieces item, void* item_val){
-//
-//    char* outdir = (char*) calloc(LATT_AUTH_BYTES+SPAWNPIECES_EXT_LEN,UCHAR_SZ);
-//    uint res;
-//
-//    int spawndir_fd = openat(AT_FDCWD, getenv("SPAWN_DIR"), O_DIRECTORY, O_RDONLY);
-//    if (spawndir_fd == -1){
-//        perror("Couldn't open spawn dir (@dump_spawn_pieces).");
-//        free(outdir);
-//        return 1;
-//    }
-//
-//    switch (item) {
-//        case PIECE_NONE:
-//        case PIECE_BODY:
-//            res = 1;
-//            break;
-//        case PIECE_SESSION:
-//            printf("Session\n");
-//            SSession session = (SSession) item_val;
-//            res = 0;
-//            break;
-//        case PIECE_STATE:
-//            printf("State\n");
-//            LState state = (LState) item_val;
-//            res = 0;
-//            break;
-//        case PIECE_AUTHMAP:
-//            printf("AuthMap\n");
-//            AuthTagMap tagMap = (AuthTagMap) item_val;
-//            res = 0;
-//            break;
-//        case PIECE_KIT:
-//            printf("Kit\n");
-//            res = 2;
-//            break;
-//        case PIECE_ID:
-//            printf("ID\n");
-//            LatticeID_PTA latticeid = (LatticeID_PTA) item_val;
-//            res = 0;
-//            break;
-//        case PIECE_KEY:
-//            printf("Key\n");
-//            SesKey spawnKey = (SesKey) item_val;
-//            res = 0;
-//            break;
-//        default:
-//            fprintf(stderr,"Invalid Spawn Piece value: %d\n", item);
-//            res = 1;
-//            break;
-//    }
-//
-//    if (res == 0){
-//
-//    }
-//
-//    return res;
-//}
+uint dump_spawn_pieces(LatticeID_PTA id, SpawnPieces item, void* item_val){
+
+    char* outdir = (char*) calloc(LATT_AUTH_BYTES+SPAWNPIECES_EXT_LEN,UCHAR_SZ);
+    uint res;
+
+    int spawndir_fd = openat(AT_FDCWD, getenv("SPAWN_DIR"), O_DIRECTORY, O_RDONLY);
+    if (spawndir_fd == -1){
+        perror("Couldn't open spawn dir (@dump_spawn_pieces).");
+        free(outdir);
+        return 1;
+    }
+
+    switch (item) {
+        case PIECE_NONE:
+        case PIECE_BODY:
+            res = 1;
+            break;
+        case PIECE_SESSION:
+            printf("Session\n");
+            //SSession session = (SSession) item_val;
+
+            res = 0;
+            break;
+        case PIECE_STATE:
+            printf("State\n");
+            LState state = (LState) item_val;
+            res = 0;
+            break;
+        case PIECE_AUTHMAP:
+            printf("AuthMap\n");
+            AuthTagMap tagMap = (AuthTagMap) item_val;
+            res = 0;
+            break;
+        case PIECE_KIT:
+            printf("Kit\n");
+            res = 2;
+            break;
+        case PIECE_ID:
+            printf("ID\n");
+            LatticeID_PTA latticeid = (LatticeID_PTA) item_val;
+            res = 0;
+            break;
+        case PIECE_KEY:
+            printf("Key\n");
+            ResourceKeys spawnKey = (ResourceKeys) item_val;
+            res = 0;
+            break;
+        default:
+            fprintf(stderr,"Invalid Spawn Piece value: %d\n", item);
+            res = 1;
+            break;
+    }
+
+    if (res == 0){
+    }
+
+    return res;
+}

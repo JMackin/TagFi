@@ -405,12 +405,18 @@ SpawnKit set_spawnkit(Lattice lattice){
     Vessel vessel;
     TravelPath travelPath;
     BufferPool bufferPool;
-
+    SpawnKit spawnKit;
 
     vessel = (Vessel) malloc(sizeof(Vessel));
+    *vessel = *lattice->chains->vessel;
+    spawnKit.vessel = vessel;
     travelPath.origin = lattice->chains->dir_head;
     travelPath.destination = NULL;
+    spawnKit.travelPath = travelPath;
     init_bufferpool(&bufferPool);
+    spawnKit.bufferPool = bufferPool;
+
+    return spawnKit;
 }
 
  /* * * * * * * * * * * * * *
@@ -433,20 +439,35 @@ SpawnKit set_spawnkit(Lattice lattice){
      clock_t ca = clock();
 
      SOA_Pack soa_pack = (SOA_Pack) sp;
+     InfoFrame* infoFrame = NULL;
+     init_infofrm(&infoFrame,1);
+     SpawnSecrets spawnSecrets;
+     spawnSecrets.Id = NULL;
+     spawnSecrets.SesKey = NULL;
+     SSession session = init_session(spawnSecrets);
+     SState latticeState =  (session)->state;
+     (latticeState)->frame = malloc(sizeof(StatusFrame));
+     StsFrame statusFrame = (latticeState)->frame;
+
+   // uchar* bufin = (uchar*) calloc(1024,sizeof(uchar));
+
+     //Spawn spwnthread = spawn_thread(pthread_self(), soa_pack->lock, 1);
+
+
+     //build_spawn_session
      int exit_flag = 0;
      //init_SOA_bufs(&soa_pack);
      ErrorBundle errBndl = init_errorbundle();
-     SSession session = soa_pack->session;
-     SState latticeState =  (session)->state;
-     StsFrame statusFrame = (latticeState)->frame;
+    // SSession session = soa_pack->session;
+
      epEvent epoll_event = soa_pack->epollEvent_IN;
      pthread_mutex_t* lock = soa_pack->lock;
 
-     pthread_mutex_lock(lock);
+
      /**
       * READ REQUEST INTO BUFFER
       * */
-     ssize_t ret = read(soa_pack->dataSocket, *soa_pack->request_buf, soa_pack->buf_len);  // READ 'R'
+     ssize_t ret = read(soa_pack->dataSocket, *(session->bufferPool.request_buf), 256);  // READ 'R'
      if (ret == -1) {
          errBndl = bundle_addglob(errBndl, BADSOK, NULL, "Issue reading from data socket", soa_pack->dataSocket,
                                   "datasocket",
@@ -454,7 +475,6 @@ SpawnKit set_spawnkit(Lattice lattice){
          raiseErr(errBndl);
          return NULL;
      }
-     pthread_mutex_unlock(lock);
      (statusFrame)->status <<= 1;
 
 /**
@@ -463,16 +483,16 @@ SpawnKit set_spawnkit(Lattice lattice){
      /**
       * PARSE REQUEST
       * */
-     *soa_pack->infoFrame = parse_req(*soa_pack->request_buf,   // <<< Raw Request
-                                      soa_pack->infoFrame,
+     infoFrame = parse_req(*session->bufferPool.request_buf,   // <<< Raw Request
+                                      &infoFrame,
                                       &statusFrame,
-                                      soa_pack->flags_buf,
-                                      *soa_pack->tempArr_buf, //TODO: Cleanup data types here
-                                      soa_pack->requestArr_buf); // >>> Extracted array
+                                      session->bufferPool.flags_buf,
+                            *session->bufferPool.tempArr_buf, //TODO: Cleanup data types here
+                            session->bufferPool.requestArr_buf); // >>> Extracted array
 
      if ((statusFrame)->err_code) {
          if ((statusFrame)->act_id == GBYE){
-             (session)->op == SESH_ST_SHTDN;
+             //(session)->op == SESH_ST_SHTDN;
              exit_flag = 1;
              setSts(&statusFrame, SHTDN, 0);
              goto endpoint;
@@ -488,10 +508,10 @@ SpawnKit set_spawnkit(Lattice lattice){
      /** DETERMINE RESPONSE */
      if (respond(*soa_pack->responseTable,
                  &soa_pack->session,
-                 soa_pack->infoFrame,
+                 &infoFrame,
                  &(*soa_pack->hashLattice)->chains,
                  soa_pack->hashLattice,
-                 *soa_pack->response_buf)){
+                 *session->bufferPool.response_buf)){
          setErr(&statusFrame, MISSPK, 0);
          serrOut(&statusFrame, "Failed to stage a response");
          // TODO: replace w/ better option.
@@ -504,7 +524,7 @@ SpawnKit set_spawnkit(Lattice lattice){
           *  shutdown
           * */
          setSts(&statusFrame, SHTDN, 0);
-         (session)->op == SESH_ST_SHTDN;
+         //(session)->op == SESH_ST_SHTDN;
          exit_flag = 1;
      }else {
          setSts(&statusFrame, RESPN, 0);
@@ -521,13 +541,13 @@ SpawnKit set_spawnkit(Lattice lattice){
                  return NULL;
              }
              fprintf(stderr,"\n2!\n");
-             if (write(soa_pack->dataSocket, *(soa_pack->response_buf), soa_pack->buf_len) == -1){
+             if (write(soa_pack->dataSocket, *(session->bufferPool.response_buf), soa_pack->buf_len) == -1){
                  bundle_addglob(errBndl, BADSOK, NULL, "Error writiting response to buffer", soa_pack->dataSocket,
                                 "datascoket", "epoll_wait - out", NULL, errno);
                  raiseErr(errBndl);
                  return NULL;
              }
-             printf("\n>>%s<<\n",*(soa_pack->response_buf));
+             printf("\n>>%s<<\n",*(session->bufferPool.response_buf));
              fprintf(stderr,"\n3!\n");
 
          }
@@ -549,10 +569,10 @@ SpawnKit set_spawnkit(Lattice lattice){
      endpoint:
      if(exit_flag){
          soa_pack->_internal.shtdn=1;
-         (session)->op == SESH_ST_SHTDN;
+         //(session)->op == SESH_ST_SHTDN;
      }
 
-     init_infofrm(soa_pack->infoFrame,0);
+     init_infofrm(&infoFrame,0);
 
      if (close(soa_pack->dataSocket) == -1){
          bundle_addglob(errBndl, BADSOK, NULL, "Error writiting response to buffer", soa_pack->dataSocket, "datasocket",
@@ -561,16 +581,14 @@ SpawnKit set_spawnkit(Lattice lattice){
          return NULL;
      }
 
-     pthread_mutex_lock(lock);
-     epoll_ctl(soa_pack->epollFD, EPOLL_CTL_DEL, soa_pack->dataSocket, soa_pack->epollEvent_IN);
-     pthread_mutex_unlock(lock);
+//     epoll_ctl(soa_pack->epollFD, EPOLL_CTL_DEL, soa_pack->dataSocket, soa_pack->epollEvent_IN);
 
      //destroy_SOA_bufs(&soa_pack);
-     discard_SpinOff_Args(&soa_pack);
-     end_session(&session);
+     //discard_SpinOff_Args(&soa_pack);
+     //end_session(&session);
      pthread_mutex_destroy(lock);
-
-     pthread_exit(&exit_flag);
+//     pthread_exit(&exit_flag);
+     return 0;
 }
 
 
@@ -583,10 +601,11 @@ SpawnKit set_spawnkit(Lattice lattice){
              unsigned char **tmparrbuf, LState ltcSt) {
 
     ErrorBundle errBndl = init_errorbundle();
-    pthread_t tid; // Thread id;
+    //pthread_t tid; // Thread id;
 
+   //SpawnPool *spawnPool = (SpawnPool*) malloc(sizeof(spawnPool));
 
-    void *t_ret = NULL;  // Returned value from thread.
+    //void *t_ret = NULL;  // Returned value from thread.
 
 //    ErrBundle* eb_addr = &errBndl;
 
@@ -698,6 +717,8 @@ SpawnKit set_spawnkit(Lattice lattice){
          return 1;
      }
 
+     SpawnPool* sPool = init_spawnpool(50);
+
      if (epoll_ctl(efd, EPOLL_CTL_ADD, connection_socket, epINIT_event) == -1) {
          perror("epoll_ctl");
          return 1;
@@ -736,8 +757,8 @@ SpawnKit set_spawnkit(Lattice lattice){
                  while (1) {
                      struct sockaddr in_addr;
                      socklen_t in_len;
-                     int infd;
                      in_len = sizeof in_addr;
+                     int infd;
                      infd = accept(connection_socket, &in_addr, &in_len);
                      if (infd == -1) {
                          if ((errno == EAGAIN) ||
@@ -759,36 +780,25 @@ SpawnKit set_spawnkit(Lattice lattice){
                  continue;
              }else{
                  ssize_t count;
-                 pthread_t thread;
+                 pthread_t* thread = (pthread_t*) malloc(sizeof(pthread_t));
                  int spawn_socket = epINIT_event[i].data.fd;
-
                  pthread_mutex_t spawn_lock;
                  if (pthread_mutex_init(&spawn_lock,NULL) != 0){
                      perror(("Error making spawn lock."));
                      abort();
                  }
-                 pthread_mutex_lock(&spawn_lock);
-
+                 add_spawn(&sPool, &thread, &spawn_lock);
                  // TESTING
-                 SpawnSecrets secrets;
-                 Kit kit = malloc(sizeof(SpawnKit));
-//               Spawn spawn_thread(pthread_t thread_id, SpawnLock lock, SpawnNotify notify, uint tag_alpha){
-                     //init_spawn_fi2(&id);
 
-                 SSession session = init_session(secrets);
-                 pthread_mutex_unlock(&spawn_lock);
-                 session = tailor_session(&session, spawn_socket, NULL, NULL);
-                 SOA_Pack soaPack = pack_SpinOff_Args(0, hashlattice,
-                                                    NULL, NULL, NULL, NULL, NULL,
-                                                    infofrm, rsp_tbl, epINIT_event,
-                                                    efd, spawn_socket, BUF_LEN, 0, &spawn_lock, session);
+                 SOA_Pack soaPack = pack_SpinOff_Args(0, hashlattice, NULL, rsp_tbl,
+                                                      efd, spawn_socket, BUF_LEN, 0, &spawn_lock);
                  pthread_mutex_unlock(&spawn_lock);
 
-                 if(pthread_create(&thread, NULL, spin_off, (void*)(soaPack))){
+                 if(pthread_create(thread, NULL, spin_off, (void*)(soaPack))){
                      perror("pthread");
                      abort();
                  }
-                 if(pthread_detach(thread)){
+                 if(pthread_detach(*thread)){
                      perror("pthread detach");
                      abort();
                  }
@@ -804,7 +814,7 @@ SpawnKit set_spawnkit(Lattice lattice){
                          break;
                      }
                  }
-                 //discard_SpinOff_Args(&soaPack);
+                 discard_SpinOff_Args(&soaPack);
                  //if (soaPack != NULL) {free(soaPack);soaPack = NULL;}
                  continue;
              }

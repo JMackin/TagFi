@@ -415,23 +415,8 @@ void update_SOA(SOA_OPTS opt, SOA_Pack* soaPack, void* new_val){
         case SOA_HASHLATTICE:
             (*soaPack)->hashLattice = (Lattice_PTP) new_val;
             break;
-        case SOA_REQBUF:
-            (*soaPack)->request_buf = (Std_Buffer_PTP) new_val;
-            break;
-        case SOA_RESPBUF:
-            (*soaPack)->response_buf = (Std_Buffer_PTP) new_val;
-            break;
-        case SOA_REQARRBUF:
-            (*soaPack)->requestArr_buf = (Std_Buffer_PTP) new_val;
-            break;
-        case SOA_TEMPARRBUF:
-            (*soaPack)->tempArr_buf = (Std_Buffer_PTP) new_val;
-            break;
         case SOA_FLAGSBUF:
             (*soaPack)->flags_buf =  (Flags_Buffer_PTP) new_val;
-            break;
-        case SOA_INFOFRAME:
-            (*soaPack)->infoFrame = (Info_Frame_PTP) new_val;
             break;
         case SOA_RESPTBL:
             (*soaPack)->responseTable = (ResponseTable_PTP) new_val;
@@ -459,9 +444,6 @@ void update_SOA(SOA_OPTS opt, SOA_Pack* soaPack, void* new_val){
             break;
         case SOA_INTERNAL:
             break;
-        case SOA_SESSION:
-            (*soaPack)->session = (SSession) new_val;
-            break;
         default:
             return;
     }
@@ -470,18 +452,13 @@ void update_SOA(SOA_OPTS opt, SOA_Pack* soaPack, void* new_val){
 void update_SOA_DS(SOA_Pack* soaPack, int datasocket){(*soaPack)->dataSocket = datasocket;}
 
 SOA_Pack
-pack_SpinOff_Args(pthread_t tid, Lattice_PTP hashLattice, Std_Buffer_PTP request_buf, Std_Buffer_PTP response_buf,
-                  Std_Buffer_PTP requestArr_buf, Std_Buffer_PTP tempArr_buf, Flags_Buffer_PTP flags_buf,
-                  Info_Frame_PTP infoFrame, ResponseTable_PTP responseTable, epEvent epollEvent_IN, int epollFD,
-                  int dataSocket, int buf_len, int tag, pthread_mutex_t *lock, SSession session) {
+pack_SpinOff_Args(pthread_t tid, Lattice_PTP hashLattice, Flags_Buffer_PTP flags_buf, ResponseTable_PTP responseTable,
+                  int epollFD, int dataSocket, int buf_len, int tag, pthread_mutex_t *lock) {
 
     SOA_Pack soaPack = (SOA_Pack) malloc(sizeof(SpinOffArgsPack));
     uint cnt = 4;
     uint flip = 0;
-    Std_Buffer_PTP bufs[4] = {request_buf,
-            response_buf,
-            requestArr_buf,
-            tempArr_buf};
+    Std_Buffer_PTP bufs[4] = {NULL};
 
     soaPack->hashLattice = hashLattice;
 
@@ -499,15 +476,12 @@ pack_SpinOff_Args(pthread_t tid, Lattice_PTP hashLattice, Std_Buffer_PTP request
     }
 
     soaPack->flags_buf = flags_buf;
-    soaPack->infoFrame = infoFrame;
     soaPack->responseTable = responseTable;
-    soaPack->epollEvent_IN = epollEvent_IN;
     soaPack->epollFD = epollFD;
     soaPack->dataSocket = dataSocket;
     soaPack->buf_len = buf_len;
     soaPack->tid = tid;
     soaPack->lock = lock;
-    soaPack->session = session;
     if(tag){soaPack->tag = tag;}else{soaPack->tag = 1;}
     soaPack->_internal.shtdn = 0;
 
@@ -522,15 +496,10 @@ uint discard_SpinOff_Args(SOA_Pack* soaPack){
         if (!(*soaPack)->tag){return 1;}
 
         (*soaPack)->hashLattice = NULL;
-        (*soaPack)->request_buf = NULL;
-        (*soaPack)->response_buf = NULL;
-        (*soaPack)->requestArr_buf = NULL;
-        (*soaPack)->tempArr_buf = NULL;
+
         (*soaPack)->flags_buf = NULL;
-        (*soaPack)->infoFrame = NULL;
         (*soaPack)->responseTable = NULL;
         (*soaPack)->epollEvent_IN = NULL;
-        (*soaPack)->session = NULL;
         (*soaPack)->epollFD = 0;
         (*soaPack)->dataSocket = 0;
         (*soaPack)->buf_len = 0;

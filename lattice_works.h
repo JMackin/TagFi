@@ -18,7 +18,6 @@
 #define LLKEYSZ 16
 #define LKEYSZ 32u
 #define MAJORKEYCNT 5
-
 #define AUTH_TAG_SIZE 32
 
 
@@ -27,8 +26,6 @@ typedef unsigned char* LatticeKey;
 
 // 0 = sig, 1 = enc, 2 = hash, 3 = pub, 4 = auth
 typedef LatticeKey (*LttcKeySum)[MAJORKEYCNT];
-
-
 typedef unsigned char* LttcHashKey;
 
 /*
@@ -41,6 +38,7 @@ typedef unsigned char* LttcHashKey;
  *
  * */
 typedef enum LttcKeyType{
+
     // Signing key.
     LK_SIG = 0,
     // Encryption key.
@@ -84,7 +82,6 @@ typedef struct FiNode{
     unsigned long long fiid;
     unsigned long fhshno;
 } FiNode;
-
 typedef FiNode* FNode;
 
 typedef struct DiNode{
@@ -104,7 +101,6 @@ typedef struct DiChains{
     Vessel vessel;
 }DiChains;
 typedef DiChains* DChains;
-
 
 struct HashBridge;
 typedef struct HashBridge* ParaBridge;
@@ -135,9 +131,6 @@ typedef struct TravelPath{
 
 typedef RspFlag* RspArr;
 typedef ReqFlag* ReqArr;
-
-
-
 /**
  *<h4>
  * \InformationFrame
@@ -162,7 +155,6 @@ typedef struct InfoFrame {
     unsigned char *arr;
     Vessel* vessel;
 } InfoFrame;
-
 
 InfoFrame *init_infofrm(InfoFrame **info_frm, uint startup);
 //uint reset_infofrm(InfoFrame **info_frm);
@@ -215,24 +207,22 @@ typedef unsigned char** Std_Buffer_PTP; // Standard buffer, pointer-to-pointer
 typedef struct SpawnKit{
     Vessel vessel;
     Lattice latticeGate;
-    LatticeSessionTag latticeTag;
     TravelPath travelPath;
     BufferPool bufferPool;
     Tag tag;
 } SpawnKit;
 typedef SpawnKit* Kit;
 
-
 typedef struct SpinOffArgsPack{
     pthread_t tid;
     Lattice_PTP hashLattice;
-    Std_Buffer_PTP request_buf;
-    Std_Buffer_PTP response_buf;
-    Std_Buffer_PTP requestArr_buf;
-    Std_Buffer_PTP tempArr_buf;
+    // Std_Buffer_PTP request_buf;
+//    Std_Buffer_PTP response_buf;
+//    Std_Buffer_PTP requestArr_buf;
+//    Std_Buffer_PTP tempArr_buf;
     Flags_Buffer_PTP flags_buf;
-    Info_Frame_PTP infoFrame;
-    ResponseTable_PTP responseTable;       // Not implemented?
+//    Info_Frame_PTP infoFrame;
+    ResponseTable_PTP responseTable;
     epEvent epollEvent_IN;
     pthread_mutex_t* lock;
     SSession session;
@@ -244,6 +234,9 @@ typedef struct SpinOffArgsPack{
 }SpinOffArgsPack;
 typedef SpinOffArgsPack* SOA_Pack;
 
+typedef struct SpawnConductor{
+    SpawnPool pool;
+} SpawnConductor;
 
 double long *map_dir(StatusFrame **statusFrame, const char *dir_path, unsigned int path_len, unsigned char *dirname,
                      unsigned int dnlen, HashLattice *hashlattice, DNodeArmature **fitbl, LttcHashKey latticeKey);
@@ -335,10 +328,8 @@ unsigned int finode_idx(unsigned long fhshno);
 
 
 SOA_Pack
-pack_SpinOff_Args(pthread_t tid, Lattice_PTP hashLattice, Std_Buffer_PTP request_buf, Std_Buffer_PTP response_buf,
-                  Std_Buffer_PTP requestArr_buf, Std_Buffer_PTP tempArr_buf, Flags_Buffer_PTP flags_buf,
-                  Info_Frame_PTP infoFrame, ResponseTable_PTP responseTable, epEvent epollEvent_IN, int epollFD,
-                  int dataSocket, int buf_len, int tag, pthread_mutex_t *lock, SSession session);
+pack_SpinOff_Args(pthread_t tid, Lattice_PTP hashLattice, Flags_Buffer_PTP flags_buf, ResponseTable_PTP responseTable,
+                  int epollFD, int dataSocket, int buf_len, int tag, pthread_mutex_t *lock);
 uint discard_SpinOff_Args(SOA_Pack* soaPack);
 
 void update_SOA_DS(SOA_Pack* soaPack, int datasocket);
@@ -347,7 +338,6 @@ void update_SOA(SOA_OPTS opt, SOA_Pack* soaPack, void* new_val);
 
 int make_socket_non_blocking(int sfd);
 void destroy_bufferpool(BufferPool * bufferPool);
-void init_bufferpool(BufferPool * bufferPool);
 void init_Tag(Tag* tag);
 
 #endif //TAGFI_LATTICE_WORKS_H

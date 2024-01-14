@@ -482,10 +482,10 @@ typedef LttFlgs* Flags_Buffer_PTP; // Flags buffer, pointer to pointer.
  *<code>
  * \SpinOffArgOptions
  *<li> SOA_HASHLATTICE = 1,
- *<li> SOA_REQBUF = 2,
- *<li> SOA_RESPBUF = 4,
- *<li> SOA_REQARRBUF = 8,
- *<li> SOA_TEMPARRBUF = 16,
+ *<li> XxSOA_REQBUFxX = 2,
+ *<li> XxSOA_RESPBUFxX = 4,
+ *<li> XxSOA_REQARRBUFxX = 8,
+ *<li> XxSOA_TEMPARRBUFxX = 16,
  *<li> SOA_FLAGSBUF = 32,
  *<li> SOA_INFOFRAME = 64,
  *<li> SOA_RESPTBL = 128,
@@ -495,16 +495,11 @@ typedef LttFlgs* Flags_Buffer_PTP; // Flags buffer, pointer to pointer.
  *<li> SOA_DATASOCKET = 2048,
  *<li> SOA_BUFLEN = 4096,
  *<li> SOA_TAG = 8192,
- *<li> SOA_MUTEX = 16384
+ *<li> XxSOA_MUTEXxX= 16384
  */
 typedef enum SOA_OPTS{
     SOA_HASHLATTICE = 1,
-    SOA_REQBUF = 2,
-    SOA_RESPBUF = 4,
-    SOA_REQARRBUF = 8,
-    SOA_TEMPARRBUF = 16,
     SOA_FLAGSBUF = 32,
-    SOA_INFOFRAME = 64,
     SOA_RESPTBL = 128,
     SOA_EPEVENT = 256,
     SOA_THREADID = 512,
@@ -514,7 +509,6 @@ typedef enum SOA_OPTS{
     SOA_TAG = 8192,
     SOA_MUTEX = 16384,
     SOA_INTERNAL = 32768,
-    SOA_SESSION = 65536
 }SOA_OPTS;
 
 typedef struct SOA_internal{

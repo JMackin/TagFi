@@ -116,9 +116,11 @@ unsigned int split_cats(const unsigned int *lead_flags,
             flg_itr->req = SAVE;
         }
         cnt = div_flgs(lead_flags, flag_list, flg_itr, s_itr, l_itr, cnt, trfidi, subflg);
-        (++l_itr);
+        (l_itr++);
         split_cats(lead_flags, flag_list, flg_itr, 0, l_itr, cnt, trfidi, subflg);
-
+        if (l_itr > 5 || (flg_itr->req) >= LEAD){
+            return cnt;
+        }
     }
     //TODO: Implement return 0 in default cases, and flgcnt updatted with '+=' rather than assignment.
 }
@@ -140,8 +142,8 @@ uint parse_lead(cnst_uint lead,
     /** Alloc buffer to hold OR'd category flag values
      * and an array for the final parsed flag list.
      * */
-    ptr_uint lead_flags = (ptr_uint ) calloc(4, UINT_SZ);    // [ quals | trvl/fiops/dirops/ | sysops | arrsigs ]
-    //*flg_list = (ReqFlag *) (calloc(CMDCNT,sizeof(ReqFlag)));
+    ptr_uint lead_flags = (ptr_uint) calloc(4, UINT_SZ);    // [ quals | trvl/fiops/dirops/ | sysops | arrsigs ]
+    *flg_list = (ReqFlag *) calloc(CMDCNT, sizeof(ReqFlag));
 
     /** Extract qualifier flags */
     *lead_flags = lead & QUALIFIR;
@@ -215,11 +217,12 @@ InfoFrame *parse_req(uchar_arr fullreqbuf, //<-- same name in spin up
     memcpy(&uni_flag, fullreqbuf, UINT_SZ);
     flgcnt = parse_lead(uni_flag, rqflgsbuf, stsfrm, infofrm);
 
-    if (flgcnt == 0) {
-        stsErno(MALREQ, stsfrm, "Malformed request, error parsing lead", uni_flag,
-                "misc - lead", "parse_req->parse_lead", NULL, errno);
-        return *infofrm;
-    }
+
+//    if (flgcnt == 0) {
+//        stsErno(MALREQ, stsfrm, "Malformed request, error parsing lead", uni_flag,
+//                "misc - lead", "parse_req->parse_lead", NULL, errno);
+//        return *infofrm;
+//    }
 
     /** Check for 'default' flag */
     if ((*infofrm)->qual == DFLT){

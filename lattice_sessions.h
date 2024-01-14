@@ -116,10 +116,18 @@ typedef struct ThreadSpawn{
     SpawnLock lock;
     SpawnNotify notify;
     Tag tag;
-    LatticeSessionTag latticeTag;
-//    ResourceKeys res_keys;
 }ThreadSpawn;
 typedef ThreadSpawn* Spawn;
+
+//TODO: Implement sessions.
+
+typedef struct BufferPool{
+    buff_arr request_buf;
+    buff_arr response_buf;
+    buff_arr requestArr_buf;
+    buff_arr tempArr_buf;
+    Flags_Buffer_PTP flags_buf;
+}BufferPool;
 
 /**
  *  Thread-based user session.
@@ -149,9 +157,11 @@ typedef struct SpawnSession{
     KitKey kit_key;
     SpawnSecrets secrets;
     SState state;
+    struct BufferPool bufferPool;
 }SpawnSession;
 typedef SpawnSession * SSession;
 typedef SpawnSession ** SSession_PTP;
+
 
 typedef struct LatticeSingleSession{
     LatticeID id;
@@ -164,37 +174,31 @@ typedef struct LatticeSingleSession{
 
 typedef LatticeSingleSession* LatticeSessionStore;
 
-typedef struct SpawnAct{
+typedef struct SpawnTask{
     void (*function)(void*);
     void *arg;
     Tag tag;
-}SpawnAct;
+}SpawnTask;
 
 typedef struct SpawnPool{
     int thread_count;
     int queue_size;
-    int head;
-    int tail;
-    int count;
+//    int head;
+//    int tail;
+//    int count;
     uint running_tag;
-    uint stop;
+//    uint stop;
     SpawnPoolState _internal;
     Spawn spawn;
-    SpawnAct *task_queue;
+//    SpawnAct *task_queue;
     pthread_mutex_t lock;
     pthread_cond_t notify;
+//    LatticeSessionTag sessionTag;
 } SpawnPool;
 
 typedef SpawnPool* SPool;
 typedef SpawnPool** SPool_PTP;
 
-typedef struct BufferPool{
-    buff_arr request_buf;
-    buff_arr response_buf;
-    buff_arr requestArr_buf;
-    buff_arr tempArr_buf;
-    Flags_Buffer_PTP flags_buf;
-}BufferPool;
 
 /**
  *  \StatusFrame
@@ -203,18 +207,20 @@ typedef struct BufferPool{
  * */
 
 
-__attribute__((unused)) SSession update_session(const SessionOps* op, SSession_PTP lSession, void* newval);
-SSession tailor_session(SSession_PTP session, int socket, Spawn spawn, KitKey key);
-void end_session(SSession_PTP session);
+//__attribute__((unused)) SSession update_session(const SessionOps* op, SSession_PTP lSession, void* newval);
+//SSession build_spawn_session(SSession_PTP session, int socket, Spawn spawn);
+//void end_session(SSession_PTP session);
 
 
-Spawn spawn_thread(pthread_t thread_id, SpawnLock lock, SpawnNotify notify, uint tag_alpha);
-int add_spawn(SPool_PTP spawnpool, pthread_t thread, SpawnLock arg, SpawnAct spawnAct);
-SPool init_spawnpool(int thread_count, int queue_size);
+Spawn spawn_thread(pthread_t thread_id, SpawnLock lock, uint tag_alpha);
+int add_spawn(SPool_PTP spawnpool, pthread_t **thread, SpawnLock lock);
+SPool init_spawnpool(uint max_thread_count);
 
 uint init_spawn_fi(LatticeID_PTA id);
 uint init_spawn_fi2(LatticeID_PTA id);
 SSession init_session(SpawnSecrets secrets);
+void init_bufferpool(BufferPool * bufferPool);
+
 
 
 

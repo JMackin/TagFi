@@ -32,8 +32,10 @@ void gen_hash_key(void);
 void gen_auth_key();
 //uint mk_auth_tag(LattTag authTagOut, LattTagBase* tagbase, unsigned long long int tagbase_len);
 
-uint mk_sign_tag(ULattTag* signTagOut, unsigned long long int** tag_len, LattTagBase* tagbase, unsigned long long int tagbase_len);
-uint mk_auth_tag(ULattTag* authTagOut, unsigned long long int* tag_len, LattTagBase* tagbase, unsigned long long int tagbase_len);
-void gen_rand_tag_base(LattTagBase* base_out,uint tagsize);
+uint mk_sign_tag(ULattTag* signTagOut, unsigned long long int** tag_len, ULattTagBase* tagbase, unsigned long long int tagbase_len);
+uint mk_auth_tag(ULattTag* authTagOut, unsigned long long int* tag_len, ULattTagBase* tagbase, unsigned long long int tagbase_len);
+void gen_rand_tag_base(ULattTagBase* base_out,uint tagsize);
+uint verify_auth_tag(ULattTag* authTagIn, ULattTagBase* tagbase, ullint tagbase_len);
+
 
 

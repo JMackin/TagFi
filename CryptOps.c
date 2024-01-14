@@ -14,7 +14,7 @@
 #define LTTC_SK_CNTXT_IDS_FINAME "Lattice_SK_ctxtid"
 #define LTTC_SIGN_KEY_NM "Lattice_Signing_key.lttckey"
 #define LTTC_MK_NAME_LEN 18
-#define LTTC_SK_CNTXT_BUF_LEN 4;
+#define LTTC_SK_CNTXT_BUF_LEN 4
 #define LTTC_SK_CNTXT_LEN crypto_kdf_CONTEXTBYTES
 #define LTTC_SK_CNTXT_HEXSTR_LEN 10 // 8-byte context string + '\0' + '\n'
 #define LTTC_SIGN_KEY_NM_LEN 27
@@ -295,7 +295,7 @@ void gen_new_latticeid(Lattice lattice, LatticeID_PTA latticeId, AuthTagMap tagM
  *
  * pass in 0 to tagsize for 64-bit tag and 1 for 32-bit
  * */
-void gen_rand_tag_base(LattTagBase* base_out, uint tagsize){
+void gen_rand_tag_base(ULattTagBase* base_out, uint tagsize){
 
     uint base_len = tagsize ? LATT_AUTH_MSGBASE_64_LEN : LATT_AUTH_MSGBASE_32_LEN;
     randombytes_stir();
@@ -303,7 +303,7 @@ void gen_rand_tag_base(LattTagBase* base_out, uint tagsize){
     (*base_out) = sodium_malloc((base_len) * UCHAR_SZ);
 
     randombytes_buf(base_buf,(base_len>>1)*UCHAR_SZ);
-    sodium_bin2hex((*base_out), base_len, base_buf, (base_len>>1));
+    sodium_bin2hex((char*)(*base_out), base_len, base_buf, (base_len>>1));
     sodium_free(base_buf);
 }
 
@@ -406,7 +406,7 @@ void derive_master_subkeys(void){
     char sk_types[3][3] = {{'S','i','g'},{'E','n','c'},{'H','s','h'}};
 
     const size_t onebyte = sizeof(uint8_t);
-    const size_t LKey_sz = onebyte*crypto_kdf_KEYBYTES;
+    const size_t LKey_sz = onebyte*crypto_kdf_BYTES_MAX;
 
     ulong* sk_ids;
     uchar* sk_ids_buf;
@@ -488,9 +488,9 @@ void derive_master_subkeys(void){
         sodium_free(mkey);
         abort();
     }
+    fsync(mkey_fd);
     close(mkey_dir_fd);
     close(mkey_fd);
-    fsync(mkey_fd);
 
     sk_contexts = (char*) sodium_malloc((LTTC_SK_CNTXT_HEXSTR_LEN)*onebyte);
     sodium_munlock(sk_contexts,LTTC_SK_CNTXT_HEXSTR_LEN);
@@ -505,8 +505,9 @@ void derive_master_subkeys(void){
         sk_names[9] = sk_types[i][1];
         sk_names[10] = sk_types[i][2];
 
-        randombytes_buf(sk_contexts_buf,LTTC_SK_CNTXT_LEN);
-        sodium_bin2hex(sk_contexts,LTTC_SK_CNTXT_HEXSTR_LEN,sk_contexts_buf,LTTC_SK_CNTXT_LEN);
+        randombytes_buf(sk_contexts_buf,LTTC_SK_CNTXT_BUF_LEN);
+
+        sodium_bin2hex(sk_contexts,LTTC_SK_CNTXT_HEXSTR_LEN,sk_contexts_buf,LTTC_SK_CNTXT_BUF_LEN);
 
         if(write(sk_ctxt_fd,sk_contexts,LTTC_SK_CNTXT_HEXSTR_LEN)==-1){
             perror("Failed writing subkey context.");
@@ -563,7 +564,7 @@ void derive_master_subkeys(void){
         fsync(sk_ctxt_id_fd);
 
         crypto_kdf_derive_from_key(*((*lts_tri_sub_key)+i),
-                                   LKey_sz,
+                                   crypto_kdf_BYTES_MAX,
                                    *(sk_ids),
                                    sk_contexts,
                                    mkey);
@@ -586,7 +587,7 @@ void derive_master_subkeys(void){
             abort();
         }
 
-        if(write(sk_fd,*((*lts_tri_sub_key)+i),LTTC_SK_CNTXT_HEXSTR_LEN)==-1){
+        if(write(sk_fd,*((*lts_tri_sub_key)+i),crypto_kdf_BYTES_MAX)==-1){
             perror("Failed writing subkey context.");
             fprintf(stderr,"Failed on: %s\n",sk_names);
             close(mkey_fd);
@@ -614,7 +615,7 @@ void derive_master_subkeys(void){
     close(sk_ctxt_fd);
     close(sk_ctxt_id_fd);
     sodium_free(sk_contexts);
-    sodium_memzero(mkey,LKey_sz);
+    sodium_memzero(mkey,crypto_kdf_KEYBYTES);
     sodium_free(mkey);
     sodium_free(sk_contexts_buf);
     free_subkeys(lts_tri_sub_key);
@@ -885,8 +886,8 @@ void gen_hash_key(void){
     *(sk_contexts+LTTC_SK_CNTXT_HEXSTR_LEN-1) = '\n';
 
 
-    randombytes_buf(sk_contexts_buf,LTTC_SK_CNTXT_LEN);
-    sodium_bin2hex(sk_contexts,LTTC_SK_CNTXT_HEXSTR_LEN,sk_contexts_buf,LTTC_SK_CNTXT_LEN);
+    randombytes_buf(sk_contexts_buf,LTTC_SK_CNTXT_BUF_LEN);
+    sodium_bin2hex(sk_contexts,LTTC_SK_CNTXT_HEXSTR_LEN,sk_contexts_buf,LTTC_SK_CNTXT_BUF_LEN);
 
     if(write(sk_ctxt_fd,sk_contexts,LTTC_SK_CNTXT_HEXSTR_LEN)==-1){
         perror("Failed writing hashkey context.");
@@ -1139,7 +1140,7 @@ uint loadKey(LttcKeyType lkey_type, LatticeKey* key_out){
  *
  * returns 0 on success and 1 on error.
  * */
-uint mk_sign_tag(ULattTag* signTagOut, ullint** tag_len, LattTagBase* tagbase, ullint tagbase_len){
+uint mk_sign_tag(ULattTag* signTagOut, ullint** tag_len, ULattTagBase* tagbase, ullint tagbase_len){
     if (tagbase_len == 0){
         tagbase_len = LATT_AUTH_MSGBASE_64_LEN;
         *tagbase = sodium_malloc(LATT_AUTH_MSGBASE_64_LEN);
@@ -1180,7 +1181,7 @@ uint mk_sign_tag(ULattTag* signTagOut, ullint** tag_len, LattTagBase* tagbase, u
  *
  * returns 0 on success and 1 on error.
  * */
-uint mk_auth_tag(ULattTag* authTagOut, ullint* tag_len, LattTagBase* tagbase, ullint tagbase_len){
+uint mk_auth_tag(ULattTag* authTagOut, ullint* tag_len, ULattTagBase* tagbase, ullint tagbase_len){
     if (tagbase_len == 0){
         tagbase_len = LATT_AUTH_MSGBASE_32_LEN;
         *tagbase = sodium_malloc(LATT_AUTH_MSGBASE_32_LEN);
@@ -1196,7 +1197,7 @@ uint mk_auth_tag(ULattTag* authTagOut, ullint* tag_len, LattTagBase* tagbase, ul
         return 1;
     }
 
-    if (crypto_auth(*authTagOut, (uchar*)*tagbase, tagbase_len, athKey) != 0){
+    if (crypto_auth(*authTagOut, *tagbase, tagbase_len, athKey) != 0){
         fprintf(stderr,"Failed to load sig key.\n @mk_auth_tag\n");
 
         sodium_memzero(athKey, crypto_auth_KEYBYTES);
@@ -1219,7 +1220,7 @@ uint mk_auth_tag(ULattTag* authTagOut, ullint* tag_len, LattTagBase* tagbase, ul
  *
  * Returns 0 if verified, and 1 if not.
  * */
-uint verify_auth_tag(ULattTag* authTagIn, LattTagBase* tagbase, ullint tagbase_len){
+uint verify_auth_tag(ULattTag* authTagIn, ULattTagBase* tagbase, ullint tagbase_len){
     LatticeKey athKey = NULL;
     uint verified;
 
@@ -1232,9 +1233,9 @@ uint verify_auth_tag(ULattTag* authTagIn, LattTagBase* tagbase, ullint tagbase_l
         return 1;
     }
 
-    verified = crypto_auth_verify(authTagIn,tagbase,tagbase_len)
+    verified = crypto_auth_verify(*authTagIn,*tagbase,tagbase_len,athKey) == 0 ? 0 : 1;
 
-
+    return verified;
 
 }
 
